@@ -19,7 +19,7 @@ services:
       - eztag-net
 
   backend:
-    build: ./backend
+    image: zardkim/eztag-backend:${VERSION:-latest}
     restart: unless-stopped
     ports:
       - "${BACKEND_PORT:-18011}:18011"
@@ -43,7 +43,7 @@ services:
       - eztag-net
 
   frontend:
-    build: ./frontend
+    image: zardkim/eztag-frontend:${VERSION:-latest}
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-5850}:80"

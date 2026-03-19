@@ -1,0 +1,13 @@
+# 소스 코드에서 직접 빌드할 때 사용
+# 사용법: docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+
+version: '3.8'
+
+services:
+  backend:
+    image: ~
+    build: ./backend
+
+  frontend:
+    image: ~
+    build: ./frontend
