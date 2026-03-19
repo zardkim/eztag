@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: eztag
       POSTGRES_USER: eztag
-      POSTGRES_PASSWORD: eztag
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-eztag_password}
     volumes:
       - ./data/db:/var/lib/postgresql/data
     healthcheck:
@@ -15,33 +15,43 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - eztag-net
 
   backend:
     build: ./backend
     restart: unless-stopped
     ports:
-      - "18011:18011"
+      - "${BACKEND_PORT:-18011}:18011"
     environment:
-      DATABASE_URL: postgresql://eztag:eztag@postgres:5432/eztag
+      DATABASE_URL: postgresql://eztag:${DB_PASSWORD:-eztag_password}@postgres:5432/eztag
       MUSIC_BASE_PATH: /music
       COVERS_PATH: /app/data/covers
-      SECRET_KEY: changeme-in-production
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set in .env file}
       LOG_DIR: /app/data/logs
-      LOG_LEVEL: INFO
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
       BACKUP_DIR: /app/data/backup
     volumes:
-      - /volume1/music:/music
+      - ${MUSIC_PATH:-/volume1/music}:/music:ro
       - ./data/covers:/app/data/covers
       - ./data/logs:/app/data/logs
       - ./data/backup:/app/data/backup
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - eztag-net
 
   frontend:
     build: ./frontend
     restart: unless-stopped
     ports:
-      - "5850:80"
+      - "${FRONTEND_PORT:-5850}:80"
     depends_on:
       - backend
+    networks:
+      - eztag-net
+
+networks:
+  eztag-net:
+    driver: bridge
