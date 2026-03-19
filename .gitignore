@@ -1,0 +1,47 @@
+# ── 제외 폴더 ──────────────────────────────────────────────
+참조소스/
+docs/
+data/
+
+# ── Python ─────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Node / Frontend ─────────────────────────────────────────
+node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
+
+# ── Env / Secrets ───────────────────────────────────────────
+.env
+.env.local
+.env.production
+*.env
+
+# ── Tool caches ─────────────────────────────────────────────
+.playwright-cli/
+backend/.cache
+
+# ── Editor / OS ─────────────────────────────────────────────
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+Thumbs.db
+
+# ── Docker runtime ──────────────────────────────────────────
+*.log
