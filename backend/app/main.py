@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
     from alembic.config import Config
     from alembic import command
     alembic_cfg = Config("alembic.ini")
-    command.upgrade(alembic_cfg, "head")
+    command.upgrade(alembic_cfg, "heads")
 
     from app.database import SessionLocal
     from app.models.scan_folder import ScanFolder
