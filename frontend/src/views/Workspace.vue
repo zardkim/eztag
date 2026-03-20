@@ -317,12 +317,12 @@ const workspaceFolderPath = computed(() => {
   return folders.length === 1 ? folders[0] : null
 })
 
-// 모든 아이템이 적용됨 + 폴더 단일 → 이동 가능
+// pending 변경 없음 + 단일 폴더 → 이동 가능
+// (미편집 아이템은 status='pending'이지만 has_changes=false이므로 pendingCount에 포함 안 됨)
 const canMove = computed(() =>
   workspaceStore.items.length > 0 &&
   workspaceStore.pendingCount === 0 &&
-  workspaceFolderPath.value !== null &&
-  workspaceStore.items.every(i => i.status === 'applied')
+  workspaceFolderPath.value !== null
 )
 
 function onMoved(result) {
