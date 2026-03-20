@@ -73,6 +73,12 @@
             class="btn-toolbar !bg-blue-100 !text-blue-700 hover:!bg-blue-200 dark:!bg-blue-900/30 dark:!text-blue-400 shrink-0 font-medium"
             @click="showApply = true"
           >✅ 적용 ({{ workspaceStore.pendingCount }})</button>
+          <!-- 폴더 이동 (모두 적용됨 + 단일 폴더) -->
+          <button
+            v-if="canMove"
+            class="btn-toolbar !bg-indigo-100 !text-indigo-700 hover:!bg-indigo-200 dark:!bg-indigo-900/30 dark:!text-indigo-400 shrink-0 font-medium"
+            @click="showMoveModal = true"
+          >📦 폴더 이동</button>
         </template>
         <template v-else>
           <span class="text-xs text-gray-400">워크스페이스가 비어있습니다. 사이드바에서 폴더를 열어 파일을 추가하세요.</span>
@@ -244,6 +250,15 @@
       @close="showApply = false"
       @applied="showApply = false"
     />
+
+    <!-- 폴더 이동 모달 -->
+    <MoveToDestinationModal
+      v-if="showMoveModal && workspaceFolderPath"
+      :source-path="workspaceFolderPath"
+      :source-file-count="workspaceStore.items.length"
+      @close="showMoveModal = false"
+      @moved="onMoved"
+    />
   </div>
 </template>
 
@@ -257,12 +272,14 @@ import TagPanel from '../components/TagPanel.vue'
 import BatchTagPanel from '../components/BatchTagPanel.vue'
 import SpotifySearchDialog from '../components/SpotifySearchDialog.vue'
 import ApplyPreviewModal from '../components/ApplyPreviewModal.vue'
+import MoveToDestinationModal from '../components/MoveToDestinationModal.vue'
 
 const workspaceStore = useWorkspaceStore()
 const toastStore = useToastStore()
 
 const showPanel = ref(null)
 const showApply = ref(false)
+const showMoveModal = ref(false)
 const showSpotifyDialog = ref(false)
 const showAutoTagMenu = ref(false)
 const showLrcMenu = ref(false)
@@ -286,6 +303,33 @@ const selectedFile = computed(() => {
   if (!workspaceStore.selectedItem) return null
   return workspaceStore.files.find(f => f._workspace_item_id === workspaceStore.selectedItemId) || null
 })
+
+// ── 이동(Move) ────────────────────────────────────────────
+// 워크스페이스 아이템들의 공통 부모 폴더
+const workspaceFolderPath = computed(() => {
+  const items = workspaceStore.items
+  if (!items.length) return null
+  const folders = [...new Set(items.map(i => {
+    const parts = i.file_path.split('/')
+    parts.pop()
+    return parts.join('/')
+  }))]
+  return folders.length === 1 ? folders[0] : null
+})
+
+// 모든 아이템이 적용됨 + 폴더 단일 → 이동 가능
+const canMove = computed(() =>
+  workspaceStore.items.length > 0 &&
+  workspaceStore.pendingCount === 0 &&
+  workspaceFolderPath.value !== null &&
+  workspaceStore.items.every(i => i.status === 'applied')
+)
+
+function onMoved(result) {
+  showMoveModal.value = false
+  toastStore.success(`이동 완료: ${result.dest}`)
+  workspaceStore.newSession()
+}
 
 // ── 선택 ──────────────────────────────────────────────────
 function onRowClick(item) {
