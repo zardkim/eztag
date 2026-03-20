@@ -230,8 +230,10 @@ const lyricsEl = ref(null)
 const lineRefs = ref([])
 
 // ── 드래그 ────────────────────────────────────────────────
-const posX = ref(Math.max(8, Math.min(window.innerWidth - 520, window.innerWidth - 540)))
-const posY = ref(Math.max(20, window.innerHeight - 620))
+const playerW = Math.min(520, window.innerWidth - 16)
+const playerH = Math.min(580, window.innerHeight * 0.85)
+const posX = ref(Math.round((window.innerWidth - playerW) / 2))
+const posY = ref(Math.round((window.innerHeight - playerH) / 2))
 let dragOffset = null
 
 const dialogStyle = computed(() => ({

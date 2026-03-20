@@ -69,8 +69,21 @@
                 :style="lrcMenuPos"
               >
                 <p class="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ t('browser.lrcSourceLabel') }}</p>
+                <!-- 자동 (설정 기반) -->
                 <button
-                  v-for="src in [{key:'bugs', label:'Bugs 뮤직'}, {key:'lrclib', label:'LRCLIB.net'}]"
+                  class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-left"
+                  @click="startFetchLyrics('auto')"
+                >
+                  <span class="text-base">⚡</span>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-medium">{{ t('browser.lrcAuto') }}</div>
+                    <div class="text-[10px] text-gray-400 truncate">{{ lrcAutoDesc }}</div>
+                  </div>
+                </button>
+                <div class="mx-3 my-1 border-t border-gray-100 dark:border-gray-700"></div>
+                <p class="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ t('browser.lrcManual') }}</p>
+                <button
+                  v-for="src in [{key:'bugs', label:'Bugs 뮤직 (한국어)'}, {key:'lrclib', label:'LRCLIB.net (국제)'}]"
                   :key="src.key"
                   class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-left"
                   @click="startFetchLyrics(src.key)"
@@ -600,6 +613,7 @@ function onDragEnd() {
 
 onMounted(async () => {
   await loadProviders()
+  await loadLrcConfig()
   document.addEventListener('click', onClickOutside, true)
 })
 onUnmounted(() => {
@@ -720,6 +734,25 @@ const lrcProgress = reactive({
   currentFile: '', source: '', done: false,
 })
 
+// LRC 설정 (자동 모드 표시용)
+const lrcPrimarySource = ref('bugs')
+const lrcFallbackSource = ref('lrclib')
+const lrcAutoDesc = computed(() => {
+  const srcLabel = s => s === 'bugs' ? 'Bugs' : s === 'lrclib' ? 'LRCLIB' : ''
+  const primary = srcLabel(lrcPrimarySource.value)
+  const fallback = lrcFallbackSource.value !== 'none' ? srcLabel(lrcFallbackSource.value) : null
+  return fallback ? `${primary} → ${fallback}` : primary
+})
+
+async function loadLrcConfig() {
+  try {
+    const { data } = await configApi.getAll()
+    const c = data.config || {}
+    lrcPrimarySource.value = c.lrc_primary_source?.value ?? 'bugs'
+    lrcFallbackSource.value = c.lrc_fallback_source?.value ?? 'lrclib'
+  } catch { /* ignore */ }
+}
+
 // 드롭다운 외부 클릭 시 닫기
 function onLrcClickOutside(e) {
   if (lrcMenuRef.value && !lrcMenuRef.value.contains(e.target)) showLrcMenu.value = false
@@ -802,7 +835,8 @@ async function startFetchLyrics(source) {
   if (!paths.length) return
 
   // 진행 상태 초기화
-  Object.assign(lrcProgress, { total: paths.length, current: 0, ok: 0, notFound: 0, noSync: 0, errors: 0, currentFile: '', source: source === 'bugs' ? 'Bugs' : 'LRCLIB', done: false })
+  const srcLabel = source === 'auto' ? `⚡ ${lrcAutoDesc.value}` : source === 'bugs' ? 'Bugs' : 'LRCLIB'
+  Object.assign(lrcProgress, { total: paths.length, current: 0, ok: 0, notFound: 0, noSync: 0, errors: 0, currentFile: '', source: srcLabel, done: false })
   fetchingLyrics.value = true
 
   try {

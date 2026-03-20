@@ -127,6 +127,34 @@
               >{{ lrcFolderSaving ? '저장 중...' : $t('common.save') }}</button>
             </div>
           </section>
+
+          <!-- LRC 언어/소스 설정 -->
+          <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm mt-4">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">🎵 LRC 소스 우선순위</h3>
+            <p class="text-xs text-gray-500 mb-4">LRC 자동 검색 시 우선 사용할 소스와 보조 소스를 설정합니다. 기본 소스에서 못 찾으면 보조 소스를 시도합니다.</p>
+            <div class="space-y-3">
+              <ConfigRow :label="$t('settings.lrcSource.primary')" :desc="$t('settings.lrcSource.primaryDesc')">
+                <select v-model="form.lrc_primary_source" class="field w-40">
+                  <option value="bugs">🎵 Bugs 뮤직 (한국어)</option>
+                  <option value="lrclib">🌐 LRCLIB.net (국제)</option>
+                </select>
+              </ConfigRow>
+              <ConfigRow :label="$t('settings.lrcSource.fallback')" :desc="$t('settings.lrcSource.fallbackDesc')">
+                <select v-model="form.lrc_fallback_source" class="field w-40">
+                  <option value="none">{{ $t('settings.lrcSource.fallbackNone') }}</option>
+                  <option value="bugs">🎵 Bugs 뮤직 (한국어)</option>
+                  <option value="lrclib">🌐 LRCLIB.net (국제)</option>
+                </select>
+              </ConfigRow>
+              <div class="flex justify-end pt-1">
+                <button
+                  class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors disabled:opacity-60"
+                  :disabled="lrcSourceSaving"
+                  @click="saveLrcSources"
+                >{{ lrcSourceSaving ? '저장 중...' : $t('common.save') }}</button>
+              </div>
+            </div>
+          </section>
         </template>
 
         <!-- ── 메타데이터 소스 ── -->
@@ -548,9 +576,12 @@ const form = reactive({
   apple_music_classical_storefront: 'us',
   melon_enabled: true,
   lrc_base_folder: '',
+  lrc_primary_source: 'bugs',
+  lrc_fallback_source: 'lrclib',
 })
 const savingMeta = ref(false)
 const lrcFolderSaving = ref(false)
+const lrcSourceSaving = ref(false)
 
 async function saveLrcBaseFolder() {
   lrcFolderSaving.value = true
@@ -561,6 +592,21 @@ async function saveLrcBaseFolder() {
     toastStore.error(t('settings.toast.saveFailed', { error: e.response?.data?.detail || e.message }))
   } finally {
     lrcFolderSaving.value = false
+  }
+}
+
+async function saveLrcSources() {
+  lrcSourceSaving.value = true
+  try {
+    await configApi.update({
+      lrc_primary_source: form.lrc_primary_source,
+      lrc_fallback_source: form.lrc_fallback_source,
+    })
+    toastStore.success(t('settings.toast.saved'))
+  } catch (e) {
+    toastStore.error(t('settings.toast.saveFailed', { error: e.response?.data?.detail || e.message }))
+  } finally {
+    lrcSourceSaving.value = false
   }
 }
 
@@ -605,6 +651,8 @@ async function loadConfig() {
     form.apple_music_classical_storefront = c.apple_music_classical_storefront?.value ?? 'us'
     form.melon_enabled = (c.melon_enabled?.value ?? 'true') === 'true'
     form.lrc_base_folder = c.lrc_base_folder?.value ?? ''
+    form.lrc_primary_source = c.lrc_primary_source?.value ?? 'bugs'
+    form.lrc_fallback_source = c.lrc_fallback_source?.value ?? 'lrclib'
   } catch (e) {
     console.error('Config load failed', e)
   }

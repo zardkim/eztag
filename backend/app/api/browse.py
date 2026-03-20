@@ -1009,7 +1009,18 @@ def get_lrc_content(
 # ── LRC 가사 가져오기 ───────────────────────────────────────
 class FetchLyricsRequest(BaseModel):
     paths: list[str]
-    source: str = "bugs"  # "bugs" | "lrclib"
+    source: str = "bugs"          # "bugs" | "lrclib" | "auto"
+    fallback_source: str = "none" # "bugs" | "lrclib" | "none"
+
+
+def _do_fetch_lrc(source: str, file_path, artist: str, title: str, album: str) -> dict:
+    """단일 소스로 LRC 검색 수행."""
+    if source == "lrclib":
+        from app.core.metadata.lrclib import fetch_lrc_for_file
+        return fetch_lrc_for_file(str(file_path), artist, title, album)
+    else:
+        from app.core.metadata.bugs_lyrics import fetch_lrc_for_file
+        return fetch_lrc_for_file(str(file_path), artist, title)
 
 
 @router.post("/fetch-lyrics")
@@ -1019,12 +1030,17 @@ def fetch_lyrics_endpoint(
     current_user=Depends(get_current_user),
 ):
     """LRC 싱크 가사를 가져와 오디오 파일과 같은 폴더에 {파일명}.lrc로 저장.
-    source: 'bugs' (Bugs 뮤직) 또는 'lrclib' (LRCLIB.net)
+    source: 'bugs' | 'lrclib' | 'auto' (설정에서 기본/보조 소스 자동 적용)
+    fallback_source: 기본 소스 실패 시 시도할 소스 ('bugs' | 'lrclib' | 'none')
     """
-    if req.source == "lrclib":
-        from app.core.metadata.lrclib import fetch_lrc_for_file
-    else:
-        from app.core.metadata.bugs_lyrics import fetch_lrc_for_file
+    from app.core.config_store import get_config
+
+    # auto 모드: 설정에서 소스 자동 결정
+    primary = req.source
+    fallback = req.fallback_source
+    if req.source == "auto":
+        primary = get_config(db, "lrc_primary_source") or "bugs"
+        fallback = get_config(db, "lrc_fallback_source") or "none"
 
     SUPPORTED = {".mp3", ".flac", ".m4a", ".aac", ".ogg"}
     results = []
@@ -1048,11 +1064,18 @@ def fetch_lyrics_endpoint(
                 results.append({"path": path_str, "status": "error", "message": "아티스트 또는 제목 태그가 없습니다"})
                 continue
 
-            if req.source == "lrclib":
-                result = fetch_lrc_for_file(str(p), artist, title, album)
-            else:
-                result = fetch_lrc_for_file(str(p), artist, title)
-            results.append({"path": path_str, **result})
+            # 기본 소스로 검색
+            result = _do_fetch_lrc(primary, p, artist, title, album)
+            source_used = primary
+
+            # 기본 소스 실패 시 보조 소스로 재시도
+            if result["status"] in ("not_found", "no_sync") and fallback not in ("none", primary):
+                fallback_result = _do_fetch_lrc(fallback, p, artist, title, album)
+                if fallback_result["status"] == "ok":
+                    result = fallback_result
+                    source_used = fallback
+
+            results.append({"path": path_str, "source_used": source_used, **result})
 
         except HTTPException:
             results.append({"path": path_str, "status": "error", "message": "허용되지 않는 경로입니다"})
@@ -1063,15 +1086,16 @@ def fetch_lyrics_endpoint(
     saved_count = sum(1 for r in results if r.get("status") == "ok")
     notfound_count = sum(1 for r in results if r.get("status") == "not_found")
     error_count = sum(1 for r in results if r.get("status") == "error")
+    source_label = f"{primary}" + (f"→{fallback}" if fallback != "none" else "")
 
     # 활동 로그
     from app.core.log_writer import write_activity_log
     write_activity_log(db, "lrc_search",
-                       f"LRC 가사 검색 ({req.source}): {saved_count}개 저장, {notfound_count}개 미발견, {error_count}개 오류",
-                       action=f"fetch_lyrics_{req.source}",
+                       f"LRC 가사 검색 ({source_label}): {saved_count}개 저장, {notfound_count}개 미발견, {error_count}개 오류",
+                       action=f"fetch_lyrics_{primary}",
                        file_path=req.paths[0] if req.paths else None,
                        username=getattr(current_user, "username", None),
-                       detail=f"total={len(req.paths)}, saved={saved_count}, not_found={notfound_count}, error={error_count}")
+                       detail=f"total={len(req.paths)}, saved={saved_count}, not_found={notfound_count}, error={error_count}, fallback={fallback}")
 
     return {"results": results}
 

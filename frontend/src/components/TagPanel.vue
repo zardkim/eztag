@@ -80,7 +80,7 @@
         :disabled="saving"
         @click="save"
       >
-        {{ saving ? $t('common.saving') : $t('common.save') }}
+        {{ saving ? $t('common.saving') : (workspaceItem ? '임시 저장' : $t('common.save')) }}
       </button>
       <button
         class="px-3 py-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 rounded-lg transition-colors"
@@ -97,17 +97,23 @@ import { ref, reactive, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { browseApi, metadataApi } from '../api/index.js'
 import { useBrowserStore } from '../stores/browser.js'
+import { useWorkspaceStore } from '../stores/workspace.js'
 import SpotifyResultCard from './SpotifyResultCard.vue'
 import { GENRES } from '../constants/genres.js'
 import { useToastStore } from '../stores/toast.js'
 
 const { t } = useI18n()
 const toastStore = useToastStore()
-const props = defineProps({ file: Object, focusSpotify: { type: Boolean, default: false } })
+const props = defineProps({
+  file: Object,
+  focusSpotify: { type: Boolean, default: false },
+  workspaceItem: { type: Object, default: null },
+})
 const emit = defineEmits(['close', 'saved'])
 const spotifySection = ref(null)
 
 const browserStore = useBrowserStore()
+const workspaceStore = useWorkspaceStore()
 const saving = ref(false)
 const spotifyLoading = ref(false)
 const spotifyResults = ref([])
@@ -206,22 +212,33 @@ function fillFromSpotify(result) {
 async function save() {
   saving.value = true
   try {
-    const payload = { path: props.file.path }
-    for (const [k, v] of Object.entries(form)) {
-      if (v !== '' && v !== null && v !== undefined) payload[k] = v
-    }
-    const hadPendingCover = !!pendingCoverUrl.value
-    if (pendingCoverUrl.value) {
-      payload.cover_url = pendingCoverUrl.value
-      await metadataApi.applyByPath(payload)
-      pendingCoverUrl.value = null
+    if (props.workspaceItem) {
+      // Workspace staging mode: stage tags without writing to file
+      const tags = {}
+      for (const [k, v] of Object.entries(form)) {
+        if (v !== '' && v !== null && v !== undefined) tags[k] = v
+      }
+      await workspaceStore.stageTags(props.workspaceItem.id, tags)
+      emit('saved')
     } else {
-      await browseApi.writeTags(payload)
+      // Normal browser mode: write directly to file
+      const payload = { path: props.file.path }
+      for (const [k, v] of Object.entries(form)) {
+        if (v !== '' && v !== null && v !== undefined) payload[k] = v
+      }
+      const hadPendingCover = !!pendingCoverUrl.value
+      if (pendingCoverUrl.value) {
+        payload.cover_url = pendingCoverUrl.value
+        await metadataApi.applyByPath(payload)
+        pendingCoverUrl.value = null
+      } else {
+        await browseApi.writeTags(payload)
+      }
+      const fileUpdate = { path: props.file.path, ...form }
+      if (hadPendingCover) fileUpdate.has_cover = true
+      browserStore.updateFile(fileUpdate)
+      emit('saved')
     }
-    const fileUpdate = { path: props.file.path, ...form }
-    if (hadPendingCover) fileUpdate.has_cover = true
-    browserStore.updateFile(fileUpdate)
-    emit('saved')
   } catch (e) {
     toastStore.error(e.response?.data?.detail || t('common.error'))
   } finally {

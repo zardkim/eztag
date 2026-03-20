@@ -98,9 +98,10 @@
         </div>
       </div>
 
-      <!-- Folder Tree (접힘 시 숨김) -->
+      <!-- Workspace Sidebar / Folder Tree (접힘 시 숨김) -->
       <div class="flex-1 overflow-hidden flex flex-col min-h-0" :class="sidebarCollapsed ? 'hidden lg:hidden' : ''">
-        <FolderTree />
+        <WorkspaceSidebar v-if="route.path === '/workspace'" />
+        <FolderTree v-else />
       </div>
 
       <!-- Bottom nav -->
@@ -259,9 +260,11 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useThemeStore } from './stores/theme.js'
 import { useAuthStore } from './stores/auth.js'
+import { useWorkspaceStore } from './stores/workspace.js'
 import { authApi } from './api/index.js'
 import { configApi } from './api/config.js'
 import FolderTree from './components/FolderTree.vue'
+import WorkspaceSidebar from './components/WorkspaceSidebar.vue'
 import ToastContainer from './components/ToastContainer.vue'
 
 /* global __APP_VERSION__ */
@@ -270,6 +273,7 @@ const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0
 const { locale } = useI18n()
 const themeStore = useThemeStore()
 const authStore = useAuthStore()
+const workspaceStore = useWorkspaceStore()
 const route = useRoute()
 const router = useRouter()
 const drawerOpen = ref(false)
@@ -350,6 +354,9 @@ function toggleSidebar() {
 onMounted(() => {
   themeStore.apply()
   document.addEventListener('click', onClickOutside, true)
+  if (authStore.isLoggedIn) {
+    workspaceStore.loadCurrentSession()
+  }
 })
 onUnmounted(() => {
   document.removeEventListener('click', onClickOutside, true)
@@ -358,7 +365,9 @@ onUnmounted(() => {
 const isPublicRoute = computed(() => ['/setup', '/login'].includes(route.path))
 
 const bottomNav = [
-  { to: '/settings', icon: '⚙️', labelKey: 'nav.settings' },
+  { to: '/workspace', icon: '🗂️', labelKey: 'nav.workspace' },
+  { to: '/browser',   icon: '📁', labelKey: 'nav.browser' },
+  { to: '/settings',  icon: '⚙️', labelKey: 'nav.settings' },
 ]
 
 function logout() {

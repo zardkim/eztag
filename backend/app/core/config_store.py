@@ -15,6 +15,8 @@ DEFAULTS: dict[str, tuple] = {
     "cleanup_on_scan": ("false", "스캔 시 누락 파일 자동 정리"),
     "destination_folders": ('[{"path":"/volume1/music","label":"NAS Music"}]', "이동 대상 폴더 목록 (JSON: [{path, label}])"),
     "lrc_base_folder": ("", "Get LRC 기본 폴더 경로"),
+    "lrc_primary_source": ("bugs", "LRC 기본 소스 (bugs/lrclib)"),
+    "lrc_fallback_source": ("lrclib", "LRC 보조 소스 (bugs/lrclib/none)"),
     # Spotify (필수)
     "spotify_client_id": ("", "Spotify API Client ID"),
     "spotify_client_secret": ("", "Spotify API Client Secret"),

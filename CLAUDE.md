@@ -29,9 +29,37 @@ uvicorn app.main:app --host 0.0.0.0 --port 18011 --reload
 ### Database Migrations
 ```bash
 cd backend
-alembic revision --autogenerate -m "description"  # Create migration
-alembic upgrade head                               # Apply migrations
+# 마이그레이션 생성: --rev-id로 순번 명시 필수
+alembic revision --autogenerate --rev-id 0007 -m "add_feature_name"
+alembic upgrade head   # 적용
 ```
+
+**Alembic 파일명 규칙:** `NNNN_description.py` 형식 (4자리 순번)
+- 예: `0007_add_library_lrc.py`, `0008_add_user_prefs.py`
+- `alembic revision` 시 항상 `--rev-id NNNN` 옵션으로 순번 지정
+
+### 버전 관리
+```bash
+# 릴리즈 (버전 올리기)
+./scripts/release.sh 0.5.0   # 버전 지정
+./scripts/release.sh          # VERSION 파일 현재 값 사용
+
+# 로컬 Docker 빌드
+./scripts/build-local.sh        # 빌드만
+./scripts/build-local.sh --push # 빌드 + Docker Hub 푸시
+
+# GitHub Actions 자동 빌드 (권장)
+git tag v0.5.0 && git push origin main --tags
+```
+
+**버전 단일 소스:** 프로젝트 루트 `VERSION` 파일
+- `release.sh` 실행 시 `backend/app/version.py`, `frontend/package.json` 자동 동기화
+- **절대 `version.py`나 `package.json`을 직접 수정하지 말 것**
+
+**Semantic Versioning 기준:**
+- `PATCH` (x.x.+1): 버그 수정, UI 개선, 소규모 수정
+- `MINOR` (x.+1.0): 신기능 추가
+- `MAJOR` (+1.0.0): 하위 호환 불가 DB 스키마 변경, 대규모 구조 변경
 
 ### Docker (Production)
 ```bash

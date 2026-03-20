@@ -233,14 +233,18 @@ import { ref, computed, nextTick, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { metadataApi, browseApi, albumsApi } from '../api/index.js'
 import { useBrowserStore } from '../stores/browser.js'
+import { useWorkspaceStore } from '../stores/workspace.js'
 import { configApi } from '../api/config.js'
 import { useToastStore } from '../stores/toast.js'
 
 const props = defineProps({
   initialProviders: { type: Array, default: null },
+  workspaceMode: { type: Boolean, default: false },
+  workspaceCheckedIds: { type: Array, default: () => [] },
 })
 const { t } = useI18n()
 const browserStore = useBrowserStore()
+const workspaceStore = useWorkspaceStore()
 const toastStore = useToastStore()
 const emit = defineEmits(['close', 'applied'])
 
@@ -312,15 +316,26 @@ const compareHeaderClass = computed(() => {
 })
 
 // ── 대상 파일 ──────────────────────────────────
-const localFiles = computed(() =>
-  browserStore.checkedPaths.size > 0
+const localFiles = computed(() => {
+  if (props.workspaceMode) {
+    const wsFiles = workspaceStore.files
+    if (props.workspaceCheckedIds.length > 0) {
+      const idSet = new Set(props.workspaceCheckedIds)
+      return wsFiles.filter(f => idSet.has(f._workspace_item_id))
+    }
+    return wsFiles
+  }
+  return browserStore.checkedPaths.size > 0
     ? browserStore.checkedFiles
     : browserStore.files
-)
+})
 const targetPaths = computed(() => localFiles.value.map(f => f.path))
 const firstFile = computed(() => localFiles.value[0] || null)
 
 const targetLabel = computed(() => {
+  if (props.workspaceMode) {
+    return `워크스페이스 — ${localFiles.value.length}개 파일`
+  }
   if (browserStore.checkedPaths.size > 0)
     return `${browserStore.checkedPaths.size}개 파일 선택됨`
   const folder = browserStore.selectedFolder
@@ -512,6 +527,30 @@ async function applyAll() {
 
   try {
     const paths = targetPaths.value
+
+    if (props.workspaceMode) {
+      // Workspace staging mode: stage tags without writing to files
+      for (const file of localFiles.value) {
+        const itemId = file._workspace_item_id
+        if (!itemId) continue
+        const tags = { ...albumUpdates }
+        // Track-specific overrides
+        const match = trackMatches.value.find(m => m.local?.path === file.path)
+        if (match?.remote) {
+          const rm = match.remote
+          if (rm.title)    tags.title    = rm.title
+          if (rm.track_no) tags.track_no = rm.track_no
+          if (rm.disc_no)  tags.disc_no  = rm.disc_no
+          if (rm.artist && rm.artist !== (s.album_artist || s.artist)) tags.artist = rm.artist
+        }
+        if (Object.keys(tags).length) {
+          await workspaceStore.stageTags(itemId, tags)
+        }
+      }
+      emit('applied')
+      emit('close')
+      return
+    }
 
     // 1. 앨범 공통 태그 일괄 적용
     if (Object.keys(albumUpdates).length) {

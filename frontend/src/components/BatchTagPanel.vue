@@ -404,6 +404,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { browseApi } from '../api/index.js'
 import { useBrowserStore } from '../stores/browser.js'
+import { useWorkspaceStore } from '../stores/workspace.js'
 import { GENRES } from '../constants/genres.js'
 import { useToastStore } from '../stores/toast.js'
 
@@ -538,8 +539,13 @@ function setCoverFile(file) {
 
 // ── 공통 ───────────────────────────────────────────────────
 const { t } = useI18n()
+const props = defineProps({
+  workspaceMode: { type: Boolean, default: false },
+  checkedWorkspaceIds: { type: Array, default: () => [] },
+})
 const emit = defineEmits(['close', 'saved'])
 const browserStore = useBrowserStore()
+const workspaceStore = useWorkspaceStore()
 const toastStore = useToastStore()
 const saving = ref(false)
 const expandExtra = ref(false)
@@ -553,6 +559,14 @@ const files = computed(() => browserStore.files)
 
 // 표시 순서(정렬 적용) 기준의 대상 파일 목록
 const targetFiles = computed(() => {
+  if (props.workspaceMode) {
+    const wsFiles = workspaceStore.files
+    if (props.checkedWorkspaceIds.length > 0) {
+      const idSet = new Set(props.checkedWorkspaceIds)
+      return wsFiles.filter(f => idSet.has(f._workspace_item_id))
+    }
+    return wsFiles
+  }
   const displayed = browserStore.displayFiles
   if (browserStore.selectedFile) return [browserStore.selectedFile]
   if (browserStore.checkedPaths.size > 0)
@@ -804,6 +818,21 @@ async function save() {
   saving.value = true
   try {
     const paths = targetPaths.value
+
+    if (props.workspaceMode) {
+      // Workspace staging mode: stage tags for each workspace item
+      const idSet = new Set(props.checkedWorkspaceIds)
+      const wsItems = workspaceStore.items.filter(i =>
+        props.checkedWorkspaceIds.length > 0 ? idSet.has(i.id) : true
+      )
+      for (const item of wsItems) {
+        await workspaceStore.stageTags(item.id, updates)
+      }
+      fieldMode.value = {}
+      emit('saved')
+      showToast('스테이징 완료')
+      return
+    }
 
     // 1단계: 텍스트 태그 먼저 저장 (커버보다 먼저 — 커버가 마지막 기록이 되어야 함)
     if (Object.keys(updates).length || clear_fields.length) {

@@ -115,6 +115,43 @@ export const tracksApi = {
   batchUpdate: (data) => client.post('/tracks/batch-update', data),
 }
 
+// Workspace
+export const workspaceApi = {
+  // 세션
+  getCurrentSession: () => client.get('/workspace/current-session'),
+  newSession: () => client.post('/workspace/session/new'),
+  updateSession: (id, data) => client.patch(`/workspace/session/${id}`, data),
+  discardSession: (id) => client.post(`/workspace/session/${id}/discard`),
+  applySession: (id) => client.post(`/workspace/session/${id}/apply`, {}, { timeout: 120000 }),
+
+  // 불러오기
+  loadFolder: (folder_path, recursive = false) =>
+    client.post('/workspace/load-folder', { folder_path, recursive }),
+  loadFiles: (file_paths) =>
+    client.post('/workspace/load-files', { file_paths }),
+
+  // 아이템
+  getItems: () => client.get('/workspace/items'),
+  removeItem: (id) => client.delete(`/workspace/items/${id}`),
+  clearItems: () => client.delete('/workspace/items'),
+  applyItem: (id) => client.post(`/workspace/items/${id}/apply`, {}, { timeout: 30000 }),
+
+  // 스테이징
+  stageTags: (id, tags) => client.put(`/workspace/items/${id}/stage-tags`, { tags }),
+  stageRename: (id, new_name) => client.put(`/workspace/items/${id}/stage-rename`, { new_name }),
+  unstageTags: (id) => client.delete(`/workspace/items/${id}/stage-tags`),
+  getDiff: (id) => client.get(`/workspace/items/${id}/diff`),
+
+  // 히스토리
+  getHistory: (params) => client.get('/workspace/history', { params }),
+  getHistoryDetail: (id) => client.get(`/workspace/history/${id}`),
+  deleteHistory: (id) => client.delete(`/workspace/history/${id}`),
+
+  // 라이브러리 피커
+  libraryRoots: () => client.get('/workspace/library/roots'),
+  libraryChildren: (path) => client.get('/workspace/library/children', { params: { path } }),
+}
+
 // Covers
 export const coversApi = {
   getAlbumCover: (id) => client.get(`/covers/album/${id}`),

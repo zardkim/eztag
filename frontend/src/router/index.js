@@ -5,7 +5,8 @@ import { authApi } from '../api/index.js'
 const routes = [
   { path: '/setup',    component: () => import('../views/Setup.vue'),   meta: { title: '초기 설정', public: true } },
   { path: '/login',    component: () => import('../views/Login.vue'),   meta: { title: '로그인', public: true } },
-  { path: '/',         redirect: '/browser' },
+  { path: '/',         redirect: '/workspace' },
+  { path: '/workspace', component: () => import('../views/Workspace.vue'), meta: { title: '워크스페이스' } },
   { path: '/browser',  component: () => import('../views/Browser.vue'), meta: { title: '파일 브라우저' } },
   { path: '/settings', component: () => import('../views/Settings.vue'),meta: { title: '설정' } },
   { path: '/get-lrc',  component: () => import('../views/GetLrc.vue'),  meta: { title: 'Get LRC' } },
@@ -40,7 +41,7 @@ router.beforeEach(async (to) => {
   // Public routes
   if (to.meta.public) {
     if (authStore.isLoggedIn && to.path !== '/setup') {
-      return '/browser'
+      return '/workspace'
     }
     return true
   }
