@@ -45,11 +45,10 @@
                 >{{ t('renameModal.clearHistory') }}</button>
               </div>
               <div class="max-h-48 overflow-y-auto py-1">
-                <button
+                <div
                   v-for="(p, i) in patternHistory"
                   :key="i"
-                  type="button"
-                  class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 group transition-colors"
+                  class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 group transition-colors cursor-pointer"
                   @click.stop="selectHistory(p)"
                 >
                   <span class="text-[10px] text-gray-400 shrink-0">🕐</span>
@@ -60,7 +59,7 @@
                     @click.stop="removeHistory(i)"
                     title="이 항목 삭제"
                   >✕</button>
-                </button>
+                </div>
               </div>
             </div>
           </div>
