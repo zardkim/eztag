@@ -1,9 +1,28 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
     <div class="w-full max-w-sm">
-      <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">🎵 eztag</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Music Tag Manager</p>
+      <!-- 언어 변경 버튼 -->
+      <div class="flex justify-end mb-3">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:text-gray-900 hover:bg-white dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
+          @click="toggleLanguage"
+        >
+          <span>🌐</span>
+          <span>{{ locale === 'ko' ? '한국어' : 'English' }}</span>
+        </button>
+      </div>
+
+      <div class="flex justify-center mb-8">
+        <img
+          src="/logo.svg"
+          alt="eztag"
+          class="h-14 w-auto dark:hidden"
+        />
+        <img
+          src="/logo-dark.svg"
+          alt="eztag"
+          class="h-14 w-auto hidden dark:block"
+        />
       </div>
 
       <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-6">
@@ -53,7 +72,13 @@ import { useI18n } from 'vue-i18n'
 import { authApi } from '../api/index.js'
 import { useAuthStore } from '../stores/auth.js'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+
+function toggleLanguage() {
+  const next = locale.value === 'ko' ? 'en' : 'ko'
+  locale.value = next
+  localStorage.setItem('eztag-lang', next)
+}
 const router = useRouter()
 const authStore = useAuthStore()
 

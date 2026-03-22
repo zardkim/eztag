@@ -28,6 +28,9 @@ DEFAULTS: dict[str, tuple] = {
     "apple_music_classical_storefront": ("us", "Apple Music Classical 국가 코드 (us/gb/de 등)"),
     "melon_enabled": ("true", "Melon 메타데이터 검색 활성화"),
     "bugs_enabled": ("true", "Bugs 메타데이터 검색 활성화"),
+    # YouTube MV 검색
+    "youtube_enabled": ("false", "YouTube 뮤직비디오 자동 검색 활성화"),
+    "youtube_api_key": ("", "YouTube Data API v3 키"),
 }
 
 

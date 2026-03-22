@@ -58,103 +58,6 @@
             </div>
           </section>
 
-          <!-- 이동 대상 폴더 -->
-          <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm">
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">{{ $t('settings.destinations.title') }}</h3>
-            <p class="text-xs text-gray-500 mb-4">{{ $t('settings.destinations.desc') }}</p>
-
-            <!-- Registered list -->
-            <div v-if="destFolders.length > 0" class="space-y-2 mb-4">
-              <div
-                v-for="(dest, i) in destFolders"
-                :key="i"
-                class="flex items-center gap-3 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2.5"
-              >
-                <span class="text-base shrink-0">📁</span>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm text-gray-900 dark:text-white font-mono truncate">{{ dest.path }}</p>
-                  <p v-if="dest.label" class="text-xs text-gray-500 truncate">{{ dest.label }}</p>
-                </div>
-                <button
-                  class="text-xs text-red-500 hover:text-red-400 transition-colors shrink-0"
-                  @click="removeDestFolder(i)"
-                >{{ $t('settings.destinations.delete') }}</button>
-              </div>
-            </div>
-            <p v-else class="text-sm text-gray-400 dark:text-gray-600 mb-4">{{ $t('settings.destinations.empty') }}</p>
-
-            <!-- Add new -->
-            <div class="space-y-2">
-              <div class="flex gap-2">
-                <input
-                  v-model="newDestPath"
-                  class="field flex-1 font-mono text-xs"
-                  :placeholder="$t('settings.destinations.pathPlaceholder')"
-                  @keydown.enter="addDestFolder"
-                />
-                <input
-                  v-model="newDestLabel"
-                  class="field w-36 text-xs"
-                  :placeholder="$t('settings.destinations.labelPlaceholder')"
-                  @keydown.enter="addDestFolder"
-                />
-                <button
-                  class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors disabled:opacity-60 shrink-0"
-                  :disabled="!newDestPath.trim() || addingDest"
-                  @click="addDestFolder"
-                >{{ $t('settings.destinations.add') }}</button>
-              </div>
-              <p class="text-xs text-gray-400">{{ $t('settings.destinations.dockerHint') }}</p>
-              <p v-if="destError" class="text-xs text-red-500">{{ destError }}</p>
-            </div>
-          </section>
-
-          <!-- Get LRC 폴더 -->
-          <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm mt-4">
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">📝 Get LRC 폴더</h3>
-            <p class="text-xs text-gray-500 mb-4">Get LRC 페이지에서 탐색할 기본 음악 폴더를 설정합니다.</p>
-            <div class="flex gap-2">
-              <input
-                v-model="form.lrc_base_folder"
-                class="field flex-1 font-mono text-xs"
-                placeholder="/volume1/music"
-                @keydown.enter="saveLrcBaseFolder"
-              />
-              <button
-                class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors disabled:opacity-60 shrink-0"
-                :disabled="lrcFolderSaving"
-                @click="saveLrcBaseFolder"
-              >{{ lrcFolderSaving ? '저장 중...' : $t('common.save') }}</button>
-            </div>
-          </section>
-
-          <!-- LRC 언어/소스 설정 -->
-          <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm mt-4">
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">🎵 LRC 소스 우선순위</h3>
-            <p class="text-xs text-gray-500 mb-4">LRC 자동 검색 시 우선 사용할 소스와 보조 소스를 설정합니다. 기본 소스에서 못 찾으면 보조 소스를 시도합니다.</p>
-            <div class="space-y-3">
-              <ConfigRow :label="$t('settings.lrcSource.primary')" :desc="$t('settings.lrcSource.primaryDesc')">
-                <select v-model="form.lrc_primary_source" class="field w-40">
-                  <option value="bugs">🎵 Bugs 뮤직 (한국어)</option>
-                  <option value="lrclib">🌐 LRCLIB.net (국제)</option>
-                </select>
-              </ConfigRow>
-              <ConfigRow :label="$t('settings.lrcSource.fallback')" :desc="$t('settings.lrcSource.fallbackDesc')">
-                <select v-model="form.lrc_fallback_source" class="field w-40">
-                  <option value="none">{{ $t('settings.lrcSource.fallbackNone') }}</option>
-                  <option value="bugs">🎵 Bugs 뮤직 (한국어)</option>
-                  <option value="lrclib">🌐 LRCLIB.net (국제)</option>
-                </select>
-              </ConfigRow>
-              <div class="flex justify-end pt-1">
-                <button
-                  class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors disabled:opacity-60"
-                  :disabled="lrcSourceSaving"
-                  @click="saveLrcSources"
-                >{{ lrcSourceSaving ? '저장 중...' : $t('common.save') }}</button>
-              </div>
-            </div>
-          </section>
         </template>
 
         <!-- ── 메타데이터 소스 ── -->
@@ -197,7 +100,7 @@
                 <div class="flex items-center gap-2">
                   <img src="/logo/bugs.jpg" class="w-6 h-6 rounded-md object-cover shrink-0" alt="Bugs" />
                   <span class="text-sm text-gray-600 dark:text-gray-300">Bugs</span>
-                  <span class="text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded">사용 가능</span>
+                  <span class="text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded">{{ $t('settings.metadata.available') }}</span>
                 </div>
                 <button class="flex items-center gap-2 cursor-pointer" @click="form.bugs_enabled = !form.bugs_enabled">
                   <span class="text-xs" :class="form.bugs_enabled ? 'text-green-500' : 'text-gray-400'">{{ form.bugs_enabled ? 'ON' : 'OFF' }}</span>
@@ -211,7 +114,7 @@
                   <div class="flex items-center gap-2">
                     <img src="/logo/apple%20music.jpg" class="w-6 h-6 rounded-md object-cover shrink-0" alt="Apple Music" />
                     <span class="text-sm text-gray-600 dark:text-gray-300">Apple Music</span>
-                    <span class="text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded">사용 가능</span>
+                    <span class="text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded">{{ $t('settings.metadata.available') }}</span>
                   </div>
                   <button class="flex items-center gap-2 cursor-pointer" @click="form.apple_music_enabled = !form.apple_music_enabled">
                     <span class="text-xs" :class="form.apple_music_enabled ? 'text-green-500' : 'text-gray-400'">{{ form.apple_music_enabled ? 'ON' : 'OFF' }}</span>
@@ -221,7 +124,7 @@
                   </button>
                 </div>
                 <div v-if="form.apple_music_enabled" class="mt-2 flex items-center gap-2">
-                  <label class="text-xs text-gray-500">국가 스토어</label>
+                  <label class="text-xs text-gray-500">{{ $t('settings.metadata.storefront') }}</label>
                   <select v-model="form.apple_music_storefront" class="field text-xs py-1 w-28">
                     <option value="kr">한국 (kr)</option>
                     <option value="us">미국 (us)</option>
@@ -237,7 +140,7 @@
                   <div class="flex items-center gap-2">
                     <img src="/logo/Apple%20Music%20Classical.jpg" class="w-6 h-6 rounded-md object-cover shrink-0" alt="Apple Music Classical" />
                     <span class="text-sm text-gray-600 dark:text-gray-300">Apple Music Classical</span>
-                    <span class="text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded">사용 가능</span>
+                    <span class="text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded">{{ $t('settings.metadata.available') }}</span>
                   </div>
                   <button class="flex items-center gap-2 cursor-pointer" @click="form.apple_music_classical_enabled = !form.apple_music_classical_enabled">
                     <span class="text-xs" :class="form.apple_music_classical_enabled ? 'text-green-500' : 'text-gray-400'">{{ form.apple_music_classical_enabled ? 'ON' : 'OFF' }}</span>
@@ -247,7 +150,7 @@
                   </button>
                 </div>
                 <div v-if="form.apple_music_classical_enabled" class="mt-2 flex items-center gap-2">
-                  <label class="text-xs text-gray-500">국가 스토어</label>
+                  <label class="text-xs text-gray-500">{{ $t('settings.metadata.storefront') }}</label>
                   <select v-model="form.apple_music_classical_storefront" class="field text-xs py-1 w-28">
                     <option value="us">미국 (us)</option>
                     <option value="gb">영국 (gb)</option>
@@ -263,7 +166,7 @@
                 <div class="flex items-center gap-2">
                   <img src="/logo/melon.jpg" class="w-6 h-6 rounded-md object-cover shrink-0" alt="Melon" />
                   <span class="text-sm text-gray-600 dark:text-gray-300">Melon</span>
-                  <span class="text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded">사용 가능</span>
+                  <span class="text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded">{{ $t('settings.metadata.available') }}</span>
                 </div>
                 <button class="flex items-center gap-2 cursor-pointer" @click="form.melon_enabled = !form.melon_enabled">
                   <span class="text-xs" :class="form.melon_enabled ? 'text-green-500' : 'text-gray-400'">{{ form.melon_enabled ? 'ON' : 'OFF' }}</span>
@@ -273,12 +176,67 @@
                 </button>
               </div>
             </div>
+            <!-- YouTube MV -->
+            <div class="border border-red-100 dark:border-red-900/40 rounded-lg p-4 mt-4">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <svg class="w-6 h-6 text-red-600 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/>
+                  </svg>
+                  <span class="text-sm font-medium text-gray-900 dark:text-white">YouTube</span>
+                  <span class="text-xs text-gray-400">{{ $t('settings.metadata.youtubeHint') }}</span>
+                </div>
+                <button class="flex items-center gap-2 cursor-pointer" @click="form.youtube_enabled = !form.youtube_enabled">
+                  <span class="text-xs" :class="form.youtube_enabled ? 'text-green-500' : 'text-gray-400'">{{ form.youtube_enabled ? 'ON' : 'OFF' }}</span>
+                  <span class="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200" :class="form.youtube_enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'">
+                    <span class="inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200 mt-0.5" :class="form.youtube_enabled ? 'translate-x-4' : 'translate-x-0.5'"></span>
+                  </span>
+                </button>
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">API Key</label>
+                <input v-model="form.youtube_api_key" type="password" class="field w-full font-mono text-xs" placeholder="AIza..." />
+              </div>
+              <p class="text-xs text-gray-400 mt-2">
+                <a href="https://console.cloud.google.com" target="_blank" class="text-blue-500 hover:underline">console.cloud.google.com</a>
+                {{ $t('settings.metadata.youtubeApiHint') }}
+              </p>
+            </div>
+
             <div class="flex justify-end mt-5">
               <button
                 class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors disabled:opacity-60"
                 :disabled="savingMeta"
                 @click="saveMetaConfig"
               >{{ savingMeta ? $t('settings.metadata.saving') : $t('settings.metadata.save') }}</button>
+            </div>
+          </section>
+
+          <!-- LRC 소스 우선순위 -->
+          <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm mt-4">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">🎵 {{ $t('settings.lrcSource.title') }}</h3>
+            <p class="text-xs text-gray-500 mb-4">{{ $t('settings.lrcSource.desc') }}</p>
+            <div class="space-y-3">
+              <ConfigRow :label="$t('settings.lrcSource.primary')" :desc="$t('settings.lrcSource.primaryDesc')">
+                <select v-model="form.lrc_primary_source" class="field w-40">
+                  <option value="bugs">🎵 Bugs 뮤직 (한국어)</option>
+                  <option value="lrclib">🌐 LRCLIB.net (국제)</option>
+                </select>
+              </ConfigRow>
+              <ConfigRow :label="$t('settings.lrcSource.fallback')" :desc="$t('settings.lrcSource.fallbackDesc')">
+                <select v-model="form.lrc_fallback_source" class="field w-40">
+                  <option value="none">{{ $t('settings.lrcSource.fallbackNone') }}</option>
+                  <option value="bugs">🎵 Bugs 뮤직 (한국어)</option>
+                  <option value="lrclib">🌐 LRCLIB.net (국제)</option>
+                </select>
+              </ConfigRow>
+              <div class="flex justify-end pt-1">
+                <button
+                  class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors disabled:opacity-60"
+                  :disabled="lrcSourceSaving"
+                  @click="saveLrcSources"
+                >{{ lrcSourceSaving ? $t('settings.saving') : $t('common.save') }}</button>
+              </div>
             </div>
           </section>
         </template>
@@ -575,25 +533,13 @@ const form = reactive({
   apple_music_classical_enabled: false,
   apple_music_classical_storefront: 'us',
   melon_enabled: true,
-  lrc_base_folder: '',
+  youtube_enabled: false,
+  youtube_api_key: '',
   lrc_primary_source: 'bugs',
   lrc_fallback_source: 'lrclib',
 })
 const savingMeta = ref(false)
-const lrcFolderSaving = ref(false)
 const lrcSourceSaving = ref(false)
-
-async function saveLrcBaseFolder() {
-  lrcFolderSaving.value = true
-  try {
-    await configApi.update({ lrc_base_folder: form.lrc_base_folder })
-    toastStore.success(t('settings.toast.saved'))
-  } catch (e) {
-    toastStore.error(t('settings.toast.saveFailed', { error: e.response?.data?.detail || e.message }))
-  } finally {
-    lrcFolderSaving.value = false
-  }
-}
 
 async function saveLrcSources() {
   lrcSourceSaving.value = true
@@ -650,7 +596,8 @@ async function loadConfig() {
     form.apple_music_classical_enabled = c.apple_music_classical_enabled?.value === 'true'
     form.apple_music_classical_storefront = c.apple_music_classical_storefront?.value ?? 'us'
     form.melon_enabled = (c.melon_enabled?.value ?? 'true') === 'true'
-    form.lrc_base_folder = c.lrc_base_folder?.value ?? ''
+    form.youtube_enabled = c.youtube_enabled?.value === 'true'
+    form.youtube_api_key = c.youtube_api_key?.value ?? ''
     form.lrc_primary_source = c.lrc_primary_source?.value ?? 'bugs'
     form.lrc_fallback_source = c.lrc_fallback_source?.value ?? 'lrclib'
   } catch (e) {
@@ -671,6 +618,8 @@ async function saveMetaConfig() {
       apple_music_classical_enabled: String(form.apple_music_classical_enabled),
       apple_music_classical_storefront: form.apple_music_classical_storefront,
       melon_enabled: String(form.melon_enabled),
+      youtube_enabled: String(form.youtube_enabled),
+      youtube_api_key: form.youtube_api_key,
     })
     toastStore.success(t('settings.toast.metaSaved'))
   } catch (e) {
@@ -719,52 +668,6 @@ async function deleteBackup(filename) {
   await backupApi.delete(filename)
   toastStore.success(t('settings.toast.backupDeleted'))
   await loadBackups()
-}
-
-// ── 이동 대상 폴더 관리 ──────────────────────────────────
-const destFolders = ref([])
-const newDestPath = ref('')
-const newDestLabel = ref('')
-const addingDest = ref(false)
-const destError = ref('')
-
-async function loadDestFolders() {
-  try {
-    const { data } = await configApi.getDestinations()
-    destFolders.value = data.destinations || []
-  } catch (e) {
-    console.error('Failed to load destinations', e)
-  }
-}
-
-async function addDestFolder() {
-  const path = newDestPath.value.trim()
-  if (!path) return
-  destError.value = ''
-  addingDest.value = true
-  try {
-    const { data } = await configApi.addDestination({ path, label: newDestLabel.value.trim() })
-    destFolders.value = data.destinations
-    newDestPath.value = ''
-    newDestLabel.value = ''
-  } catch (e) {
-    if (e.response?.status === 409) {
-      destError.value = '이미 등록된 경로입니다.'
-    } else {
-      destError.value = e.response?.data?.detail || e.message
-    }
-  } finally {
-    addingDest.value = false
-  }
-}
-
-async function removeDestFolder(index) {
-  try {
-    const { data } = await configApi.deleteDestination(index)
-    destFolders.value = data.destinations
-  } catch (e) {
-    toastStore.error(t('settings.toast.saveFailed', { error: e.response?.data?.detail || e.message }))
-  }
 }
 
 // 도움말 탭 데이터 (locale 반응형)
@@ -892,6 +795,6 @@ watch(() => route.query.tab, (tab) => {
 })
 
 onMounted(async () => {
-  await Promise.all([loadConfig(), loadBackups(), loadServerVersion(), loadDestFolders()])
+  await Promise.all([loadConfig(), loadBackups(), loadServerVersion()])
 })
 </script>

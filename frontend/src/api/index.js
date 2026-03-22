@@ -59,6 +59,8 @@ export const browseApi = {
   getCovers: (path) => client.get('/browse/covers', { params: { path } }),
   writeTags: (data) => client.post('/browse/write-tags', data),
   batchWriteTags: (data) => client.post('/browse/batch-write-tags', data),
+  setTrackInfo: (data) => client.post('/browse/set-track-info', data),
+  searchYoutubeMV: (artist, title) => client.get('/browse/search-youtube-mv', { params: { artist, title } }),
   rename: (data) => client.post('/browse/rename', data),
   uploadCover: (path, file) => {
     const form = new FormData()
@@ -90,6 +92,8 @@ export const browseApi = {
   destMkdir: (data) => client.post('/browse/dest-mkdir', data),
   moveFolder: (data) => client.post('/browse/move-folder', data),
   exportFolderHtml: (path) => client.post('/browse/export-html-save', { path }),
+  renameFolder: (path, newName) => client.post('/browse/rename-folder', { path, new_name: newName }),
+  deleteExtraFile: (path) => client.post('/browse/delete-extra-file', { path }),
 }
 
 // Artists

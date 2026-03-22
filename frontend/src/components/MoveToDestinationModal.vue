@@ -84,34 +84,6 @@
             </div>
           </div>
 
-          <!-- New folder creation -->
-          <div v-if="selectedPath" class="border-t border-gray-100 dark:border-gray-800 pt-4">
-            <button
-              class="text-xs text-blue-500 hover:text-blue-400 flex items-center gap-1 mb-2"
-              @click="showNewFolder = !showNewFolder"
-            >
-              <span>{{ showNewFolder ? '▼' : '▶' }}</span>
-              {{ t('browser.moveFolder.newFolder') }}
-            </button>
-            <div v-if="showNewFolder" class="flex gap-2">
-              <input
-                v-model="newFolderName"
-                class="flex-1 px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                :placeholder="t('browser.moveFolder.newFolderName')"
-                @keydown.enter="createFolder"
-              />
-              <button
-                class="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors disabled:opacity-50 min-w-[52px] flex items-center justify-center"
-                :disabled="!newFolderName.trim() || creatingFolder"
-                @click="createFolder"
-              >
-                <span v-if="creatingFolder" class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
-                <span v-else>{{ t('browser.moveFolder.create') }}</span>
-              </button>
-            </div>
-            <p v-if="mkdirError" class="text-xs text-red-500 mt-1">{{ mkdirError }}</p>
-          </div>
-
           <!-- Selected destination display -->
           <div v-if="selectedPath" class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-3 py-2.5">
             <p class="text-xs text-green-500 dark:text-green-400 font-medium mb-0.5">{{ t('browser.moveFolder.selectedDest') }}</p>
@@ -186,12 +158,6 @@ const expandedPaths = ref(new Set())
 const childrenMap = ref({})
 const loadingChildren = ref(new Set())
 
-// New folder
-const showNewFolder = ref(false)
-const newFolderName = ref('')
-const creatingFolder = ref(false)
-const mkdirError = ref('')
-
 // Move state
 const moving = ref(false)
 const moveError = ref('')
@@ -253,27 +219,6 @@ async function selectPath(path) {
   // Pre-load children to check conflict
   if (!childrenMap.value[path]) {
     await loadChildren(path)
-  }
-}
-
-async function createFolder() {
-  const name = newFolderName.value.trim()
-  if (!name || !selectedPath.value) return
-  mkdirError.value = ''
-  creatingFolder.value = true
-  try {
-    const { data } = await browseApi.destMkdir({ parent_path: selectedPath.value, name })
-    // Reload children of current selected path
-    childrenMap.value = { ...childrenMap.value, [selectedPath.value]: undefined }
-    await loadChildren(selectedPath.value)
-    newFolderName.value = ''
-    showNewFolder.value = false
-    // Select the newly created folder
-    await selectPath(data.path)
-  } catch (e) {
-    mkdirError.value = e.response?.data?.detail || e.message
-  } finally {
-    creatingFolder.value = false
   }
 }
 

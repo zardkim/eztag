@@ -22,7 +22,7 @@ services:
     image: zardkim/eztag-backend:${VERSION:-latest}
     restart: unless-stopped
     ports:
-      - "${BACKEND_PORT:-18011}:18011"
+      - "0.0.0.0:${BACKEND_PORT:-18011}:18011"
     environment:
       DATABASE_URL: postgresql://eztag:${DB_PASSWORD:-eztag_password}@postgres:5432/eztag
       MUSIC_BASE_PATH: /music
@@ -32,7 +32,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       BACKUP_DIR: /app/data/backup
     volumes:
-      - ${MUSIC_PATH:-/volume1/music}:/music:ro
+      - ${MUSIC_PATH:-./data/library}:/music:ro
       - ./data/covers:/app/data/covers
       - ./data/logs:/app/data/logs
       - ./data/backup:/app/data/backup
@@ -46,7 +46,7 @@ services:
     image: zardkim/eztag-frontend:${VERSION:-latest}
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-5850}:80"
+      - "0.0.0.0:${FRONTEND_PORT:-5850}:80"
     depends_on:
       - backend
     networks:

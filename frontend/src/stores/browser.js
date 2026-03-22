@@ -10,8 +10,9 @@ export const useBrowserStore = defineStore('browser', () => {
   const selectedFolder = ref(null)
   const selectedFile = ref(null)
   const files = ref([])
-  const extraFiles = ref([])   // [{ filename, path, file_type, file_size, modified_time }, ...]
+  const extraFiles = ref([])   // [{ filename, path, file_type, file_size, modified_time, is_eztag? }, ...]
   const albumDescription = ref(null)
+  const hasEztagReport = ref(false)  // 폴더에 eztag 생성 HTML 파일 존재 여부
   const subfolders = ref([])   // [{ name, path, has_children, has_audio }, ...]
   const loading = ref(false)
   const error = ref(null)
@@ -20,7 +21,7 @@ export const useBrowserStore = defineStore('browser', () => {
   const breadcrumb = ref([])   // [{ name, path }, ...]
 
   // 정렬/필터 상태
-  const sortKey = ref('filename')   // 'track_no' | 'filename' | 'artist' | 'album_title'
+  const sortKey = ref('track_no')   // 정렬 기준 필드명
   const sortOrder = ref('asc')       // 'asc' | 'desc'
   const filterText = ref('')
 
@@ -48,9 +49,17 @@ export const useBrowserStore = defineStore('browser', () => {
     // 정렬
     const key = sortKey.value
     const dir = sortOrder.value === 'asc' ? 1 : -1
+    const NUMERIC = new Set(['disc_no', 'track_no', 'year', 'bitrate', 'sample_rate', 'duration', 'modified_time', 'file_size'])
     list = [...list].sort((a, b) => {
-      if (key === 'track_no') {
-        return ((a.track_no ?? 9999) - (b.track_no ?? 9999)) * dir
+      if (NUMERIC.has(key)) {
+        const av = a[key] ?? (dir > 0 ? Infinity : -Infinity)
+        const bv = b[key] ?? (dir > 0 ? Infinity : -Infinity)
+        return (av - bv) * dir
+      }
+      if (key === 'title') {
+        const av = (a.title || a.filename || '').toLowerCase()
+        const bv = (b.title || b.filename || '').toLowerCase()
+        return av < bv ? -dir : av > bv ? dir : 0
       }
       const av = (a[key] || '').toLowerCase()
       const bv = (b[key] || '').toLowerCase()
@@ -68,6 +77,7 @@ export const useBrowserStore = defineStore('browser', () => {
         files.value = entry.files
         extraFiles.value = entry.extraFiles ?? []
         albumDescription.value = entry.albumDescription ?? null
+        hasEztagReport.value = entry.hasEztagReport ?? false
         subfolders.value = entry.subfolders
         fileWarning.value = entry.warning
         selectedFile.value = null
@@ -89,17 +99,19 @@ export const useBrowserStore = defineStore('browser', () => {
       const warning   = filesRes.data.warning ?? null
       const subs      = Array.isArray(childrenRes.data) ? childrenRes.data : []
       const desc      = filesRes.data.album_description ?? null
+      const hasEztag  = filesRes.data.has_eztag_report ?? false
 
       files.value = fileList
       extraFiles.value = extraList
       albumDescription.value = desc
+      hasEztagReport.value = hasEztag
       fileWarning.value = warning
       subfolders.value = subs
       selectedFile.value = null
 
       // 캐시 저장 (오류 없을 때만)
       if (!warning) {
-        _filesCache.set(path, { files: fileList, extraFiles: extraList, albumDescription: desc, subfolders: subs, warning, ts: Date.now() })
+        _filesCache.set(path, { files: fileList, extraFiles: extraList, albumDescription: desc, hasEztagReport: hasEztag, subfolders: subs, warning, ts: Date.now() })
       }
     } catch (e) {
       error.value = e.response?.data?.detail || '파일 목록을 불러올 수 없습니다.'
@@ -126,6 +138,7 @@ export const useBrowserStore = defineStore('browser', () => {
     subfolders.value = []
     extraFiles.value = []
     albumDescription.value = null
+    hasEztagReport.value = false
     if (folder) {
       // crumb이 명시적으로 전달되면 사용, 없으면 현재 breadcrumb에 추가
       if (crumb !== null) {
@@ -146,8 +159,16 @@ export const useBrowserStore = defineStore('browser', () => {
     }
   }
 
+  const selectedExtraFile = ref(null)
+
   function selectFile(file) {
     selectedFile.value = file
+    selectedExtraFile.value = null
+  }
+
+  function selectExtraFile(file) {
+    selectedExtraFile.value = file
+    selectedFile.value = null
   }
 
   function toggleCheck(file) {
@@ -197,11 +218,11 @@ export const useBrowserStore = defineStore('browser', () => {
   }
 
   return {
-    selectedFolder, selectedFile, files, extraFiles, albumDescription, subfolders, displayFiles,
+    selectedFolder, selectedFile, selectedExtraFile, files, extraFiles, albumDescription, hasEztagReport, subfolders, displayFiles,
     loading, error, fileWarning,
     checkedPaths, checkedFiles, isAllChecked,
     sortKey, sortOrder, filterText, breadcrumb,
-    loadFiles, selectFolder, selectFile, toggleCheck, toggleAll, setCheckedPaths,
+    loadFiles, selectFolder, selectFile, selectExtraFile, toggleCheck, toggleAll, setCheckedPaths,
     updateFile, updateFiles, invalidateFilesCache,
   }
 })

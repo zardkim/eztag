@@ -380,12 +380,6 @@
         @click="save"
       >{{ saving ? '저장 중...' : '저장' }}</button>
       <button
-        class="px-3 py-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 rounded-lg transition-colors disabled:opacity-40"
-        :disabled="undoStack.length === 0 || saving"
-        :title="undoStack.length > 0 ? `되돌리기 (${undoStack.length}단계)` : '되돌릴 내역 없음'"
-        @click="undo"
-      >↩</button>
-      <button
         class="px-3 py-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 rounded-lg transition-colors"
         @click="reset"
       >초기화</button>
@@ -405,6 +399,7 @@ import { useI18n } from 'vue-i18n'
 import { browseApi } from '../api/index.js'
 import { useBrowserStore } from '../stores/browser.js'
 import { useWorkspaceStore } from '../stores/workspace.js'
+import { useHistoryStore } from '../stores/history.js'
 import { GENRES } from '../constants/genres.js'
 import { useToastStore } from '../stores/toast.js'
 
@@ -547,9 +542,9 @@ const emit = defineEmits(['close', 'saved'])
 const browserStore = useBrowserStore()
 const workspaceStore = useWorkspaceStore()
 const toastStore = useToastStore()
+const historyStore = useHistoryStore()
 const saving = ref(false)
 const expandExtra = ref(false)
-const undoStack = ref([])   // [{ perFile: { [path]: {field: prevVal} } }]
 const fieldMode = ref({})   // { [field]: 'keep'|'clear'|'input' } — 다중 값 필드 처리 모드
 
 function showToast(msg) { toastStore.info(msg) }
@@ -882,10 +877,20 @@ async function save() {
       } catch {}
     }
 
-    // 스냅샷을 undo 스택에 추가
-    if (Object.keys(snapshot).length) {
-      undoStack.value.push({ perFile: snapshot, updates })
-      if (undoStack.value.length > 20) undoStack.value.shift()
+    // 전역 히스토리에 등록 (undo/redo 지원)
+    const ops = Object.entries(snapshot).map(([path, before]) => ({
+      path,
+      before,
+      after: { ...updates, ...clearUpdate },
+    }))
+    if (ops.length) {
+      const n = ops.length
+      historyStore.push({
+        label: n === 1
+          ? `태그 편집: ${browserStore.files.find(f => f.path === ops[0].path)?.filename ?? ops[0].path.split('/').pop()}`
+          : `태그 편집 (${n}개 파일)`,
+        ops,
+      })
     }
 
     emit('saved')
@@ -897,36 +902,6 @@ async function save() {
   }
 }
 
-// ── 되돌리기 ──────────────────────────────────────────────
-async function undo() {
-  if (!undoStack.value.length || saving.value) return
-  const entry = undoStack.value.pop()
-
-  saving.value = true
-  try {
-    for (const [path, prevState] of Object.entries(entry.perFile)) {
-      const revert = Object.fromEntries(
-        Object.entries(prevState).filter(([, v]) => v !== null && v !== undefined && v !== '')
-      )
-      if (Object.keys(revert).length) {
-        await browseApi.batchWriteTags({ paths: [path], ...revert })
-        browserStore.updateFiles([path], revert)
-      }
-    }
-    if (browserStore.selectedFile) {
-      const prev = entry.perFile[browserStore.selectedFile.path]
-      if (prev) browserStore.selectFile({ ...browserStore.selectedFile, ...prev })
-    }
-    fillFromFiles(targetFiles.value)
-    showToast(`되돌리기 완료 (남은 단계: ${undoStack.value.length})`)
-  } catch (e) {
-    showToast('되돌리기 실패')
-    // 실패 시 스택에 다시 넣기
-    undoStack.value.push(entry)
-  } finally {
-    saving.value = false
-  }
-}
 
 // ── 커버아트 추출 (폴더에 이미지 파일로 저장) ───────────────
 async function extractCoverArt() {
@@ -1014,9 +989,14 @@ async function autoTrackNumber() {
       form.track_no = null  // 다중이라 혼재
     }
 
-    // undo 스택에 추가
-    undoStack.value.push({ perFile: snapshot, updates: { track_no: '(auto)', total_tracks: total } })
-    if (undoStack.value.length > 20) undoStack.value.shift()
+    // 전역 히스토리에 등록
+    historyStore.push({
+      label: `트랙번호 자동 매기기 (${total}개)`,
+      ops: Object.entries(snapshot).map(([path, before]) => {
+        const idx = targets.findIndex(f => f.path === path)
+        return { path, before, after: { track_no: idx + 1, total_tracks: total } }
+      }),
+    })
 
     showToast(`${total}개 파일에 트랙 번호 1~${total} 적용 완료`)
   } catch (e) {

@@ -7,71 +7,159 @@
     <RouterView />
   </div>
 
-  <!-- Authenticated layout: 로그인 상태일 때만 렌더링 -->
+  <!-- Authenticated layout -->
   <div v-else-if="authStore.isLoggedIn" class="h-screen flex overflow-hidden bg-gray-50 dark:bg-gray-950">
 
-    <!-- ── Mobile top bar ── -->
-    <header class="lg:hidden fixed top-0 inset-x-0 h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-4 z-30 gap-3">
-      <button
-        class="text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors p-1"
-        @click="drawerOpen = !drawerOpen"
-        aria-label="메뉴"
+    <!-- ══════════════════════════════════════════════
+         MOBILE: 상단 바 (로고 + 툴바 슬롯)
+    ══════════════════════════════════════════════ -->
+    <header class="lg:hidden fixed top-0 inset-x-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex flex-col">
+      <!-- 1행: 로고 + 테마 -->
+      <div class="flex items-center justify-between px-4 h-11 shrink-0">
+        <img
+          :src="themeStore.theme === 'dark' ? '/logo-dark.svg' : '/logo.svg'"
+          alt="eztag"
+          class="h-7 w-auto"
+        />
+        <button
+          class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
+          @click="themeStore.toggle()"
+        >
+          <span>{{ themeStore.theme === 'dark' ? '☀️' : '🌙' }}</span>
+        </button>
+      </div>
+      <!-- 2행: 툴바 슬롯 (Browser.vue 버튼 삽입 대상, /browser 에서만 표시) -->
+      <div
+        v-show="route.path === '/browser'"
+        id="app-toolbar-slot-mobile"
+        class="shrink-0 h-9 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center min-w-0 overflow-x-auto overflow-y-hidden scrollbar-none"
       >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-      <span class="text-base font-bold text-gray-900 dark:text-white tracking-tight flex-1">🎵 eztag</span>
-      <button
-        class="text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors p-1"
-        @click="themeStore.toggle()"
-      >
-        <span v-if="themeStore.theme === 'dark'">☀️</span>
-        <span v-else>🌙</span>
-      </button>
+        <!-- Browser.vue가 Teleport로 이 슬롯에 버튼을 주입 -->
+      </div>
     </header>
 
-    <!-- ── Mobile overlay ── -->
-    <Transition
-      enter-active-class="transition-opacity duration-200"
-      leave-active-class="transition-opacity duration-200"
-      enter-from-class="opacity-0"
-      leave-to-class="opacity-0"
-    >
-      <div v-if="drawerOpen" class="lg:hidden fixed inset-0 bg-black/50 z-40" @click="drawerOpen = false" />
-    </Transition>
+    <!-- ══════════════════════════════════════════════
+         MOBILE: 추가 메뉴 팝업 (+ 버튼)
+    ══════════════════════════════════════════════ -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-150 ease-out"
+        leave-active-class="transition duration-100 ease-in"
+        enter-from-class="opacity-0"
+        leave-to-class="opacity-0"
+      >
+        <div v-if="mobileAddOpen" class="lg:hidden fixed inset-0 z-50" @click="mobileAddOpen = false">
+          <!-- 팝업 카드 -->
+          <div
+            class="absolute bottom-20 left-4 right-4 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+            @click.stop
+          >
+            <button
+              class="w-full flex items-center gap-3 px-4 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-b border-gray-100 dark:border-gray-800"
+              @click="mobileAddOpen = false; workspaceSidebarRef?.openFolderPicker()"
+            >
+              <span class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-xl shrink-0">📂</span>
+              <div>
+                <div class="text-sm font-semibold text-gray-900 dark:text-white">폴더 열기</div>
+                <div class="text-xs text-gray-400 mt-0.5">폴더 내 전체 파일 불러오기</div>
+              </div>
+            </button>
+            <button
+              class="w-full flex items-center gap-3 px-4 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              @click="mobileAddOpen = false; workspaceSidebarRef?.openFilePicker()"
+            >
+              <span class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-xl shrink-0">📄</span>
+              <div>
+                <div class="text-sm font-semibold text-gray-900 dark:text-white">파일 열기</div>
+                <div class="text-xs text-gray-400 mt-0.5">개별 파일 선택</div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
-    <!-- ── Sidebar ── -->
+    <!-- ══════════════════════════════════════════════
+         MOBILE: 계정 바텀 시트
+    ══════════════════════════════════════════════ -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        leave-active-class="transition duration-150 ease-in"
+        enter-from-class="opacity-0"
+        leave-to-class="opacity-0"
+      >
+        <div v-if="mobileUserOpen" class="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
+          <div class="absolute inset-0 bg-black/40" @click="mobileUserOpen = false" />
+          <Transition
+            enter-active-class="transition duration-200 ease-out"
+            leave-active-class="transition duration-150 ease-in"
+            enter-from-class="translate-y-full"
+            leave-to-class="translate-y-full"
+          >
+            <div v-if="mobileUserOpen" class="relative bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl">
+              <!-- 유저 정보 -->
+              <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+                <span class="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-bold shrink-0">
+                  {{ (authStore.user?.username || '?')[0].toUpperCase() }}
+                </span>
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ authStore.user?.username }}</p>
+                  <p class="text-xs text-gray-400">{{ authStore.user?.role }}</p>
+                </div>
+              </div>
+              <!-- 메뉴 -->
+              <div class="px-3 py-2 space-y-0.5">
+                <button class="w-full flex items-center gap-3 px-3 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition-colors text-left" @click="toggleLanguage">
+                  <span class="text-lg">🌐</span>
+                  <span>{{ locale === 'ko' ? '한국어' : 'English' }}</span>
+                </button>
+                <button class="w-full flex items-center gap-3 px-3 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition-colors text-left"
+                        @click="mobileUserOpen = false; openPasswordModal()">
+                  <span class="text-lg">🔑</span>
+                  <span>비밀번호 변경</span>
+                </button>
+                <button class="w-full flex items-center gap-3 px-3 py-3 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors text-left" @click="logout">
+                  <span class="text-lg">🚪</span>
+                  <span>{{ $t('auth.logout') }}</span>
+                </button>
+              </div>
+              <div class="h-safe-bottom pb-4"></div>
+            </div>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- ══════════════════════════════════════════════
+         DESKTOP: 사이드바 (lg 이상만)
+    ══════════════════════════════════════════════ -->
     <aside
-      class="fixed inset-y-0 left-0 z-50 w-60 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col
+      class="hidden lg:flex fixed inset-y-0 left-0 z-50 w-60 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex-col
              transition-all duration-300 ease-in-out
              lg:relative lg:translate-x-0 lg:z-auto lg:shrink-0"
-      :class="[
-        drawerOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
-        sidebarCollapsed ? 'lg:w-14' : 'lg:w-60',
-      ]"
+      :class="sidebarCollapsed ? 'lg:w-14' : 'lg:w-60'"
     >
       <!-- Logo + 폴딩 버튼 -->
       <div class="px-3 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0 min-w-0">
-        <!-- 로고: 펼침 상태 -->
         <div v-if="!sidebarCollapsed" class="flex items-center justify-between w-full min-w-0">
           <div class="min-w-0">
-            <h1 class="text-lg font-bold text-gray-900 dark:text-white tracking-tight">🎵 eztag</h1>
-            <p class="text-xs text-gray-400 mt-0.5">Music Tag Manager</p>
+            <img
+              :src="themeStore.theme === 'dark' ? '/logo-dark.svg' : '/logo.svg'"
+              alt="eztag"
+              class="h-10 w-auto"
+            />
             <p class="text-[10px] text-gray-300 dark:text-gray-600 font-mono mt-0.5">v{{ appVersion }}</p>
           </div>
           <div class="flex items-center gap-1 shrink-0">
-            <!-- 테마 버튼 -->
             <button
-              class="hidden lg:flex items-center justify-center w-7 h-7 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
+              class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
               @click="themeStore.toggle()"
             >
-              <span class="text-sm" v-if="themeStore.theme === 'dark'">☀️</span>
-              <span class="text-sm" v-else>🌙</span>
+              <span class="text-sm">{{ themeStore.theme === 'dark' ? '☀️' : '🌙' }}</span>
             </button>
-            <!-- 폴딩 버튼 -->
             <button
-              class="hidden lg:flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
+              class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
               title="사이드바 접기"
               @click="toggleSidebar"
             >
@@ -82,12 +170,10 @@
           </div>
         </div>
 
-        <!-- 로고: 접힘 상태 (아이콘만) -->
         <div v-else class="flex flex-col items-center w-full gap-2">
-          <span class="text-xl">🎵</span>
-          <!-- 펼치기 버튼 -->
+          <img src="/logo-icon.svg" alt="eztag" class="w-8 h-8" />
           <button
-            class="hidden lg:flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
+            class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
             title="사이드바 펼치기"
             @click="toggleSidebar"
           >
@@ -98,14 +184,26 @@
         </div>
       </div>
 
-      <!-- Workspace Sidebar / Folder Tree (접힘 시 숨김) -->
-      <div class="flex-1 overflow-hidden flex flex-col min-h-0" :class="sidebarCollapsed ? 'hidden lg:hidden' : ''">
-        <WorkspaceSidebar v-if="route.path === '/workspace'" />
-        <FolderTree v-else />
+      <!-- Workspace Sidebar -->
+      <div class="flex-1 overflow-hidden flex flex-col min-h-0" :class="sidebarCollapsed ? 'hidden' : ''">
+        <WorkspaceSidebar ref="workspaceSidebarRef" />
       </div>
 
-      <!-- Bottom nav -->
+      <!-- Bottom nav (데스크톱 사이드바 하단) -->
       <nav class="shrink-0 px-2 py-2 border-t border-gray-200 dark:border-gray-800 space-y-0.5">
+        <button
+          v-if="sidebarCollapsed"
+          class="w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
+          title="폴더 열기"
+          @click="workspaceSidebarRef?.openFolderPicker()"
+        ><span class="text-base">📂</span></button>
+        <button
+          v-if="sidebarCollapsed"
+          class="w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
+          title="파일 열기"
+          @click="workspaceSidebarRef?.openFilePicker()"
+        ><span class="text-base">📄</span></button>
+
         <RouterLink
           v-for="item in bottomNav"
           :key="item.to"
@@ -114,26 +212,11 @@
           :class="sidebarCollapsed ? 'justify-center' : ''"
           :title="sidebarCollapsed ? $t(item.labelKey) : ''"
           active-class="bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white"
-          @click="drawerOpen = false"
         >
           <span class="text-base shrink-0">{{ item.icon }}</span>
           <span v-if="!sidebarCollapsed">{{ $t(item.labelKey) }}</span>
         </RouterLink>
 
-        <!-- Get LRC -->
-        <RouterLink
-          to="/get-lrc"
-          class="flex items-center gap-2 px-2 py-2 rounded-lg text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
-          :class="sidebarCollapsed ? 'justify-center' : ''"
-          :title="sidebarCollapsed ? 'Get LRC' : ''"
-          active-class="bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white"
-          @click="drawerOpen = false"
-        >
-          <span class="text-base shrink-0">📝</span>
-          <span v-if="!sidebarCollapsed">Get LRC</span>
-        </RouterLink>
-
-        <!-- 언어 선택 -->
         <button
           class="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
           :class="sidebarCollapsed ? 'justify-center' : ''"
@@ -144,7 +227,7 @@
           <span v-if="!sidebarCollapsed" class="flex-1 text-left">{{ locale === 'ko' ? '한국어' : 'English' }}</span>
         </button>
 
-        <!-- 유저 메뉴 -->
+        <!-- 유저 메뉴 (데스크톱) -->
         <div class="relative" ref="userMenuRef">
           <button
             class="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
@@ -158,8 +241,6 @@
             <span v-if="!sidebarCollapsed" class="flex-1 text-left truncate">{{ authStore.user?.username }}</span>
             <span v-if="!sidebarCollapsed" class="text-gray-300 dark:text-gray-600 text-[10px]">▾</span>
           </button>
-
-          <!-- 드롭다운 -->
           <Transition
             enter-from-class="opacity-0 translate-y-1"
             leave-to-class="opacity-0 translate-y-1"
@@ -178,26 +259,112 @@
               <button
                 class="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
                 @click="openPasswordModal"
-              >
-                🔑 비밀번호 변경
-              </button>
+              >🔑 비밀번호 변경</button>
               <button
                 class="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left"
                 @click="logout"
-              >
-                🚪 {{ $t('auth.logout') }}
-              </button>
+              >🚪 {{ $t('auth.logout') }}</button>
             </div>
           </Transition>
         </div>
       </nav>
-
     </aside>
 
-    <!-- ── Main content ── -->
-    <main class="flex-1 overflow-hidden flex flex-col pt-14 lg:pt-0 min-w-0">
+    <!-- ══════════════════════════════════════════════
+         메인 콘텐츠
+    ══════════════════════════════════════════════ -->
+    <main
+      class="flex-1 overflow-hidden flex flex-col min-w-0 pb-16 lg:pt-0 lg:pb-0"
+      :class="route.path === '/browser' ? 'pt-20' : 'pt-11'"
+    >
+      <!-- 데스크톱 툴바 슬롯 -->
+      <div id="app-toolbar-slot" class="shrink-0 h-10 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center min-w-0 hidden lg:flex">
+        <template v-if="route.path !== '/browser'">
+          <RouterLink
+            to="/browser"
+            class="flex items-center gap-1.5 px-3 py-1.5 ml-1 rounded-lg text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
+            active-class="bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white"
+          >
+            <span>📁</span>
+            <span>{{ $t('nav.browser') }}</span>
+          </RouterLink>
+        </template>
+      </div>
       <RouterView />
     </main>
+
+    <!-- ══════════════════════════════════════════════
+         MOBILE: 하단 내비게이션 바
+    ══════════════════════════════════════════════ -->
+    <nav class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex h-16">
+      <!-- 홈 -->
+      <RouterLink
+        to="/home"
+        class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
+        :class="route.path === '/home' && !mobileAddOpen && !mobileUserOpen
+          ? 'text-blue-600 dark:text-blue-400'
+          : 'text-gray-500 dark:text-gray-400'"
+        @click="mobileAddOpen = false; mobileUserOpen = false"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+        </svg>
+        <span class="text-[10px] font-medium">홈</span>
+      </RouterLink>
+
+      <!-- + 추가 -->
+      <button
+        class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
+        :class="mobileAddOpen
+          ? 'text-blue-600 dark:text-blue-400'
+          : 'text-gray-500 dark:text-gray-400'"
+        @click="mobileAddOpen = !mobileAddOpen; mobileUserOpen = false"
+      >
+        <div
+          class="w-9 h-9 rounded-2xl flex items-center justify-center transition-all"
+          :class="mobileAddOpen
+            ? 'bg-blue-600 text-white rotate-45'
+            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+          </svg>
+        </div>
+      </button>
+
+      <!-- 설정 -->
+      <RouterLink
+        to="/settings"
+        class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
+        :class="route.path === '/settings' && !mobileAddOpen && !mobileUserOpen
+          ? 'text-blue-600 dark:text-blue-400'
+          : 'text-gray-500 dark:text-gray-400'"
+        @click="mobileAddOpen = false; mobileUserOpen = false"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        <span class="text-[10px] font-medium">{{ $t('nav.settings') }}</span>
+      </RouterLink>
+
+      <!-- 아이디 -->
+      <button
+        class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
+        :class="mobileUserOpen
+          ? 'text-blue-600 dark:text-blue-400'
+          : 'text-gray-500 dark:text-gray-400'"
+        @click="mobileUserOpen = !mobileUserOpen; mobileAddOpen = false"
+      >
+        <span
+          class="w-7 h-7 rounded-full text-white flex items-center justify-center text-xs font-bold transition-colors"
+          :class="mobileUserOpen ? 'bg-blue-600' : 'bg-blue-500'"
+        >
+          {{ (authStore.user?.username || '?')[0].toUpperCase() }}
+        </span>
+        <span class="text-[10px] font-medium truncate max-w-[52px]">{{ authStore.user?.username }}</span>
+      </button>
+    </nav>
 
     <!-- ── 전역 토스트 ── -->
     <ToastContainer />
@@ -210,33 +377,15 @@
           <div class="space-y-3">
             <div>
               <label class="text-xs text-gray-500 block mb-1">현재 비밀번호</label>
-              <input
-                v-model="passwordForm.current"
-                type="password"
-                class="field w-full"
-                placeholder="현재 비밀번호 입력"
-                @keyup.enter="changePassword"
-              />
+              <input v-model="passwordForm.current" type="password" class="field w-full" placeholder="현재 비밀번호 입력" @keyup.enter="changePassword" />
             </div>
             <div>
               <label class="text-xs text-gray-500 block mb-1">새 비밀번호</label>
-              <input
-                v-model="passwordForm.next"
-                type="password"
-                class="field w-full"
-                placeholder="새 비밀번호 (4자 이상)"
-                @keyup.enter="changePassword"
-              />
+              <input v-model="passwordForm.next" type="password" class="field w-full" placeholder="새 비밀번호 (8자+특수문자)" @keyup.enter="changePassword" />
             </div>
             <div>
               <label class="text-xs text-gray-500 block mb-1">새 비밀번호 확인</label>
-              <input
-                v-model="passwordForm.confirm"
-                type="password"
-                class="field w-full"
-                placeholder="새 비밀번호 재입력"
-                @keyup.enter="changePassword"
-              />
+              <input v-model="passwordForm.confirm" type="password" class="field w-full" placeholder="새 비밀번호 재입력" @keyup.enter="changePassword" />
             </div>
             <p v-if="passwordError" class="text-xs text-red-500">{{ passwordError }}</p>
           </div>
@@ -255,15 +404,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useThemeStore } from './stores/theme.js'
 import { useAuthStore } from './stores/auth.js'
 import { useWorkspaceStore } from './stores/workspace.js'
+import { useBrowserStore } from './stores/browser.js'
 import { authApi } from './api/index.js'
 import { configApi } from './api/config.js'
-import FolderTree from './components/FolderTree.vue'
 import WorkspaceSidebar from './components/WorkspaceSidebar.vue'
 import ToastContainer from './components/ToastContainer.vue'
 
@@ -274,10 +423,40 @@ const { locale } = useI18n()
 const themeStore = useThemeStore()
 const authStore = useAuthStore()
 const workspaceStore = useWorkspaceStore()
+const browserStore = useBrowserStore()
 const route = useRoute()
 const router = useRouter()
-const drawerOpen = ref(false)
 const sidebarCollapsed = ref(localStorage.getItem('eztag-sidebar-collapsed') === 'true')
+const workspaceSidebarRef = ref(null)
+
+// 모바일 시트 상태
+const mobileAddOpen  = ref(false)
+const mobileUserOpen = ref(false)
+
+// 최근 폴더 저장
+const RECENT_FOLDERS_KEY = 'eztag-recent-folders'
+function saveRecentFolder(folder) {
+  try {
+    const list = JSON.parse(localStorage.getItem(RECENT_FOLDERS_KEY) || '[]')
+    const filtered = list.filter(f => f.path !== folder.path)
+    const updated = [{ name: folder.name, path: folder.path, timestamp: Date.now() }, ...filtered].slice(0, 15)
+    localStorage.setItem(RECENT_FOLDERS_KEY, JSON.stringify(updated))
+  } catch { /* ignore */ }
+}
+
+// 폴더 선택 시 최근 목록 저장
+watch(() => browserStore.selectedFolder, (folder) => {
+  if (folder) {
+    mobileAddOpen.value = false
+    saveRecentFolder(folder)
+  }
+})
+
+// 라우트 변경 시 시트 닫기
+watch(() => route.path, () => {
+  mobileAddOpen.value  = false
+  mobileUserOpen.value = false
+})
 
 // ── 언어 변경 ──────────────────────────────────────
 async function toggleLanguage() {
@@ -291,9 +470,9 @@ async function toggleLanguage() {
   }
 }
 
-// ── 유저 메뉴 ──────────────────────────────────────
+// ── 유저 메뉴 (데스크톱) ────────────────────────────
 const userMenuOpen = ref(false)
-const userMenuRef = ref(null)
+const userMenuRef  = ref(null)
 
 function onClickOutside(e) {
   if (userMenuRef.value && !userMenuRef.value.contains(e.target)) {
@@ -303,16 +482,16 @@ function onClickOutside(e) {
 
 // ── 비밀번호 변경 ───────────────────────────────────
 const showPasswordModal = ref(false)
-const passwordSaving = ref(false)
-const passwordError = ref('')
-const passwordForm = reactive({ current: '', next: '', confirm: '' })
+const passwordSaving    = ref(false)
+const passwordError     = ref('')
+const passwordForm      = reactive({ current: '', next: '', confirm: '' })
 
 function openPasswordModal() {
   userMenuOpen.value = false
   passwordForm.current = ''
-  passwordForm.next = ''
+  passwordForm.next    = ''
   passwordForm.confirm = ''
-  passwordError.value = ''
+  passwordError.value  = ''
   showPasswordModal.value = true
 }
 
@@ -365,13 +544,12 @@ onUnmounted(() => {
 const isPublicRoute = computed(() => ['/setup', '/login'].includes(route.path))
 
 const bottomNav = [
-  { to: '/workspace', icon: '🗂️', labelKey: 'nav.workspace' },
-  { to: '/browser',   icon: '📁', labelKey: 'nav.browser' },
-  { to: '/settings',  icon: '⚙️', labelKey: 'nav.settings' },
+  { to: '/settings', icon: '⚙️', labelKey: 'nav.settings' },
 ]
 
 function logout() {
-  userMenuOpen.value = false
+  userMenuOpen.value  = false
+  mobileUserOpen.value = false
   authStore.logout()
   router.replace('/login')
 }

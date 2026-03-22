@@ -46,6 +46,72 @@
         <textarea v-model="form.lyrics" rows="4" class="field w-full text-xs font-mono resize-none"></textarea>
       </div>
 
+      <!-- 타이틀곡 / YouTube (DB 전용, workspace 모드에서 숨김) -->
+      <div v-if="!workspaceItem" class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-1">
+        <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-2">타이틀곡 / MV</span>
+
+        <!-- 타이틀곡 토글 -->
+        <label class="flex items-center gap-2 cursor-pointer mb-3">
+          <div
+            class="relative w-9 h-5 rounded-full transition-colors shrink-0"
+            :class="isTitleTrack ? 'bg-orange-500' : 'bg-gray-300 dark:bg-gray-600'"
+            @click="isTitleTrack = !isTitleTrack"
+          >
+            <span
+              class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"
+              :class="isTitleTrack ? 'translate-x-4' : 'translate-x-0'"
+            ></span>
+          </div>
+          <span class="text-xs text-gray-700 dark:text-gray-300">타이틀곡</span>
+          <span v-if="isTitleTrack" class="text-[10px] font-bold text-orange-500 bg-orange-50 dark:bg-orange-900/20 px-1.5 py-0.5 rounded">타이틀</span>
+        </label>
+
+        <!-- YouTube URL + 자동 검색 -->
+        <label class="text-xs text-gray-500 block mb-1">YouTube 뮤직비디오 URL</label>
+        <div class="flex gap-1.5 mb-1">
+          <input v-model="youtubeUrl" class="field flex-1 text-sm min-w-0" placeholder="https://youtu.be/..." />
+          <button
+            class="shrink-0 px-2.5 py-1 text-xs font-medium bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
+            :disabled="ytSearchLoading"
+            @click="searchYoutube"
+            title="YouTube 자동 검색"
+          >
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
+            {{ ytSearchLoading ? '...' : '검색' }}
+          </button>
+        </div>
+
+        <!-- 검색 오류 -->
+        <p v-if="ytSearchError" class="text-[11px] text-red-500 mb-2">{{ ytSearchError }}</p>
+
+        <!-- 검색 결과 -->
+        <div v-if="ytSearchResults.length" class="space-y-1.5 mb-2">
+          <div
+            v-for="item in ytSearchResults"
+            :key="item.video_id"
+            class="flex items-center gap-2 p-1.5 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+            @click="selectYoutubeResult(item)"
+          >
+            <img v-if="item.thumbnail" :src="item.thumbnail" class="w-14 h-10 object-cover rounded shrink-0" />
+            <div class="min-w-0 flex-1">
+              <p class="text-xs font-medium text-gray-800 dark:text-gray-200 line-clamp-2 leading-tight">{{ item.title }}</p>
+              <p class="text-[10px] text-gray-400 truncate mt-0.5">{{ item.channel }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 현재 선택된 URL 미리보기 -->
+        <div v-if="youtubeUrl" class="mb-2">
+          <a :href="youtubeUrl" target="_blank" class="text-[11px] text-blue-500 hover:underline truncate block">{{ youtubeUrl }}</a>
+        </div>
+
+        <button
+          class="w-full py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors disabled:opacity-50"
+          :disabled="trackInfoSaving"
+          @click="saveTrackInfo"
+        >{{ trackInfoSaving ? '저장 중...' : '💾 타이틀곡/MV 저장' }}</button>
+      </div>
+
       <!-- Spotify search section -->
       <div ref="spotifySection" class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-1">
         <div class="flex items-center justify-between mb-2">
@@ -98,6 +164,7 @@ import { useI18n } from 'vue-i18n'
 import { browseApi, metadataApi } from '../api/index.js'
 import { useBrowserStore } from '../stores/browser.js'
 import { useWorkspaceStore } from '../stores/workspace.js'
+import { useHistoryStore } from '../stores/history.js'
 import SpotifyResultCard from './SpotifyResultCard.vue'
 import { GENRES } from '../constants/genres.js'
 import { useToastStore } from '../stores/toast.js'
@@ -114,12 +181,21 @@ const spotifySection = ref(null)
 
 const browserStore = useBrowserStore()
 const workspaceStore = useWorkspaceStore()
+const historyStore = useHistoryStore()
 const saving = ref(false)
 const spotifyLoading = ref(false)
 const spotifyResults = ref([])
 const spotifyError = ref('')
 const appliedId = ref(null)
 const pendingCoverUrl = ref(null)
+
+// 타이틀곡 / YouTube (DB 전용 필드)
+const isTitleTrack = ref(false)
+const youtubeUrl = ref('')
+const trackInfoSaving = ref(false)
+const ytSearchLoading = ref(false)
+const ytSearchResults = ref([])
+const ytSearchError = ref('')
 
 const textFields = [
   { key: 'title',        labelKey: 'common.title' },
@@ -147,10 +223,63 @@ function initForm() {
     year: props.file.year || null,
     lyrics: props.file.lyrics || '',
   })
+  isTitleTrack.value = !!props.file.is_title_track
+  youtubeUrl.value = props.file.youtube_url || ''
+  ytSearchResults.value = []
+  ytSearchError.value = ''
   spotifyResults.value = []
   spotifyError.value = ''
   appliedId.value = null
   pendingCoverUrl.value = null
+}
+
+async function saveTrackInfo() {
+  if (props.workspaceItem) return  // workspace 모드에서는 지원 안함
+  trackInfoSaving.value = true
+  try {
+    const { data } = await browseApi.setTrackInfo({
+      path: props.file.path,
+      is_title_track: isTitleTrack.value,
+      youtube_url: youtubeUrl.value,
+    })
+    browserStore.updateFile({
+      path: props.file.path,
+      is_title_track: data.is_title_track,
+      youtube_url: data.youtube_url,
+    })
+    toastStore.success('저장됨')
+  } catch (e) {
+    toastStore.error(e.response?.data?.detail || t('common.error'))
+  } finally {
+    trackInfoSaving.value = false
+  }
+}
+
+async function searchYoutube() {
+  const artist = form.artist || form.album_artist || ''
+  const title = form.title || ''
+  if (!artist && !title) return
+  ytSearchLoading.value = true
+  ytSearchResults.value = []
+  ytSearchError.value = ''
+  try {
+    const { data } = await browseApi.searchYoutubeMV(artist, title)
+    ytSearchResults.value = data.results
+    if (!data.results.length) ytSearchError.value = '검색 결과가 없습니다'
+  } catch (e) {
+    if (e.response?.data?.detail === 'youtube_not_configured') {
+      ytSearchError.value = 'YouTube API 키가 설정되지 않았습니다 (설정 > 메타데이터)'
+    } else {
+      ytSearchError.value = e.response?.data?.detail || '검색 실패'
+    }
+  } finally {
+    ytSearchLoading.value = false
+  }
+}
+
+function selectYoutubeResult(item) {
+  youtubeUrl.value = item.url
+  ytSearchResults.value = []
 }
 
 initForm()
@@ -222,6 +351,10 @@ async function save() {
       emit('saved')
     } else {
       // Normal browser mode: write directly to file
+      // 변경 전 스냅샷 (히스토리용)
+      const tagFields = Object.keys(form)
+      const before = Object.fromEntries(tagFields.map(k => [k, props.file[k] ?? null]))
+
       const payload = { path: props.file.path }
       for (const [k, v] of Object.entries(form)) {
         if (v !== '' && v !== null && v !== undefined) payload[k] = v
@@ -237,6 +370,14 @@ async function save() {
       const fileUpdate = { path: props.file.path, ...form }
       if (hadPendingCover) fileUpdate.has_cover = true
       browserStore.updateFile(fileUpdate)
+
+      // 전역 히스토리 등록
+      const after = Object.fromEntries(tagFields.map(k => [k, form[k] ?? null]))
+      historyStore.push({
+        label: `태그 편집: ${props.file.filename}`,
+        ops: [{ path: props.file.path, before, after }],
+      })
+
       emit('saved')
     }
   } catch (e) {

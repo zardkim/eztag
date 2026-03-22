@@ -75,6 +75,7 @@ export default {
     audioLabel: 'Music',
     exportHtml: 'Save HTML',
     exportHtmlError: 'Failed to save HTML.',
+    eztagOrganized: 'eztag organized',
     moveFolder: {
       title: 'Move Folder',
       button: '📦 Move',
@@ -266,6 +267,8 @@ export default {
       dockerHint: 'Enter a path that is mounted as a Docker volume.',
     },
     lrcSource: {
+      title: 'LRC Source Priority',
+      desc: 'Set the primary and fallback source for LRC auto-search. Falls back to the secondary source if the primary fails.',
       primary: 'LRC Primary Source',
       primaryDesc: 'First source to search for LRC',
       fallback: 'LRC Fallback Source',
@@ -303,13 +306,17 @@ export default {
       disabled: 'Inactive',
     },
     metadata: {
-      title: 'Metadata Sources',
+      title: 'Metadata',
       spotifyDefault: 'Default',
       comingSoon: 'Coming Soon',
       pending: 'Pending',
+      available: 'Available',
       spotifyHint: 'Register an app and get credentials',
+      storefront: 'Country Store',
       save: 'Save Metadata Settings',
       saving: 'Saving...',
+      youtubeHint: 'Enables automatic music video search and embeds YouTube URLs in HTML exports.',
+      youtubeApiHint: 'Enter the API key obtained after enabling YouTube Data API v3 in Google Cloud Console.',
     },
     logs: {
       title: 'Scan History',

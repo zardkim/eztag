@@ -307,8 +307,10 @@ def get_files(
                     "tag_version":  track.tag_version,
                     "comment":      track.comment,
                     "file_format":  (track.file_format or "").upper(),
-                    "has_cover":    track.has_cover,
-                    "has_lyrics":   track.has_lyrics,
+                    "has_cover":      track.has_cover,
+                    "has_lyrics":     track.has_lyrics,
+                    "is_title_track": bool(track.is_title_track),
+                    "youtube_url":    track.youtube_url,
                     "has_lrc":      has_lrc,
                     "lyrics":       track.lyrics,
                     "file_size":    stat.st_size,
@@ -338,8 +340,10 @@ def get_files(
                     "tag_version":  None,
                     "comment":      None,
                     "file_format":  item.suffix.lstrip(".").upper(),
-                    "has_cover":    False,
-                    "has_lyrics":   False,
+                    "has_cover":      False,
+                    "has_lyrics":     False,
+                    "is_title_track": False,
+                    "youtube_url":    None,
                     "has_lrc":      has_lrc,
                     "lyrics":       None,
                     "file_size":    stat.st_size,
@@ -369,10 +373,20 @@ def get_files(
                 })
             elif ext == ".html":
                 stat = item.stat()
+                # eztag 생성 파일 감지: 파일명 패턴 또는 generator 메타태그 확인
+                is_eztag = item.name.startswith("[Info]")
+                if not is_eztag:
+                    try:
+                        with item.open("r", encoding="utf-8", errors="ignore") as _hf:
+                            head = _hf.read(2048)
+                        is_eztag = 'content="eztag"' in head
+                    except Exception:
+                        pass
                 extra_files.append({
                     "filename": item.name,
                     "path": str(item),
                     "file_type": "html",
+                    "is_eztag": is_eztag,
                     "file_size": stat.st_size,
                     "modified_time": stat.st_mtime,
                 })
@@ -389,7 +403,8 @@ def get_files(
                 album_description = alb.description
             break
 
-    result = {"files": files, "extra_files": extra_files, "warning": warning, "album_description": album_description}
+    has_eztag_report = any(f.get("is_eztag") for f in extra_files)
+    result = {"files": files, "extra_files": extra_files, "warning": warning, "album_description": album_description, "has_eztag_report": has_eztag_report}
     if not warning:
         _cache.set_files(str(p), result)
 
@@ -674,6 +689,29 @@ def get_file_cover(
     if etag:
         headers["ETag"] = etag
     return Response(content=data, media_type=mime, headers=headers)
+
+
+# ── 이미지 / HTML 등 기타 파일 서빙 ────────────────────────
+@router.get("/extra-file")
+def get_extra_file(
+    path: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    """이미지·HTML 등 폴더 내 기타 파일을 서빙."""
+    p = _validate_path(path, db)
+    if not p.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    suffix = p.suffix.lower()
+    if suffix in IMAGE_EXTS:
+        import mimetypes
+        mime = mimetypes.guess_type(str(p))[0] or "application/octet-stream"
+        data = p.read_bytes()
+        return Response(content=data, media_type=mime, headers={"Cache-Control": "private, max-age=3600"})
+    elif suffix == ".html":
+        data = p.read_bytes()
+        return Response(content=data, media_type="text/html; charset=utf-8")
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported file type")
 
 
 # ── 커버아트 업로드 (파일에 임베드) ────────────────────────
@@ -1363,7 +1401,13 @@ def rename_by_tags(
             track = db.query(Track).filter(Track.file_path == str(p)).first()
             if track:
                 track.file_path = str(new_path)
-                db.commit()
+
+            # 워크스페이스 아이템 경로 업데이트
+            from app.models.workspace import WorkspaceItem
+            for wi in db.query(WorkspaceItem).filter(WorkspaceItem.file_path == str(p)).all():
+                wi.file_path = str(new_path)
+
+            db.commit()
 
             # 캐시 무효화
             _cache.invalidate_files(str(p.parent))
@@ -1572,6 +1616,62 @@ def move_folder(
     }
 
 
+# ── 트랙 DB 전용 정보 업데이트 (타이틀곡, YouTube URL) ────────
+@router.post("/set-track-info")
+def set_track_info(
+    data: dict,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """타이틀곡 여부 및 YouTube URL 등 DB 전용 필드를 업데이트."""
+    path = data.get("path", "")
+    if not path:
+        raise HTTPException(status_code=400, detail="path required")
+
+    track = db.query(Track).filter(Track.file_path == path).first()
+    if not track:
+        raise HTTPException(status_code=404, detail="Track not found")
+
+    if "is_title_track" in data:
+        track.is_title_track = bool(data["is_title_track"])
+    if "youtube_url" in data:
+        url = (data["youtube_url"] or "").strip()
+        track.youtube_url = url if url else None
+
+    db.commit()
+    db.refresh(track)
+    return {
+        "is_title_track": track.is_title_track,
+        "youtube_url": track.youtube_url,
+    }
+
+
+
+# ── YouTube 뮤직비디오 검색 ───────────────────────────────────
+@router.get("/search-youtube-mv")
+def search_youtube_mv(
+    artist: str,
+    title: str,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """YouTube Data API v3로 뮤직비디오 후보를 검색."""
+    from app.core.config_store import get_config
+    from app.core.youtube_search import search_music_video
+
+    enabled = get_config(db, "youtube_enabled") == "true"
+    api_key = get_config(db, "youtube_api_key") or ""
+    if not enabled or not api_key:
+        raise HTTPException(status_code=422, detail="youtube_not_configured")
+
+    try:
+        results = search_music_video(artist, title, api_key)
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    return {"results": results}
+
+
 # ── 폴더 HTML 내보내기 ──────────────────────────────────────
 @router.post("/export-html-save")
 def export_folder_html_save(
@@ -1657,6 +1757,10 @@ def export_folder_html_save(
     cover_paths = [t["file_path"] for t in track_dicts if t.get("has_cover")]
     cover_b64 = _cover_to_b64(track_paths=cover_paths[:3])
 
+    # 타이틀곡 & YouTube URL
+    title_track = next((t for t in track_dicts if t.get("is_title_track")), None)
+    youtube_url = title_track.get("youtube_url") if title_track else None
+
     html = build_html(
         tracks=track_dicts,
         album_title=album_title,
@@ -1667,6 +1771,7 @@ def export_folder_html_save(
         cover_b64=cover_b64,
         source_path=str(p),
         description=album_description,
+        youtube_url=youtube_url,
     )
 
     # 폴더에 파일 저장
@@ -1678,3 +1783,52 @@ def export_folder_html_save(
         raise HTTPException(status_code=500, detail=f"파일 저장 실패: {e}")
 
     return {"filename": filename, "path": str(out_path)}
+
+
+# ── 폴더 이름 변경 ────────────────────────────────────────────
+@router.post("/rename-folder")
+def rename_folder(
+    data: dict,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """폴더 이름 변경."""
+    path = data.get("path", "")
+    new_name = (data.get("new_name") or "").strip()
+    if not new_name or "/" in new_name or "\\" in new_name:
+        raise HTTPException(status_code=422, detail="유효하지 않은 폴더명")
+
+    p = _validate_path(path, db)
+    if not p.is_dir():
+        raise HTTPException(status_code=400, detail="Not a directory")
+
+    new_path = p.parent / new_name
+    if new_path.exists():
+        raise HTTPException(status_code=409, detail="이미 존재하는 폴더명입니다")
+
+    p.rename(new_path)
+    _cache.invalidate_files(str(p.parent))
+    return {"old_path": str(p), "new_path": str(new_path), "new_name": new_name}
+
+
+# ── 기타 파일 삭제 (이미지 / HTML) ───────────────────────────
+@router.post("/delete-extra-file")
+def delete_extra_file(
+    data: dict,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """이미지·HTML 등 기타 파일 삭제."""
+    path = data.get("path", "")
+    p = _validate_path(path, db)
+    if not p.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    suffix = p.suffix.lower()
+    allowed = IMAGE_EXTS | {".html"}
+    if suffix not in allowed:
+        raise HTTPException(status_code=400, detail="오디오 파일은 삭제할 수 없습니다")
+
+    p.unlink()
+    _cache.invalidate_files(str(p.parent))
+    return {"deleted": str(p)}

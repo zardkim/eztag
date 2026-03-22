@@ -33,6 +33,8 @@ class Track(Base):
     lyrics = Column(Text, nullable=True)
     has_cover = Column(Boolean, default=False)
     has_lyrics = Column(Boolean, default=False)
+    is_title_track = Column(Boolean, default=False, nullable=True)  # 타이틀곡 여부 (DB 전용)
+    youtube_url = Column(String(500), nullable=True)                # 뮤직비디오 YouTube URL (DB 전용)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

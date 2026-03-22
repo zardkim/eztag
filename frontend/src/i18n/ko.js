@@ -75,6 +75,7 @@ export default {
     audioLabel: '음악',
     exportHtml: 'HTML 생성',
     exportHtmlError: 'HTML 생성에 실패했습니다.',
+    eztagOrganized: 'eztag 정리됨',
     moveFolder: {
       title: '폴더 이동',
       button: '📦 이동',
@@ -266,6 +267,8 @@ export default {
       dockerHint: 'Docker 볼륨으로 마운트된 경로를 입력하세요.',
     },
     lrcSource: {
+      title: 'LRC 소스 우선순위',
+      desc: 'LRC 자동 검색 시 우선 사용할 소스와 보조 소스를 설정합니다. 기본 소스에서 못 찾으면 보조 소스를 시도합니다.',
       primary: 'LRC 기본 소스',
       primaryDesc: '우선 사용할 LRC 검색 소스',
       fallback: 'LRC 보조 소스',
@@ -303,13 +306,17 @@ export default {
       disabled: '비활성화',
     },
     metadata: {
-      title: '메타데이터 소스',
+      title: '메타데이터',
       spotifyDefault: '기본',
       comingSoon: '추후 지원',
       pending: '준비 중',
+      available: '사용 가능',
       spotifyHint: '에서 앱 등록 후 발급',
+      storefront: '국가 스토어',
       save: '메타데이터 설정 저장',
       saving: '저장 중...',
+      youtubeHint: '뮤직비디오 자동 검색 및 HTML 내보내기에 YouTube URL을 임베드합니다.',
+      youtubeApiHint: 'Google Cloud Console에서 YouTube Data API v3를 활성화한 후 발급받은 API 키를 입력하세요.',
     },
     logs: {
       title: '스캔 이력',

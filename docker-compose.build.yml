@@ -1,13 +1,20 @@
-# 소스 코드에서 직접 빌드할 때 사용
-# 사용법: docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+# 소스 코드에서 직접 빌드할 때 사용 (Docker Hub 이미지 대신 로컬 빌드)
+#
+# 사용법:
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+#
+# 업데이트 (소스 변경 후 재빌드):
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build --remove-orphans
 
 version: '3.8'
 
 services:
   backend:
-    image: ~
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
 
   frontend:
-    image: ~
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile

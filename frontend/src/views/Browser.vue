@@ -1,36 +1,33 @@
 <template>
   <div class="flex flex-col h-full">
-    <!-- ── Toolbar Row 1: 메뉴 버튼 ── -->
-    <div class="shrink-0 h-10 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-      <div class="flex items-center gap-2 h-full px-4 overflow-x-auto scrollbar-none">
+    <!-- ── Toolbar Row 1: App 상단 바에 Teleport ── -->
+    <Teleport to="#app-toolbar-slot">
+      <div class="flex items-center gap-2 h-full px-3 overflow-x-auto scrollbar-none flex-1 min-w-0">
+        <!-- undo / redo — 항상 표시 -->
+        <button
+          class="btn-toolbar shrink-0 gap-1 flex items-center disabled:opacity-30"
+          :disabled="!historyStore.canUndo || historyStore.busy"
+          :title="historyStore.undoLabel ? `되돌리기: ${historyStore.undoLabel}` : '되돌릴 내역 없음'"
+          @click="historyStore.undo(browserStore)"
+        >↩ 되돌리기</button>
+        <button
+          class="btn-toolbar shrink-0 gap-1 flex items-center disabled:opacity-30"
+          :disabled="!historyStore.canRedo || historyStore.busy"
+          :title="historyStore.redoLabel ? `다시 실행: ${historyStore.redoLabel}` : '다시 실행할 내역 없음'"
+          @click="historyStore.redo(browserStore)"
+        >다시 실행 ↪</button>
+        <div v-if="browserStore.selectedFolder" class="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0"></div>
         <template v-if="browserStore.selectedFolder && !browserStore.loading">
           <template v-if="browserStore.files.length > 0">
-            <!-- 다중 선택 카운트 -->
-            <span v-if="browserStore.checkedPaths.size > 0" class="text-xs text-blue-600 dark:text-blue-400 font-medium shrink-0">
-              {{ t('browser.checkedCount', { n: browserStore.checkedPaths.size }) }}
-              <button class="ml-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" @click="browserStore.setCheckedPaths(new Set())">✕</button>
-            </span>
-            <!-- 정렬 선택 -->
-            <select
-              v-model="browserStore.sortKey"
-              class="text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-1.5 py-1 focus:outline-none shrink-0"
-            >
-              <option value="track_no">{{ t('browser.sortTrack') }}</option>
-              <option value="filename">{{ t('browser.sortFilename') }}</option>
-              <option value="artist">{{ t('browser.sortArtist') }}</option>
-              <option value="album_title">{{ t('browser.sortAlbum') }}</option>
-            </select>
-            <button
-              class="btn-toolbar px-2 shrink-0"
-              :title="browserStore.sortOrder === 'asc' ? t('browser.sortDesc') : t('browser.sortAsc')"
-              @click="browserStore.sortOrder = browserStore.sortOrder === 'asc' ? 'desc' : 'asc'"
-            >{{ browserStore.sortOrder === 'asc' ? '↑' : '↓' }}</button>
-            <!-- 전체선택 버튼 -->
+            <!-- 전체선택 버튼 (선택 수량 통합 표시) -->
             <button
               class="btn-toolbar shrink-0"
-              :class="browserStore.checkedPaths.size === browserStore.displayFiles.length && browserStore.displayFiles.length > 0 ? 'btn-toolbar-active' : ''"
+              :class="browserStore.checkedPaths.size > 0 ? 'btn-toolbar-active' : ''"
               @click="toggleSelectAll"
-            >{{ t('browser.selectAll') }}</button>
+            >
+              <template v-if="browserStore.checkedPaths.size === 0">{{ t('browser.selectAll') }}</template>
+              <template v-else>{{ browserStore.checkedPaths.size }}/{{ browserStore.displayFiles.length }} ✕</template>
+            </button>
             <button
               class="btn-toolbar shrink-0"
               :class="showPanel === 'tag' ? 'btn-toolbar-active' : ''"
@@ -69,7 +66,6 @@
                 :style="lrcMenuPos"
               >
                 <p class="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ t('browser.lrcSourceLabel') }}</p>
-                <!-- 자동 (설정 기반) -->
                 <button
                   class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-left"
                   @click="startFetchLyrics('auto')"
@@ -110,10 +106,121 @@
           <button class="btn-toolbar shrink-0" @click="forceReload" title="새로고침">🔄</button>
         </template>
         <template v-else>
-          <span class="text-xs text-gray-400">{{ $t('browser.selectFolder') }}</span>
+          <span class="text-xs text-gray-400 px-1">{{ $t('browser.selectFolder') }}</span>
         </template>
       </div>
-    </div>
+    </Teleport>
+
+    <!-- ── Toolbar Row 1 (모바일): App 상단 바 모바일 슬롯에 Teleport ── -->
+    <Teleport to="#app-toolbar-slot-mobile">
+      <div class="flex items-center gap-2 h-full px-3 overflow-x-auto scrollbar-none flex-1 min-w-0">
+        <!-- undo / redo — 항상 표시 -->
+        <button
+          class="btn-toolbar shrink-0 gap-1 flex items-center disabled:opacity-30"
+          :disabled="!historyStore.canUndo || historyStore.busy"
+          :title="historyStore.undoLabel ? `되돌리기: ${historyStore.undoLabel}` : '되돌릴 내역 없음'"
+          @click="historyStore.undo(browserStore)"
+        >↩ 되돌리기</button>
+        <button
+          class="btn-toolbar shrink-0 gap-1 flex items-center disabled:opacity-30"
+          :disabled="!historyStore.canRedo || historyStore.busy"
+          :title="historyStore.redoLabel ? `다시 실행: ${historyStore.redoLabel}` : '다시 실행할 내역 없음'"
+          @click="historyStore.redo(browserStore)"
+        >다시 실행 ↪</button>
+        <div v-if="browserStore.selectedFolder" class="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0"></div>
+        <template v-if="browserStore.selectedFolder && !browserStore.loading">
+          <template v-if="browserStore.files.length > 0">
+            <!-- 전체선택 버튼 (선택 수량 통합 표시) -->
+            <button
+              class="btn-toolbar shrink-0"
+              :class="browserStore.checkedPaths.size > 0 ? 'btn-toolbar-active' : ''"
+              @click="toggleSelectAll"
+            >
+              <template v-if="browserStore.checkedPaths.size === 0">{{ t('browser.selectAll') }}</template>
+              <template v-else>{{ browserStore.checkedPaths.size }}/{{ browserStore.displayFiles.length }} ✕</template>
+            </button>
+            <button
+              class="btn-toolbar shrink-0"
+              :class="showPanel === 'tag' ? 'btn-toolbar-active' : ''"
+              @click="openBatchPanel('tag')"
+            >✏️ {{ $t('browser.editTag') }}</button>
+            <!-- 자동 태그 드롭다운 -->
+            <div class="relative shrink-0">
+              <button
+                class="btn-toolbar !bg-green-100 !text-green-700 hover:!bg-green-200 dark:!bg-green-900/30 dark:!text-green-400 flex items-center gap-1"
+                @click="toggleAutoTagMenu"
+              >🏷 {{ t('browser.autoTag') }}<span class="text-[10px] opacity-60">▾</span></button>
+              <div
+                v-if="showAutoTagMenu"
+                class="fixed top-20 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-[200] py-1.5"
+                :style="autoTagMenuPos"
+              >
+                <p class="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ t('browser.selectSource') }}</p>
+                <button
+                  v-for="p in availableProviders"
+                  :key="p.key"
+                  class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+                  @click="openAutoTagSearch(p.key)"
+                ><img :src="p.logo" :alt="p.label" class="w-5 h-5 rounded object-cover shrink-0" />{{ p.label }}</button>
+              </div>
+            </div>
+            <!-- LRC 드롭다운 -->
+            <div class="relative shrink-0">
+              <button
+                class="btn-toolbar !bg-purple-100 !text-purple-700 hover:!bg-purple-200 dark:!bg-purple-900/30 dark:!text-purple-400 disabled:opacity-40 flex items-center gap-1"
+                :disabled="fetchingLyrics || (browserStore.checkedPaths.size === 0 && browserStore.files.length === 0)"
+                @click="showLrcMenu = !showLrcMenu"
+              >🎵 LRC<span class="text-[10px] opacity-60">▾</span></button>
+              <div
+                v-if="showLrcMenu"
+                class="fixed top-20 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-[200] py-1.5"
+                :style="lrcMenuPos"
+              >
+                <p class="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ t('browser.lrcSourceLabel') }}</p>
+                <button
+                  class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-left"
+                  @click="startFetchLyrics('auto')"
+                >
+                  <span class="text-base">⚡</span>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-medium">{{ t('browser.lrcAuto') }}</div>
+                    <div class="text-[10px] text-gray-400 truncate">{{ lrcAutoDesc }}</div>
+                  </div>
+                </button>
+                <div class="mx-3 my-1 border-t border-gray-100 dark:border-gray-700"></div>
+                <p class="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ t('browser.lrcManual') }}</p>
+                <button
+                  v-for="src in [{key:'bugs', label:'Bugs 뮤직 (한국어)'}, {key:'lrclib', label:'LRCLIB.net (국제)'}]"
+                  :key="src.key"
+                  class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-left"
+                  @click="startFetchLyrics(src.key)"
+                ><span class="text-base">🎵</span>{{ src.label }}</button>
+              </div>
+            </div>
+            <button
+              class="btn-toolbar !bg-orange-100 !text-orange-700 hover:!bg-orange-200 dark:!bg-orange-900/30 dark:!text-orange-400 disabled:opacity-40 shrink-0"
+              :disabled="browserStore.files.length === 0"
+              @click="showRenameModal = true"
+            >{{ t('browser.rename') }}</button>
+            <button
+              v-if="isLibrarySubfolder"
+              class="btn-toolbar !bg-indigo-100 !text-indigo-700 hover:!bg-indigo-200 dark:!bg-indigo-900/30 dark:!text-indigo-400 shrink-0"
+              @click="showMoveModal = true"
+            >{{ t('browser.moveFolder.button') }}</button>
+          </template>
+          <button
+            v-if="browserStore.files.length > 0"
+            class="btn-toolbar !bg-teal-100 !text-teal-700 hover:!bg-teal-200 dark:!bg-teal-900/30 dark:!text-teal-400 disabled:opacity-40 shrink-0"
+            :disabled="exportingHtml"
+            @click="exportFolderHtml"
+          >📄 {{ exportingHtml ? '...' : t('browser.exportHtml') }}</button>
+          <button class="btn-toolbar shrink-0" @click="forceReload" title="새로고침">🔄</button>
+        </template>
+        <template v-else>
+          <span class="text-xs text-gray-400 px-1">{{ $t('browser.selectFolder') }}</span>
+        </template>
+      </div>
+    </Teleport>
 
     <!-- ── Toolbar Row 2: 폴더 경로 ── -->
     <div class="shrink-0 h-8 border-b border-gray-100 dark:border-gray-800/60 bg-gray-50 dark:bg-gray-900/60">
@@ -133,6 +240,16 @@
             :title="browserStore.breadcrumb[browserStore.breadcrumb.length - 1].path"
             @click="navigateToCrumb(browserStore.breadcrumb[browserStore.breadcrumb.length - 1], browserStore.breadcrumb.length - 1)"
           >{{ browserStore.breadcrumb[browserStore.breadcrumb.length - 1].name }}</button>
+          <!-- eztag 정리 완료 뱃지 -->
+          <span
+            v-if="browserStore.hasEztagReport"
+            class="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold
+                   bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700"
+            :title="$t('browser.eztagOrganized')"
+          >
+            <img src="/logo-icon.svg" class="w-3 h-3 rounded-sm" alt="" />
+            {{ $t('browser.eztagOrganized') }}
+          </span>
         </template>
         <span v-else class="text-gray-400 italic text-[11px]">{{ $t('browser.selectFolder') }}</span>
       </div>
@@ -185,8 +302,25 @@
 
     <!-- ── Content area ── -->
     <div class="relative flex-1 flex overflow-hidden min-h-0">
+      <!-- HTML 파일 뷰어 -->
+      <div v-if="browserStore.selectedExtraFile?.file_type === 'html'" class="flex-1 flex flex-col min-h-0">
+        <div class="shrink-0 flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <span class="text-xs text-gray-500 truncate">{{ browserStore.selectedExtraFile.filename }}</span>
+          <button
+            class="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white ml-4 shrink-0"
+            @click="browserStore.selectExtraFile(null)"
+          >✕ 닫기</button>
+        </div>
+        <iframe
+          :src="`/api/browse/extra-file?path=${encodeURIComponent(browserStore.selectedExtraFile.path)}`"
+          class="flex-1 w-full border-none bg-white"
+          sandbox="allow-same-origin allow-scripts"
+        ></iframe>
+      </div>
+
       <!-- File list -->
       <div
+        v-else
         ref="tableContainerRef"
         class="flex-1 overflow-y-auto overflow-x-hidden relative select-none min-h-0 flex flex-col"
         :class="showPanel ? 'hidden sm:flex sm:flex-col' : ''"
@@ -234,36 +368,6 @@
               </button>
             </div>
             <div v-if="browserStore.files.length > 0" class="mt-3 border-t border-gray-100 dark:border-gray-800"></div>
-          </div>
-
-          <!-- 이미지 / HTML 파일 -->
-          <div v-if="(browserStore.extraFiles?.length ?? 0) > 0" class="px-4 pt-2 pb-2">
-            <div v-if="(browserStore.subfolders?.length ?? 0) > 0 || browserStore.files.length > 0" class="mb-2 border-t border-gray-100 dark:border-gray-800"></div>
-            <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">기타 파일</p>
-            <div class="flex flex-wrap gap-2">
-              <template v-for="ef in browserStore.extraFiles" :key="ef.path">
-                <!-- 이미지 -->
-                <div
-                  v-if="ef.file_type === 'image'"
-                  class="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-300"
-                  :title="ef.filename"
-                >
-                  <img :src="browseApi.folderImageUrl(ef.path)" class="w-8 h-8 rounded object-cover bg-gray-100 dark:bg-gray-700" loading="lazy" />
-                  <span class="max-w-[140px] truncate">{{ ef.filename }}</span>
-                </div>
-                <!-- HTML -->
-                <a
-                  v-else-if="ef.file_type === 'html'"
-                  :href="`/api/browse/open-file?path=${encodeURIComponent(ef.path)}`"
-                  target="_blank"
-                  class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:border-orange-300 dark:hover:border-orange-600 transition-colors text-xs text-gray-600 dark:text-gray-300 hover:text-orange-700 dark:hover:text-orange-300"
-                  :title="ef.filename"
-                >
-                  <span class="text-base shrink-0">📄</span>
-                  <span class="max-w-[160px] truncate">{{ ef.filename }}</span>
-                </a>
-              </template>
-            </div>
           </div>
 
           <!-- 앨범 설명 -->
@@ -323,25 +427,25 @@
           <!-- ── 데스크톱 테이블 뷰 (md 이상) ── -->
           <div v-if="browserStore.displayFiles.length > 0" class="hidden md:flex md:flex-col md:flex-1 overflow-x-auto">
           <table class="w-full min-w-[1400px] text-sm">
-              <thead class="sticky top-0 bg-gray-50 dark:bg-gray-800 z-10">
-                <tr class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                  <th class="text-center px-2 py-2 font-medium w-12">디스크</th>
-                  <th class="text-center px-2 py-2 font-medium w-12">트랙</th>
+              <thead class="sticky top-0 bg-indigo-50 dark:bg-slate-800 border-b border-indigo-100 dark:border-slate-700 z-10">
+                <tr class="text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap select-none">
+                  <th class="text-center px-2 py-2 font-semibold w-12 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('disc_no')">디스크<span class="ml-0.5 opacity-60">{{ sortIcon('disc_no') }}</span></th>
+                  <th class="text-center px-2 py-2 font-semibold w-12 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('track_no')">트랙<span class="ml-0.5 opacity-60">{{ sortIcon('track_no') }}</span></th>
                   <th class="w-9 shrink-0"></th>
-                  <th class="text-left px-2 py-2 font-medium min-w-[160px]">{{ $t('common.title') }}</th>
-                  <th class="text-left px-3 py-2 font-medium min-w-[110px]">{{ $t('common.artist') }}</th>
-                  <th class="text-left px-3 py-2 font-medium min-w-[110px]">앨범 아티스트</th>
-                  <th class="text-left px-3 py-2 font-medium min-w-[110px]">{{ $t('common.album') }}</th>
-                  <th class="text-left px-3 py-2 font-medium min-w-[80px]">장르</th>
-                  <th class="text-center px-2 py-2 font-medium w-14">연도</th>
-                  <th class="text-left px-3 py-2 font-medium min-w-[100px]">설명</th>
-                  <th class="text-center px-2 py-2 font-medium w-16">코덱</th>
-                  <th class="text-center px-2 py-2 font-medium w-12">LRC</th>
-                  <th class="text-center px-2 py-2 font-medium w-16">태그버전</th>
-                  <th class="text-center px-2 py-2 font-medium w-20">비트레이트</th>
-                  <th class="text-center px-2 py-2 font-medium w-20">주파수</th>
-                  <th class="text-center px-2 py-2 font-medium w-16">길이</th>
-                  <th class="text-left px-3 py-2 font-medium min-w-[130px]">수정된 일시</th>
+                  <th class="text-left px-2 py-2 font-semibold min-w-[160px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('title')">{{ $t('common.title') }}<span class="ml-0.5 opacity-60">{{ sortIcon('title') }}</span></th>
+                  <th class="text-left px-3 py-2 font-semibold min-w-[110px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('artist')">{{ $t('common.artist') }}<span class="ml-0.5 opacity-60">{{ sortIcon('artist') }}</span></th>
+                  <th class="text-left px-3 py-2 font-semibold min-w-[110px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('album_artist')">앨범 아티스트<span class="ml-0.5 opacity-60">{{ sortIcon('album_artist') }}</span></th>
+                  <th class="text-left px-3 py-2 font-semibold min-w-[110px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('album_title')">{{ $t('common.album') }}<span class="ml-0.5 opacity-60">{{ sortIcon('album_title') }}</span></th>
+                  <th class="text-left px-3 py-2 font-semibold min-w-[80px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('genre')">장르<span class="ml-0.5 opacity-60">{{ sortIcon('genre') }}</span></th>
+                  <th class="text-center px-2 py-2 font-semibold w-14 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('year')">연도<span class="ml-0.5 opacity-60">{{ sortIcon('year') }}</span></th>
+                  <th class="text-left px-3 py-2 font-semibold min-w-[100px]">설명</th>
+                  <th class="text-center px-2 py-2 font-semibold w-16 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('file_format')">코덱<span class="ml-0.5 opacity-60">{{ sortIcon('file_format') }}</span></th>
+                  <th class="text-center px-2 py-2 font-semibold w-12">LRC</th>
+                  <th class="text-center px-2 py-2 font-semibold w-16">태그버전</th>
+                  <th class="text-center px-2 py-2 font-semibold w-20 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('bitrate')">비트레이트<span class="ml-0.5 opacity-60">{{ sortIcon('bitrate') }}</span></th>
+                  <th class="text-center px-2 py-2 font-semibold w-20 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('sample_rate')">주파수<span class="ml-0.5 opacity-60">{{ sortIcon('sample_rate') }}</span></th>
+                  <th class="text-center px-2 py-2 font-semibold w-16 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('duration')">길이<span class="ml-0.5 opacity-60">{{ sortIcon('duration') }}</span></th>
+                  <th class="text-left px-3 py-2 font-semibold min-w-[130px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('modified_time')">수정된 일시<span class="ml-0.5 opacity-60">{{ sortIcon('modified_time') }}</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -373,6 +477,17 @@
                         @click.stop="currentPlay = file"
                       >{{ currentPlay?.path === file.path ? '⏸' : '▶' }}</button>
                       <p class="truncate text-gray-900 dark:text-white font-medium">{{ file.title || file.filename }}</p>
+                      <span v-if="file.is_title_track"
+                        class="shrink-0 text-[9px] font-extrabold px-1.5 py-0.5 rounded
+                               bg-gradient-to-r from-orange-500 to-red-500 text-white leading-none"
+                      >타이틀</span>
+                      <a v-if="file.youtube_url" :href="file.youtube_url" target="_blank"
+                        class="shrink-0 w-4 h-4 flex items-center justify-center text-red-500 hover:text-red-600 opacity-70 hover:opacity-100 transition-opacity"
+                        title="뮤직비디오 보기"
+                        @click.stop
+                      >
+                        <svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
+                      </a>
                     </div>
                   </td>
                   <td class="px-3 py-2 text-gray-600 dark:text-gray-400 max-w-[130px]">
@@ -448,13 +563,17 @@ import RenameByTagsModal from '../components/RenameByTagsModal.vue'
 import MoveToDestinationModal from '../components/MoveToDestinationModal.vue'
 import MiniPlayer from '../components/MiniPlayer.vue'
 import { useBrowserStore } from '../stores/browser.js'
+import { useWorkspaceStore } from '../stores/workspace.js'
 import { useToastStore } from '../stores/toast.js'
+import { useHistoryStore } from '../stores/history.js'
 import { configApi } from '../api/config.js'
 import { browseApi } from '../api/index.js'
 import { downloadBlob } from '../utils/download.js'
 
 const { t } = useI18n()
 const browserStore = useBrowserStore()
+const workspaceStore = useWorkspaceStore()
+const historyStore = useHistoryStore()
 const toastStore = useToastStore()
 const showPanel = ref(null)
 const showSpotifyDialog = ref(false)
@@ -682,13 +801,14 @@ function openBatchPanel(mode) {
 }
 
 function toggleSelectAll() {
-  const all = browserStore.displayFiles.map(f => f.path)
-  const allSelected = all.length > 0 && all.every(p => browserStore.checkedPaths.has(p))
-  if (allSelected) {
+  if (browserStore.checkedPaths.size > 0) {
+    // 하나라도 선택돼 있으면 전체 해제
     browserStore.setCheckedPaths(new Set())
     browserStore.selectFile(null)
     showPanel.value = null
   } else {
+    // 아무것도 선택 안 됐으면 전체 선택
+    const all = browserStore.displayFiles.map(f => f.path)
     browserStore.setCheckedPaths(new Set(all))
     browserStore.selectFile(null)
     showPanel.value = 'tag'
@@ -723,6 +843,20 @@ function forceReload() {
   if (!path) return
   browserStore.invalidateFilesCache(path)
   browserStore.loadFiles(path, true)
+}
+
+// ── 헤더 클릭 정렬 ──────────────────────────────────────────
+function sortByCol(key) {
+  if (browserStore.sortKey === key) {
+    browserStore.sortOrder = browserStore.sortOrder === 'asc' ? 'desc' : 'asc'
+  } else {
+    browserStore.sortKey = key
+    browserStore.sortOrder = 'asc'
+  }
+}
+function sortIcon(key) {
+  if (browserStore.sortKey !== key) return '↕'
+  return browserStore.sortOrder === 'asc' ? '↑' : '↓'
 }
 
 // ── LRC 가져오기 ──────────────────────────────────────────
@@ -822,8 +956,10 @@ async function onRenamed(result) {
   const path = browserStore.selectedFolder?.path
   if (path) {
     browserStore.invalidateFilesCache(path)
-    browserStore.loadFiles(path, true)
+    await browserStore.loadFiles(path, true)
   }
+  // 워크스페이스 아이템 경로도 갱신
+  await workspaceStore.loadCurrentSession()
 }
 
 async function startFetchLyrics(source) {

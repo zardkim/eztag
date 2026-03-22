@@ -4,20 +4,28 @@
 
       <!-- Header -->
       <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
-        <h3 class="text-base font-semibold text-gray-900 dark:text-white">📂 라이브러리에서 불러오기</h3>
+        <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ folderMode ? '📂 폴더 선택' : '📂 라이브러리에서 불러오기' }}</h3>
         <button class="text-gray-400 hover:text-gray-700 dark:hover:text-white p-1" @click="$emit('close')">✕</button>
       </div>
 
       <!-- Breadcrumb -->
-      <div class="px-5 py-2 flex items-center gap-1 text-xs text-gray-500 border-b border-gray-100 dark:border-gray-800 shrink-0 overflow-x-auto scrollbar-none">
+      <div class="px-3 py-2 flex items-center gap-1 text-xs text-gray-500 border-b border-gray-100 dark:border-gray-800 shrink-0 overflow-x-auto scrollbar-none">
+        <!-- 상위 폴더 이동 버튼 -->
         <button
-          v-for="(crumb, i) in breadcrumb"
-          :key="crumb.path"
-          class="hover:text-blue-600 dark:hover:text-blue-400 shrink-0 transition-colors"
-          :class="i === breadcrumb.length - 1 ? 'text-gray-900 dark:text-white font-medium' : ''"
-          @click="navigateTo(crumb, i)"
-        >{{ crumb.name }}</button>
-        <span v-if="breadcrumb.length > 1" class="text-gray-300 dark:text-gray-700 mx-0.5">/</span>
+          v-if="breadcrumb.length > 0"
+          class="shrink-0 w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors mr-0.5"
+          title="상위 폴더"
+          @click="goUp"
+        >↑</button>
+        <template v-for="(crumb, i) in breadcrumb" :key="crumb.path">
+          <span v-if="i > 0" class="text-gray-300 dark:text-gray-700 shrink-0">/</span>
+          <button
+            class="hover:text-blue-600 dark:hover:text-blue-400 shrink-0 transition-colors"
+            :class="i === breadcrumb.length - 1 ? 'text-gray-900 dark:text-white font-medium' : ''"
+            @click="navigateTo(crumb, i)"
+          >{{ crumb.name }}</button>
+        </template>
+        <span v-if="breadcrumb.length === 0" class="text-gray-400 italic">라이브러리 루트</span>
       </div>
 
       <!-- 로딩 -->
@@ -39,19 +47,19 @@
               <button class="flex-1 flex items-center gap-2 text-left min-w-0" @click="enterFolder(folder)">
                 <span class="text-yellow-400 shrink-0">{{ folder.has_children ? '📂' : '📁' }}</span>
                 <span class="text-sm text-gray-700 dark:text-gray-300 truncate">{{ folder.name }}</span>
-                <span v-if="folder.has_audio" class="text-[9px] px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-500 shrink-0">음악</span>
               </button>
+              <!-- 폴더 모드: 이 폴더 열기 버튼 -->
               <button
+                v-if="folderMode"
                 class="shrink-0 text-xs px-2 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors opacity-0 group-hover:opacity-100"
-                :disabled="adding"
-                @click.stop="addFolder(folder)"
-              >+ 폴더 추가</button>
+                @click.stop="$emit('select-folder', folder)"
+              >열기</button>
             </div>
           </div>
         </div>
 
-        <!-- 오디오 파일 -->
-        <div v-if="files.length > 0" class="px-4 pt-2 pb-3">
+        <!-- 오디오 파일 (폴더 모드에서는 숨김) -->
+        <div v-if="files.length > 0 && !folderMode" class="px-4 pt-2 pb-3">
           <div class="flex items-center justify-between mb-1.5">
             <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">오디오 파일 ({{ files.length }}개)</p>
             <button
@@ -87,8 +95,11 @@
 
       <!-- Footer -->
       <div class="px-5 py-3 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0">
-        <p v-if="lastAdded" class="text-xs text-green-600 dark:text-green-400">✓ {{ lastAdded }}</p>
-        <p v-else class="text-xs text-gray-400">폴더나 파일을 선택하세요.</p>
+        <p v-if="folderMode" class="text-xs text-gray-400">폴더를 선택하면 파일 브라우저에서 열립니다.</p>
+        <template v-else>
+          <p v-if="lastAdded" class="text-xs text-green-600 dark:text-green-400">✓ {{ lastAdded }}</p>
+          <p v-else class="text-xs text-gray-400">폴더나 파일을 선택하세요.</p>
+        </template>
         <button
           class="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-lg transition-colors"
           @click="$emit('close')"
@@ -104,7 +115,10 @@ import { workspaceApi } from '../api/index.js'
 import { useWorkspaceStore } from '../stores/workspace.js'
 import { useToastStore } from '../stores/toast.js'
 
-const emit = defineEmits(['close', 'added'])
+const props = defineProps({
+  folderMode: { type: Boolean, default: false },
+})
+const emit = defineEmits(['close', 'added', 'select-folder'])
 const workspaceStore = useWorkspaceStore()
 const toastStore = useToastStore()
 
@@ -150,23 +164,18 @@ function enterFolder(folder) {
 function navigateTo(crumb, index) {
   if (index === breadcrumb.value.length - 1) return
   breadcrumb.value = breadcrumb.value.slice(0, index + 1)
-  if (index === -1) {
-    loadRoots()
-  } else {
-    loadChildren(crumb.path)
-  }
+  loadChildren(crumb.path)
 }
 
-async function addFolder(folder) {
-  adding.value = true
-  try {
-    const result = await workspaceStore.loadFolder(folder.path, true)
-    lastAdded.value = `"${folder.name}" 폴더 추가됨 (${result.added}개)`
-    emit('added')
-  } catch (e) {
-    toastStore.error(e.response?.data?.detail || e.message)
-  } finally {
-    adding.value = false
+function goUp() {
+  if (breadcrumb.value.length === 0) return
+  if (breadcrumb.value.length === 1) {
+    breadcrumb.value = []
+    loadRoots()
+  } else {
+    const parent = breadcrumb.value[breadcrumb.value.length - 2]
+    breadcrumb.value = breadcrumb.value.slice(0, -1)
+    loadChildren(parent.path)
   }
 }
 
@@ -204,5 +213,11 @@ function extBadge(ext) {
   return map[ext] || 'bg-gray-100 dark:bg-gray-700 text-gray-500'
 }
 
-onMounted(loadRoots)
+onMounted(async () => {
+  await loadRoots()
+  // Library가 단일 루트면 자동으로 진입
+  if (folders.value.length === 1) {
+    enterFolder(folders.value[0])
+  }
+})
 </script>

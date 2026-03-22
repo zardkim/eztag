@@ -1,7 +1,12 @@
 # ── 제외 폴더 ──────────────────────────────────────────────
 참조소스/
 docs/
-data/
+data/covers/
+data/logs/
+data/backup/
+data/db/
+data/library/*
+!data/library/.gitkeep
 
 # ── Python ─────────────────────────────────────────────────
 __pycache__/
