@@ -77,7 +77,58 @@ cp env.sample .env
 | `BACKEND_PORT` | `18011` | 백엔드 API 포트 |
 | `VERSION` | `latest` | Docker 이미지 태그 |
 
-#### 3. 실행
+#### 3. docker-compose.yml 예시
+
+```yaml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: eztag
+      POSTGRES_USER: eztag
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-eztag_password}
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    networks:
+      - eztag-net
+
+  backend:
+    image: zardkim/eztag-backend:${VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:${BACKEND_PORT:-18011}:18011"
+    environment:
+      DATABASE_URL: postgresql://eztag:${DB_PASSWORD:-eztag_password}@postgres:5432/eztag
+      MUSIC_BASE_PATH: /music
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set in .env file}
+    volumes:
+      - ${MUSIC_PATH:-./data/library}:/music:ro
+      - ./data/covers:/app/data/covers
+      - ./data/backup:/app/data/backup
+    depends_on:
+      - postgres
+    networks:
+      - eztag-net
+
+  frontend:
+    image: zardkim/eztag-frontend:${VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:${FRONTEND_PORT:-5850}:80"
+    depends_on:
+      - backend
+    networks:
+      - eztag-net
+
+networks:
+  eztag-net:
+    driver: bridge
+```
+
+#### 4. 실행
 
 ```bash
 docker compose up -d
@@ -188,7 +239,58 @@ Edit `.env` and set the required values:
 | `BACKEND_PORT` | `18011` | Backend API port |
 | `VERSION` | `latest` | Docker image tag |
 
-#### 3. Start
+#### 3. docker-compose.yml example
+
+```yaml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: eztag
+      POSTGRES_USER: eztag
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-eztag_password}
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    networks:
+      - eztag-net
+
+  backend:
+    image: zardkim/eztag-backend:${VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:${BACKEND_PORT:-18011}:18011"
+    environment:
+      DATABASE_URL: postgresql://eztag:${DB_PASSWORD:-eztag_password}@postgres:5432/eztag
+      MUSIC_BASE_PATH: /music
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set in .env file}
+    volumes:
+      - ${MUSIC_PATH:-./data/library}:/music:ro
+      - ./data/covers:/app/data/covers
+      - ./data/backup:/app/data/backup
+    depends_on:
+      - postgres
+    networks:
+      - eztag-net
+
+  frontend:
+    image: zardkim/eztag-frontend:${VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:${FRONTEND_PORT:-5850}:80"
+    depends_on:
+      - backend
+    networks:
+      - eztag-net
+
+networks:
+  eztag-net:
+    driver: bridge
+```
+
+#### 4. Start
 
 ```bash
 docker compose up -d
