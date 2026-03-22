@@ -109,6 +109,14 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     return data
   }
 
+  // updates: [{ item_id, tags }]
+  async function batchStageTags(updates) {
+    if (!updates.length) return
+    const { data } = await workspaceApi.batchStageTags(updates)
+    if (data.items) data.items.forEach(_updateItem)
+    return data
+  }
+
   async function stageRename(itemId, newName) {
     const { data } = await workspaceApi.stageRename(itemId, newName)
     _updateItem(data)
@@ -174,6 +182,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     loadFolder,
     loadFiles,
     stageTags,
+    batchStageTags,
     stageRename,
     unstageTags,
     applyItem,

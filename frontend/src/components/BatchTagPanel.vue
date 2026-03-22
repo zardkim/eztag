@@ -815,14 +815,12 @@ async function save() {
     const paths = targetPaths.value
 
     if (props.workspaceMode) {
-      // Workspace staging mode: stage tags for each workspace item
+      // Workspace staging mode: 단일 요청으로 일괄 스테이징
       const idSet = new Set(props.checkedWorkspaceIds)
       const wsItems = workspaceStore.items.filter(i =>
         props.checkedWorkspaceIds.length > 0 ? idSet.has(i.id) : true
       )
-      for (const item of wsItems) {
-        await workspaceStore.stageTags(item.id, updates)
-      }
+      await workspaceStore.batchStageTags(wsItems.map(i => ({ item_id: i.id, tags: updates })))
       fieldMode.value = {}
       emit('saved')
       showToast('스테이징 완료')

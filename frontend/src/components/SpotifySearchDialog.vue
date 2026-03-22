@@ -529,12 +529,12 @@ async function applyAll() {
     const paths = targetPaths.value
 
     if (props.workspaceMode) {
-      // Workspace staging mode: stage tags without writing to files
+      // Workspace staging mode: 단일 요청으로 일괄 스테이징
+      const batchUpdates = []
       for (const file of localFiles.value) {
         const itemId = file._workspace_item_id
         if (!itemId) continue
         const tags = { ...albumUpdates }
-        // Track-specific overrides
         const match = trackMatches.value.find(m => m.local?.path === file.path)
         if (match?.remote) {
           const rm = match.remote
@@ -543,10 +543,9 @@ async function applyAll() {
           if (rm.disc_no)  tags.disc_no  = rm.disc_no
           if (rm.artist && rm.artist !== (s.album_artist || s.artist)) tags.artist = rm.artist
         }
-        if (Object.keys(tags).length) {
-          await workspaceStore.stageTags(itemId, tags)
-        }
+        if (Object.keys(tags).length) batchUpdates.push({ item_id: itemId, tags })
       }
+      if (batchUpdates.length) await workspaceStore.batchStageTags(batchUpdates)
       emit('applied')
       emit('close')
       return
@@ -555,9 +554,10 @@ async function applyAll() {
     // 1. 앨범 공통 태그 일괄 적용
     if (Object.keys(albumUpdates).length) {
       if (s.cover_url) {
-        for (const path of paths) {
-          await metadataApi.applyByPath({ path, ...albumUpdates, cover_url: s.cover_url })
-        }
+        // 커버 포함: 파일별 applyByPath 병렬 처리
+        await Promise.allSettled(
+          paths.map(path => metadataApi.applyByPath({ path, ...albumUpdates, cover_url: s.cover_url }))
+        )
         browserStore.updateFiles(paths, { ...albumUpdates, has_cover: true })
         const folderPath = browserStore.selectedFolder?.path
         if (folderPath) browserStore.invalidateFilesCache(folderPath)
@@ -567,22 +567,22 @@ async function applyAll() {
       }
     }
 
-    // 2. 트랙별 태그 개별 적용
-    for (const match of trackMatches.value) {
-      if (!match.local || !match.remote) continue
-      const rm = match.remote
-      const trackUpdates = {}
-      if (rm.title)    trackUpdates.title    = rm.title
-      if (rm.track_no) trackUpdates.track_no = rm.track_no
-      if (rm.disc_no)  trackUpdates.disc_no  = rm.disc_no
-      if (rm.artist && rm.artist !== (s.album_artist || s.artist)) {
-        trackUpdates.artist = rm.artist
-      }
-      if (Object.keys(trackUpdates).length) {
-        await browseApi.writeTags({ path: match.local.path, ...trackUpdates })
-        browserStore.updateFile({ path: match.local.path, ...trackUpdates })
-      }
-    }
+    // 2. 트랙별 태그: 병렬 처리
+    const trackWriteJobs = trackMatches.value
+      .filter(m => m.local && m.remote)
+      .map(m => {
+        const rm = m.remote
+        const trackUpdates = {}
+        if (rm.title)    trackUpdates.title    = rm.title
+        if (rm.track_no) trackUpdates.track_no = rm.track_no
+        if (rm.disc_no)  trackUpdates.disc_no  = rm.disc_no
+        if (rm.artist && rm.artist !== (s.album_artist || s.artist)) trackUpdates.artist = rm.artist
+        if (!Object.keys(trackUpdates).length) return null
+        return browseApi.writeTags({ path: m.local.path, ...trackUpdates })
+          .then(() => browserStore.updateFile({ path: m.local.path, ...trackUpdates }))
+      })
+      .filter(Boolean)
+    if (trackWriteJobs.length) await Promise.allSettled(trackWriteJobs)
 
     // 앨범 소개 DB 저장 (파일 태그 미기록)
     if (s.description) {

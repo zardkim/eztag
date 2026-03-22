@@ -142,6 +142,7 @@ export const workspaceApi = {
 
   // 스테이징
   stageTags: (id, tags) => client.put(`/workspace/items/${id}/stage-tags`, { tags }),
+  batchStageTags: (updates) => client.put('/workspace/items/batch-stage-tags', { updates }),
   stageRename: (id, new_name) => client.put(`/workspace/items/${id}/stage-rename`, { new_name }),
   unstageTags: (id) => client.delete(`/workspace/items/${id}/stage-tags`),
   getDiff: (id) => client.get(`/workspace/items/${id}/diff`),

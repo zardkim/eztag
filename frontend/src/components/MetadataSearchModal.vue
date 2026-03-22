@@ -204,34 +204,41 @@ async function applyAlbumAll() {
   const coverUrl = spotifyTracks[0]?.cover_url || null
 
   try {
-    for (const st of spotifyTracks) {
-      // 1차: track_no + disc_no 매칭
+    // 1단계: 매칭 (동기, 빠름)
+    const matchPairs = spotifyTracks.map(st => {
       let local = localTracks.find(tr =>
         tr.track_no === st.track_no && (tr.disc_no || 1) === (st.disc_no || 1)
       )
-      // 2차: 제목 정규화 매칭
       if (!local) {
         const stNorm = _normalizeTitle(st.title)
         local = localTracks.find(tr => _normalizeTitle(tr.title) === stNorm)
       }
-      // 3차: 트랙 수가 같으면 순서(index) 매칭
       if (!local && spotifyTracks.length === localTracks.length) {
         local = localTracks[spotifyTracks.indexOf(st)]
       }
+      return { st, local }
+    })
 
-      if (local) {
-        try {
-          // 태그만 적용 (커버는 아래에서 1회 일괄 처리)
-          const { cover_url: _, ...tagData } = st
-          await metadataApi.apply(local.id, tagData)
-          applied++
-        } catch (e) {
-          unmatched.push(`${st.track_no || '?'}. ${st.title} (저장 실패)`)
-        }
+    // 매칭 실패 수집
+    matchPairs.filter(p => !p.local)
+      .forEach(({ st }) => unmatched.push(`${st.track_no || '?'}. ${st.title} (매칭 실패)`))
+
+    // 2단계: 매칭된 트랙 병렬 저장 (커버 제외)
+    const matched = matchPairs.filter(p => p.local)
+    const results = await Promise.allSettled(
+      matched.map(({ st, local }) => {
+        const { cover_url: _, ...tagData } = st
+        return metadataApi.apply(local.id, tagData)
+      })
+    )
+    results.forEach((r, i) => {
+      const { st } = matched[i]
+      if (r.status === 'fulfilled') {
+        applied++
       } else {
-        unmatched.push(`${st.track_no || '?'}. ${st.title} (매칭 실패)`)
+        unmatched.push(`${st.track_no || '?'}. ${st.title} (저장 실패)`)
       }
-    }
+    })
 
     // 커버 1회 다운로드 → 앨범 전체 적용
     if (coverUrl && props.album?.id && applied > 0) {

@@ -226,6 +226,7 @@ export default {
       trackNo: 'Track No.',
       discNo: 'Disc No.',
       lyrics: 'Lyrics',
+      comment: 'Description (Comment)',
     },
   },
   batchEdit: {

@@ -339,6 +339,58 @@ class StageTagsRequest(BaseModel):
     tags: dict
 
 
+class BatchStageTagsItem(BaseModel):
+    item_id: int
+    tags: dict
+
+
+class BatchStageTagsRequest(BaseModel):
+    updates: list[BatchStageTagsItem]
+
+
+@router.put("/items/batch-stage-tags")
+def batch_stage_tags(
+    req: BatchStageTagsRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """여러 아이템의 태그를 단일 트랜잭션으로 한 번에 스테이징."""
+    if not req.updates:
+        return {"ok": True, "count": 0}
+
+    item_ids = [u.item_id for u in req.updates]
+    items_map = {
+        i.id: i
+        for i in db.query(WorkspaceItem).filter(WorkspaceItem.id.in_(item_ids)).all()
+    }
+
+    updated_ids = []
+    session_id = None
+    for u in req.updates:
+        item = items_map.get(u.item_id)
+        if not item or not u.tags:
+            continue
+        merged = dict(item.pending_tags or {})
+        merged.update(u.tags)
+        item.pending_tags = merged
+        session_id = item.session_id
+        updated_ids.append(u.item_id)
+
+    if session_id and updated_ids:
+        db.add(WorkspaceHistoryOp(
+            session_id=session_id,
+            file_path="(batch)",
+            op_type="tag_edit",
+            op_detail={"item_ids": updated_ids, "count": len(updated_ids)},
+        ))
+
+    db.commit()
+
+    # 갱신된 아이템 목록 반환
+    updated_items = [_item_to_dict(items_map[i]) for i in updated_ids if i in items_map]
+    return {"ok": True, "count": len(updated_ids), "items": updated_items}
+
+
 @router.put("/items/{item_id}/stage-tags")
 def stage_tags(
     item_id: int,
@@ -505,13 +557,44 @@ def apply_item(
     return {**result, "item": _item_to_dict(item)}
 
 
+def _write_file_ops(item_id: int, file_path: str, pending_tags: dict | None, pending_rename: str | None) -> tuple:
+    """파일 I/O만 처리 (DB 미접근, 스레드 안전). (item_id, errors, new_path, ops) 반환."""
+    errors = []
+    applied_ops = []
+    new_path = file_path
+
+    if pending_tags:
+        try:
+            write_tags(file_path, pending_tags)
+            applied_ops.append("tag_write")
+        except Exception as e:
+            errors.append(f"태그 쓰기 실패: {e}")
+
+    if pending_rename and not errors:
+        try:
+            old_p = Path(file_path)
+            new_p = old_p.parent / pending_rename
+            if new_p.exists() and new_p != old_p:
+                errors.append(f"파일명 충돌: {pending_rename}")
+            else:
+                old_p.rename(new_p)
+                new_path = str(new_p)
+                applied_ops.append("rename")
+        except Exception as e:
+            errors.append(f"파일명 변경 실패: {e}")
+
+    return item_id, errors, new_path, applied_ops
+
+
 @router.post("/session/{session_id}/apply")
 def apply_session(
     session_id: int,
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    """세션의 모든 스테이징 변경을 실제 파일에 일괄 반영."""
+    """세션의 모든 스테이징 변경을 실제 파일에 일괄 반영 (파일 I/O 병렬 처리)."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     session = db.get(WorkspaceSession, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다")
@@ -524,23 +607,65 @@ def apply_session(
     if not pending_items:
         return {"ok": True, "applied": 0, "errors": 0, "message": "변경 사항이 없습니다"}
 
+    # ── 1단계: 파일 I/O 병렬 처리 ──────────────────────────
+    workers = min(8, len(pending_items))
+    file_results: dict[int, tuple] = {}  # item_id → (errors, new_path, ops)
+
+    with ThreadPoolExecutor(max_workers=workers) as exe:
+        futures = {
+            exe.submit(
+                _write_file_ops,
+                item.id,
+                item.file_path,
+                dict(item.pending_tags) if item.pending_tags else None,
+                item.pending_rename,
+            ): item.id
+            for item in pending_items
+        }
+        for fut in as_completed(futures):
+            try:
+                item_id, errors, new_path, ops = fut.result()
+            except Exception as e:
+                item_id = futures[fut]
+                errors, new_path, ops = [f"예상치 못한 오류: {e}"], "", []
+            file_results[item_id] = (errors, new_path, ops)
+
+    # ── 2단계: DB 업데이트 (메인 스레드, 단일 트랜잭션) ──────
+    now = datetime.now(timezone.utc)
     applied_count = 0
     error_count = 0
     results = []
 
     for item in pending_items:
-        r = _apply_item(item, db)
-        results.append({"path": item.file_path, **r})
-        if r["ok"]:
-            applied_count += 1
-        else:
+        errors, new_path, ops = file_results.get(item.id, (["결과 없음"], item.file_path, []))
+
+        if errors:
+            item.status = "error"
+            item.apply_error = "; ".join(errors)
             error_count += 1
+        else:
+            item.status = "applied"
+            item.apply_error = None
+            item.pending_tags = None
+            item.pending_rename = None
+            item.applied_at = now
+            if new_path and new_path != item.file_path:
+                item.file_path = new_path
+            applied_count += 1
+
+        db.add(WorkspaceHistoryOp(
+            session_id=item.session_id,
+            file_path=item.file_path,
+            op_type="apply",
+            op_detail={"ops": ops, "errors": errors},
+        ))
+        results.append({"path": item.file_path, "ok": not errors, "errors": errors, "ops": ops})
 
     # 모두 적용 완료 시 세션 상태 업데이트
     all_done = all(i.status in ("applied", "error", "skipped") for i in session.items)
     if all_done and error_count == 0:
         session.status = "applied"
-        session.applied_at = datetime.now(timezone.utc)
+        session.applied_at = now
 
     db.commit()
     return {

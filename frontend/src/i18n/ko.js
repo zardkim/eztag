@@ -226,6 +226,7 @@ export default {
       trackNo: '트랙 번호',
       discNo: '디스크 번호',
       lyrics: '가사',
+      comment: '설명 (Comment)',
     },
   },
   batchEdit: {
