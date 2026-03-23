@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.5.2-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.6.0-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -179,7 +179,7 @@ docker compose pull && docker compose up -d
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **v0.5.2** | 2026-03-23 | PWA support (mobile home screen, service worker cache), Comment field editing, save speed improvements |
+| **v0.6.0** | 2026-03-23 | YouTube MV panel, folder rename, full i18n expansion, UI improvements |
 | v0.5.0 | 2026-03-22 | Title track / YouTube MV, mobile layout overhaul, login language toggle |
 | v0.4.0 | — | Workspace-based tag editing, file mover, mobile toolbar |
 | v0.3.0 | — | LRC lyrics, HTML export, auto scan scheduler |

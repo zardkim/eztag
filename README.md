@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.5.2-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.6.0-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -179,7 +179,7 @@ docker compose pull && docker compose up -d
 
 | 버전 | 날짜 | 주요 변경사항 |
 |------|------|--------------|
-| **v0.5.2** | 2026-03-23 | PWA 지원 (모바일 홈 화면, 서비스 워커 캐시), 태그 설명(Comment) 편집, 저장 속도 개선 |
+| **v0.6.0** | 2026-03-23 | YouTube MV 패널, 폴더 이름 변경, i18n 전면 확장, UI 전반 개선 |
 | v0.5.0 | 2026-03-22 | 타이틀곡/YouTube MV, 모바일 레이아웃 개편, 로그인 언어 전환 |
 | v0.4.0 | — | 워크스페이스 기반 태그 편집, 파일 이동, 모바일 툴바 |
 | v0.3.0 | — | LRC 가사 자동 가져오기, HTML 내보내기, 자동 스캔 스케줄러 |
