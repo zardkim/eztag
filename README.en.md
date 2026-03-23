@@ -161,7 +161,7 @@ docker compose pull && docker compose up -d
 ## Synology NAS Installation
 
 1. Download `docker-compose.yml` and `env.sample` to your PC
-2. Copy `env.sample` to `.env` and set `MUSIC_PATH=/volume1/music` (your actual path)
+2. Rename `env.sample` to `.env` and set the required values (`SECRET_KEY` required, update `MUSIC_PATH` to your actual path)
 3. Container Manager → Project → Upload `docker-compose.yml` and `.env`, then start
 
 ## Settings
@@ -170,7 +170,6 @@ docker compose pull && docker compose up -d
 |------|-------------|
 | Spotify API | Enter Client ID / Client Secret |
 | YouTube Data API v3 | API key for auto MV search |
-| Google CSE | Google Custom Search Engine for cover art |
 | Auto Scan Interval | In minutes (0 = disabled) |
 | Destination Folders | Target folders for file move |
 | Get LRC Folder | Default folder for LRC lyrics search |

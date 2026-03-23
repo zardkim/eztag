@@ -162,7 +162,7 @@ docker compose pull && docker compose up -d
 ## 시놀로지 NAS 설치
 
 1. `docker-compose.yml`과 `env.sample`을 PC에 다운로드
-2. `env.sample`을 `.env`로 복사 후 `MUSIC_PATH=/volume1/music` (실제 경로)으로 수정
+2. `env.sample`을 `.env`로 이름 변경 후 필수 값 수정 (`SECRET_KEY` 필수, `MUSIC_PATH` 실제 경로로 변경)
 3. Container Manager → 프로젝트 → `docker-compose.yml`과 `.env` 업로드 후 실행
 
 ## 설정 (Settings 페이지)
@@ -171,7 +171,6 @@ docker compose pull && docker compose up -d
 |------|------|
 | Spotify API | Client ID / Client Secret 입력 |
 | YouTube Data API v3 | API 키 입력 — 타이틀곡 MV 자동 검색 |
-| Google CSE | Google Custom Search Engine — 커버아트 이미지 검색 |
 | 자동 스캔 주기 | 분 단위 (0 = 비활성화) |
 | 이동 대상 폴더 | 파일 이동 시 대상 폴더 목록 |
 | Get LRC 폴더 | LRC 가사 검색 기본 폴더 |
