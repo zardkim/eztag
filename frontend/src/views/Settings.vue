@@ -240,6 +240,46 @@
 
           </section>
 
+          <!-- AI 커버아트 -->
+          <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm mt-4">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">🎨 {{ $t('aiCover.settings.title') }}</h3>
+            <p class="text-xs text-gray-500 mb-4">{{ $t('aiCover.settings.desc') }}</p>
+            <div class="space-y-4">
+              <!-- 활성화 토글 -->
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-700 dark:text-gray-300">{{ $t('aiCover.settings.enable') }}</span>
+                <button class="flex items-center gap-2 cursor-pointer" @click="form.ai_cover_enabled = !form.ai_cover_enabled; saveAICoverConfig()">
+                  <span class="text-xs" :class="form.ai_cover_enabled ? 'text-green-500' : 'text-gray-400'">{{ form.ai_cover_enabled ? 'ON' : 'OFF' }}</span>
+                  <span class="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200" :class="form.ai_cover_enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'">
+                    <span class="inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200 mt-0.5" :class="form.ai_cover_enabled ? 'translate-x-4' : 'translate-x-0.5'"></span>
+                  </span>
+                </button>
+              </div>
+              <!-- API 키 -->
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">{{ $t('aiCover.settings.apiKeyLabel') }}</label>
+                <div class="relative">
+                  <input v-model="form.ai_cover_gemini_api_key" :type="showAICoverKey ? 'text' : 'password'" class="field w-full font-mono text-xs pr-8" :placeholder="$t('aiCover.settings.apiKeyPlaceholder')" @blur="saveAICoverConfig" />
+                  <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" @click="showAICoverKey = !showAICoverKey">
+                    <svg v-if="showAICoverKey" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                    <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                  </button>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">
+                  <a href="https://aistudio.google.com" target="_blank" class="text-blue-500 hover:underline">aistudio.google.com</a>
+                  — {{ $t('aiCover.settings.apiKeyHint') }}
+                </p>
+              </div>
+              <!-- 기본 분위기 -->
+              <div>
+                <label class="text-xs text-gray-500 block mb-1">{{ $t('aiCover.settings.defaultMood') }}</label>
+                <select v-model="form.ai_cover_default_mood" class="field w-48" @change="saveAICoverConfig">
+                  <option v-for="m in aiCoverMoods" :key="m" :value="m">{{ $t(`aiCover.moods.${m}`) }}</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
           <!-- LRC 소스 우선순위 -->
           <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm mt-4">
             <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">🎵 {{ $t('settings.lrcSource.title') }}</h3>
@@ -581,12 +621,17 @@ const form = reactive({
   youtube_api_key: '',
   lrc_primary_source: 'bugs',
   lrc_fallback_source: 'lrclib',
+  ai_cover_enabled: false,
+  ai_cover_gemini_api_key: '',
+  ai_cover_default_mood: 'energetic',
 })
 const savingMeta = ref(false)
 const lrcSourceSaving = ref(false)
 const showSpotifyId     = ref(false)
 const showSpotifySecret = ref(false)
 const showYoutubeKey    = ref(false)
+const showAICoverKey    = ref(false)
+const aiCoverMoods = ['energetic', 'emotional', 'retro', 'kpop', 'jazz', 'hiphop', 'drive', 'healing', 'dark']
 
 async function saveLrcSources() {
   lrcSourceSaving.value = true
@@ -662,6 +707,9 @@ async function loadConfig() {
     form.youtube_api_key = c.youtube_api_key?.value ?? ''
     form.lrc_primary_source = c.lrc_primary_source?.value ?? 'bugs'
     form.lrc_fallback_source = c.lrc_fallback_source?.value ?? 'lrclib'
+    form.ai_cover_enabled = c.ai_cover_enabled?.value === 'true'
+    form.ai_cover_gemini_api_key = c.ai_cover_gemini_api_key?.value ?? ''
+    form.ai_cover_default_mood = c.ai_cover_default_mood?.value ?? 'energetic'
   } catch (e) {
     console.error('Config load failed', e)
   }
@@ -688,6 +736,19 @@ async function saveMetaConfig() {
     toastStore.error(t('settings.toast.saveFailed', { error: e.response?.data?.detail || e.message }))
   } finally {
     savingMeta.value = false
+  }
+}
+
+async function saveAICoverConfig() {
+  try {
+    await configApi.update({
+      ai_cover_enabled: String(form.ai_cover_enabled),
+      ai_cover_gemini_api_key: form.ai_cover_gemini_api_key,
+      ai_cover_default_mood: form.ai_cover_default_mood,
+    })
+    toastStore.success(t('aiCover.settings.saved'))
+  } catch (e) {
+    toastStore.error(t('settings.toast.saveFailed', { error: e.response?.data?.detail || e.message }))
   }
 }
 

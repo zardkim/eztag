@@ -33,6 +33,11 @@ DEFAULTS: dict[str, tuple] = {
     # YouTube MV 검색
     "youtube_enabled": ("false", "YouTube 뮤직비디오 자동 검색 활성화"),
     "youtube_api_key": ("", "YouTube Data API v3 키"),
+    # AI 커버아트 생성
+    "ai_cover_enabled": ("false", "AI 커버아트 생성 기능 활성화"),
+    "ai_cover_gemini_api_key": ("", "Google AI Studio API 키 (Imagen 4)"),
+    "ai_cover_default_mood": ("energetic", "기본 분위기 프리셋"),
+    "ai_cover_default_model": ("imagen-4.0-generate-001", "기본 Imagen 모델"),
 }
 
 

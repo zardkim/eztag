@@ -109,6 +109,11 @@
             :disabled="exportingHtml"
             @click="exportFolderHtml"
           >📄 {{ exportingHtml ? '...' : t('browser.exportHtml') }}</button>
+          <button
+            v-if="browserStore.files.length > 0"
+            class="btn-toolbar !bg-pink-100 !text-pink-700 hover:!bg-pink-200 dark:!bg-pink-900/30 dark:!text-pink-400 shrink-0"
+            @click="showAICoverModal = true"
+          >🎨 {{ t('aiCover.btn') }}</button>
           <button class="btn-toolbar shrink-0" @click="forceReload" :title="t('browser.reload')">🔄</button>
         </template>
         <template v-else>
@@ -272,6 +277,12 @@
                     :disabled="exportingHtml"
                     @click="exportFolderHtml(); showMobileMenu = false"
                   ><span class="text-xl">📄</span>{{ exportingHtml ? '...' : t('browser.exportHtml') }}</button>
+
+                  <!-- AI 커버아트 -->
+                  <button
+                    class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-pink-700 dark:text-pink-400 bg-pink-50 dark:bg-pink-900/20 hover:bg-pink-100 dark:hover:bg-pink-900/30 transition-colors text-left"
+                    @click="showAICoverModal = true; showMobileMenu = false"
+                  ><span class="text-xl">🎨</span>{{ t('aiCover.btn') }}</button>
                 </template>
 
               </div>
@@ -415,6 +426,14 @@
       :source-file-count="browserStore.files.length"
       @close="showMoveModal = false"
       @moved="onMoved"
+    />
+
+    <!-- AI 커버아트 생성 모달 -->
+    <AICoverModal
+      v-if="showAICoverModal"
+      :folder-path="browserStore.selectedFolder?.path || ''"
+      @close="showAICoverModal = false"
+      @applied="onAICoverApplied"
     />
 
     <!-- ── Content area ── -->
@@ -691,6 +710,7 @@ import BatchTagPanel from '../components/BatchTagPanel.vue'
 import SpotifySearchDialog from '../components/SpotifySearchDialog.vue'
 import RenameByTagsModal from '../components/RenameByTagsModal.vue'
 import MoveToDestinationModal from '../components/MoveToDestinationModal.vue'
+import AICoverModal from '../components/AICoverModal.vue'
 import MiniPlayer from '../components/MiniPlayer.vue'
 import { useBrowserStore } from '../stores/browser.js'
 import { useWorkspaceStore } from '../stores/workspace.js'
@@ -1115,6 +1135,17 @@ async function onMoved(result) {
   if (roots.length > 0) {
     const rootCrumb = roots[0]
     browserStore.selectFolder({ name: rootCrumb.name, path: rootCrumb.path }, [rootCrumb])
+  }
+}
+
+// ── AI 커버아트 생성 ──────────────────────────────────────
+const showAICoverModal = ref(false)
+
+function onAICoverApplied() {
+  const path = browserStore.selectedFolder?.path
+  if (path) {
+    browserStore.invalidateFilesCache(path)
+    browserStore.loadFiles(path, true)
   }
 }
 

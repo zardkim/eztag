@@ -16,6 +16,7 @@ from app.api import config, logs, backup
 from app.api import metadata
 from app.api import auth as auth_api, browse as browse_api
 from app.api import workspace as workspace_api
+from app.api import ai_cover as ai_cover_api
 
 
 @asynccontextmanager
@@ -65,6 +66,7 @@ app.include_router(metadata.router)
 app.include_router(auth_api.router)
 app.include_router(browse_api.router)
 app.include_router(workspace_api.router)
+app.include_router(ai_cover_api.router)
 
 
 @app.get("/api/health")

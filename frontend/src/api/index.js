@@ -157,6 +157,16 @@ export const workspaceApi = {
   libraryChildren: (path) => client.get('/workspace/library/children', { params: { path } }),
 }
 
+// AI Cover Art
+export const aiCoverApi = {
+  generate: (data) => client.post('/ai-cover/generate', data, { timeout: 90000 }),
+  apply: (path, generation_id) => client.post('/ai-cover/apply', { path, generation_id }),
+  applyFolder: (folder_path, generation_id) =>
+    client.post('/ai-cover/apply-folder', { folder_path, generation_id }),
+  deletePreview: (generation_id) => client.delete(`/ai-cover/preview/${generation_id}`),
+  getMoods: () => client.get('/ai-cover/moods'),
+}
+
 // Covers
 export const coversApi = {
   getAlbumCover: (id) => client.get(`/covers/album/${id}`),
