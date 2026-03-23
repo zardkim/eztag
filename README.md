@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.6.0-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.7.0-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -24,6 +24,7 @@
 - **태그 편집** — 개별/일괄(배치) 태그 편집, 설명(Comment) 포함
 - **메타데이터 자동 검색** — Spotify, Bugs, Melon, Apple Music 연동
 - **커버아트 관리** — 커버 자동 추출, 업로드, Google 이미지 검색
+- **AI 커버아트 생성** — Google Imagen 4 연동, 분위기·연도·앨범명 기반 자동 생성 (Google AI Studio API 필요)
 - **파일 이동** — 대상 폴더 등록 후 음악 파일 이동
 - **태그 기반 파일명 변경** — 패턴 문자열로 일괄 파일명 변경
 - **HTML 내보내기** — 트랙 목록 + 타이틀곡 + YouTube 뮤직비디오 임베드 HTML 생성
@@ -179,7 +180,8 @@ docker compose pull && docker compose up -d
 
 | 버전 | 날짜 | 주요 변경사항 |
 |------|------|--------------|
-| **v0.6.0** | 2026-03-23 | YouTube MV 패널, 폴더 이름 변경, i18n 전면 확장, UI 전반 개선 |
+| **v0.7.0** | 2026-03-23 | AI 커버아트 생성 (Google Imagen 4) — 분위기·연도·키워드 기반 |
+| v0.6.0 | 2026-03-23 | YouTube MV 패널, 폴더 이름 변경, i18n 전면 확장, UI 전반 개선 |
 | v0.5.0 | 2026-03-22 | 타이틀곡/YouTube MV, 모바일 레이아웃 개편, 로그인 언어 전환 |
 | v0.4.0 | — | 워크스페이스 기반 태그 편집, 파일 이동, 모바일 툴바 |
 | v0.3.0 | — | LRC 가사 자동 가져오기, HTML 내보내기, 자동 스캔 스케줄러 |
