@@ -12,7 +12,6 @@ Bugs 가사 포맷:
   "|" 구분자가 없으면 싱크 가사 없음 (일반 텍스트 가사)
 """
 import logging
-import os
 import re
 from pathlib import Path
 from typing import Optional
@@ -22,9 +21,8 @@ import requests
 logger = logging.getLogger(__name__)
 
 _SEARCH_API = "https://m.bugs.co.kr/api/getSearchList"
-# Bugs 모바일 앱 공개 키 — 환경변수 BUGS_API_KEY 또는 DB config bugs_api_key로 재정의 가능
-_BUGS_API_KEY_DEFAULT = os.getenv("BUGS_API_KEY", "b2de0fbe3380408bace96a5d1a76f800")
-_LYRICS_API = "http://api.bugs.co.kr/3/tracks/{track_id}/lyrics?&api_key={api_key}"
+# Bugs 앱 내장 고정 키 (외부 발급 없음 — Bugs 자체 앱 키)
+_LYRICS_API = "http://api.bugs.co.kr/3/tracks/{track_id}/lyrics?&api_key=b2de0fbe3380408bace96a5d1a76f800"
 
 _HEADERS = {
     "User-Agent": (
@@ -84,9 +82,9 @@ def _search_track_id(artist: str, title: str) -> Optional[str]:
     return str(items[0]["track_id"]) if items[0].get("track_id") else None
 
 
-def _fetch_raw_lyrics(track_id: str, api_key: Optional[str] = None) -> Optional[str]:
+def _fetch_raw_lyrics(track_id: str) -> Optional[str]:
     """Bugs lyrics API 호출 → 원본 가사 문자열 반환."""
-    url = _LYRICS_API.format(track_id=track_id, api_key=api_key or _BUGS_API_KEY_DEFAULT)
+    url = _LYRICS_API.format(track_id=track_id)
     try:
         resp = requests.get(url, headers=_HEADERS, timeout=10)
         resp.raise_for_status()
