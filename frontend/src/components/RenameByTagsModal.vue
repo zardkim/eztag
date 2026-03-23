@@ -1,6 +1,6 @@
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" @click.self="$emit('close')">
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh]">
+  <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4" @click.self="$emit('close')">
+    <div class="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-3xl flex flex-col max-h-[92vh] sm:max-h-[90vh]">
       <!-- 헤더 -->
       <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
         <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('renameModal.title') }}</h2>
@@ -99,49 +99,48 @@
             <span v-if="sameCount" class="text-gray-400">{{ t('renameModal.sameCount', { n: sameCount }) }}</span>
           </div>
 
-          <table class="w-full text-xs border-collapse">
-            <thead>
-              <tr class="text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
-                <th class="text-left py-1.5 pr-3 font-medium w-[45%]">{{ t('renameModal.colOldName') }}</th>
-                <th class="text-left py-1.5 pr-3 font-medium w-[45%]">{{ t('renameModal.colNewName') }}</th>
-                <th class="text-center py-1.5 font-medium w-[10%]">{{ t('renameModal.colStatus') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="row in previewRows"
-                :key="row.path"
-                class="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30"
-              >
-                <td class="py-1.5 pr-3 truncate max-w-0 text-gray-700 dark:text-gray-300" :title="row.old_name">{{ row.old_name }}</td>
-                <td class="py-1.5 pr-3 truncate max-w-0" :class="row.error ? 'text-red-400' : row.conflict ? 'text-yellow-500' : row.same ? 'text-gray-400' : 'text-gray-900 dark:text-white'" :title="row.new_name || row.error">
-                  {{ row.new_name || row.error || '-' }}
-                </td>
-                <td class="py-1.5 text-center">
-                  <span v-if="row.error">❌</span>
-                  <span v-else-if="row.conflict">⚠️</span>
-                  <span v-else-if="row.same">—</span>
-                  <span v-else>✅</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="space-y-1.5">
+            <div
+              v-for="row in previewRows"
+              :key="row.path"
+              class="flex items-start gap-2 rounded-lg px-3 py-2.5 text-xs"
+              :class="row.error ? 'bg-red-50 dark:bg-red-900/10' : row.conflict ? 'bg-yellow-50 dark:bg-yellow-900/10' : row.same ? 'bg-gray-50 dark:bg-gray-700/30' : 'bg-green-50 dark:bg-green-900/10'"
+            >
+              <span class="mt-0.5 shrink-0 text-sm leading-none">
+                <span v-if="row.error">❌</span>
+                <span v-else-if="row.conflict">⚠️</span>
+                <span v-else-if="row.same">—</span>
+                <span v-else>✅</span>
+              </span>
+              <div class="flex-1 min-w-0">
+                <div class="text-gray-500 dark:text-gray-400 truncate">{{ row.old_name }}</div>
+                <div
+                  v-if="!row.same"
+                  class="mt-0.5 truncate font-medium"
+                  :class="row.error ? 'text-red-500' : row.conflict ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-900 dark:text-white'"
+                >→ {{ row.new_name || row.error || '-' }}</div>
+              </div>
+            </div>
+          </div>
         </template>
       </div>
 
       <!-- 푸터 버튼 -->
-      <div class="px-5 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3 shrink-0">
-        <button @click="$emit('close')" class="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-          {{ t('common.cancel') }}
-        </button>
-        <button
-          @click="applyRename"
-          :disabled="okCount === 0 || applying"
-          class="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <span v-if="applying">{{ t('renameModal.applying') }}</span>
-          <span v-else>{{ t('renameModal.applyCount', { n: okCount }) }}</span>
-        </button>
+      <div class="px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] border-t border-gray-200 dark:border-gray-700 shrink-0">
+        <div class="flex gap-2">
+          <button
+            @click="$emit('close')"
+            class="flex-1 py-3 text-sm rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >{{ t('common.cancel') }}</button>
+          <button
+            @click="applyRename"
+            :disabled="okCount === 0 || applying"
+            class="flex-[2] py-3 text-sm rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+          >
+            <span v-if="applying">{{ t('renameModal.applying') }}</span>
+            <span v-else>{{ t('renameModal.applyCount', { n: okCount }) }}</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>

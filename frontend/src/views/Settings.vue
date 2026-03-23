@@ -1,23 +1,27 @@
 <template>
   <div class="flex flex-col lg:flex-row h-full overflow-hidden">
 
-    <!-- ── 탭 메뉴 (모바일: 상단 가로 스크롤 / 데스크톱: 좌측 세로) ── -->
-    <nav class="
-      shrink-0 bg-gray-50 dark:bg-gray-900
-      flex flex-row overflow-x-auto scrollbar-none border-b border-gray-200 dark:border-gray-800 px-2 py-1.5 gap-1
-      lg:flex-col lg:w-44 lg:border-b-0 lg:border-r lg:py-4 lg:gap-0.5 lg:overflow-x-visible
-    ">
+    <!-- ── 탭 메뉴: 모바일 콤보박스 ── -->
+    <div class="lg:hidden shrink-0 border-b border-gray-200 dark:border-gray-800 px-3 py-2 bg-gray-50 dark:bg-gray-900">
+      <select v-model="activeTab" class="field w-full text-sm">
+        <option v-for="tab in tabs" :key="tab.key" :value="tab.key">
+          {{ tab.icon }} {{ tab.label }}
+        </option>
+      </select>
+    </div>
+
+    <!-- ── 탭 메뉴: 데스크톱 좌측 세로 ── -->
+    <nav class="hidden lg:flex lg:flex-col shrink-0 bg-gray-50 dark:bg-gray-900 lg:w-44 lg:border-r border-gray-200 dark:border-gray-800 lg:py-4 lg:gap-0.5">
       <button
         v-for="tab in tabs"
         :key="tab.key"
-        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-colors shrink-0
-               lg:gap-2.5 lg:px-3 lg:py-2 lg:text-sm lg:w-full lg:text-left lg:whitespace-normal"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm w-full text-left transition-colors"
         :class="activeTab === tab.key
           ? 'bg-blue-600 text-white font-medium'
           : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'"
         @click="activeTab = tab.key"
       >
-        <span class="text-sm leading-none shrink-0 lg:text-base">{{ tab.icon }}</span>
+        <span class="text-base leading-none shrink-0">{{ tab.icon }}</span>
         <span class="truncate">{{ tab.label }}</span>
       </button>
     </nav>
@@ -29,6 +33,19 @@
         <!-- ── 일반 ── -->
         <template v-if="activeTab === 'general'">
           <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-5">{{ $t('settings.general') }}</h2>
+
+          <!-- 사이트 이름 / 브라우저 타이틀 -->
+          <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm mb-4">
+            <div class="space-y-4">
+              <ConfigRow :label="$t('settings.siteName')" :desc="$t('settings.siteNameDesc')">
+                <input v-model="form.site_name" type="text" class="field w-48" placeholder="eztag" @blur="saveGeneralConfig" @keydown.enter="saveGeneralConfig" />
+              </ConfigRow>
+              <ConfigRow :label="$t('settings.browserTitle')" :desc="$t('settings.browserTitleDesc')">
+                <input v-model="form.browser_title" type="text" class="field w-48" placeholder="eztag" @blur="saveGeneralConfig" @keydown.enter="saveGeneralConfig" />
+              </ConfigRow>
+            </div>
+          </section>
+
           <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm mb-4">
             <div class="space-y-4">
               <ConfigRow :label="$t('settings.appLanguage')" :desc="$t('settings.appLanguageDesc')">
@@ -72,7 +89,7 @@
                   <span class="text-sm font-medium text-gray-900 dark:text-white">Spotify</span>
                   <span class="text-xs bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 px-1.5 py-0.5 rounded">{{ $t('settings.metadata.spotifyDefault') }}</span>
                 </div>
-                <button class="flex items-center gap-2 cursor-pointer" @click="form.spotify_enabled = !form.spotify_enabled">
+                <button class="flex items-center gap-2 cursor-pointer" @click="form.spotify_enabled = !form.spotify_enabled; saveMetaConfig()">
                   <span class="text-xs" :class="form.spotify_enabled ? 'text-green-500' : 'text-gray-400'">{{ form.spotify_enabled ? 'ON' : 'OFF' }}</span>
                   <span class="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200" :class="form.spotify_enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'">
                     <span class="inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200 mt-0.5" :class="form.spotify_enabled ? 'translate-x-4' : 'translate-x-0.5'"></span>
@@ -82,11 +99,23 @@
               <div class="space-y-2">
                 <div>
                   <label class="text-xs text-gray-500 block mb-1">Client ID</label>
-                  <input v-model="form.spotify_client_id" type="text" class="field w-full font-mono text-xs" placeholder="Spotify Developer Dashboard에서 확인" />
+                  <div class="relative">
+                    <input v-model="form.spotify_client_id" :type="showSpotifyId ? 'text' : 'password'" class="field w-full font-mono text-xs pr-8" placeholder="Spotify Developer Dashboard에서 확인" @blur="saveMetaConfig" />
+                    <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" @click="showSpotifyId = !showSpotifyId">
+                      <svg v-if="showSpotifyId" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                      <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label class="text-xs text-gray-500 block mb-1">Client Secret</label>
-                  <input v-model="form.spotify_client_secret" type="password" class="field w-full font-mono text-xs" placeholder="••••••••••••••••••••••••••••••••" />
+                  <div class="relative">
+                    <input v-model="form.spotify_client_secret" :type="showSpotifySecret ? 'text' : 'password'" class="field w-full font-mono text-xs pr-8" placeholder="••••••••••••••••••••••••••••••••" @blur="saveMetaConfig" />
+                    <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" @click="showSpotifySecret = !showSpotifySecret">
+                      <svg v-if="showSpotifySecret" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                      <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    </button>
+                  </div>
                 </div>
               </div>
               <p class="text-xs text-gray-400 mt-2">
@@ -102,7 +131,7 @@
                   <span class="text-sm text-gray-600 dark:text-gray-300">Bugs</span>
                   <span class="text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded">{{ $t('settings.metadata.available') }}</span>
                 </div>
-                <button class="flex items-center gap-2 cursor-pointer" @click="form.bugs_enabled = !form.bugs_enabled">
+                <button class="flex items-center gap-2 cursor-pointer" @click="form.bugs_enabled = !form.bugs_enabled; saveMetaConfig()">
                   <span class="text-xs" :class="form.bugs_enabled ? 'text-green-500' : 'text-gray-400'">{{ form.bugs_enabled ? 'ON' : 'OFF' }}</span>
                   <span class="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200" :class="form.bugs_enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'">
                     <span class="inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200 mt-0.5" :class="form.bugs_enabled ? 'translate-x-4' : 'translate-x-0.5'"></span>
@@ -116,7 +145,7 @@
                     <span class="text-sm text-gray-600 dark:text-gray-300">Apple Music</span>
                     <span class="text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded">{{ $t('settings.metadata.available') }}</span>
                   </div>
-                  <button class="flex items-center gap-2 cursor-pointer" @click="form.apple_music_enabled = !form.apple_music_enabled">
+                  <button class="flex items-center gap-2 cursor-pointer" @click="form.apple_music_enabled = !form.apple_music_enabled; saveMetaConfig()">
                     <span class="text-xs" :class="form.apple_music_enabled ? 'text-green-500' : 'text-gray-400'">{{ form.apple_music_enabled ? 'ON' : 'OFF' }}</span>
                     <span class="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200" :class="form.apple_music_enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'">
                       <span class="inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200 mt-0.5" :class="form.apple_music_enabled ? 'translate-x-4' : 'translate-x-0.5'"></span>
@@ -125,7 +154,7 @@
                 </div>
                 <div v-if="form.apple_music_enabled" class="mt-2 flex items-center gap-2">
                   <label class="text-xs text-gray-500">{{ $t('settings.metadata.storefront') }}</label>
-                  <select v-model="form.apple_music_storefront" class="field text-xs py-1 w-28">
+                  <select v-model="form.apple_music_storefront" class="field text-xs py-1 w-28" @change="saveMetaConfig">
                     <option value="kr">한국 (kr)</option>
                     <option value="us">미국 (us)</option>
                     <option value="jp">일본 (jp)</option>
@@ -142,7 +171,7 @@
                     <span class="text-sm text-gray-600 dark:text-gray-300">Apple Music Classical</span>
                     <span class="text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded">{{ $t('settings.metadata.available') }}</span>
                   </div>
-                  <button class="flex items-center gap-2 cursor-pointer" @click="form.apple_music_classical_enabled = !form.apple_music_classical_enabled">
+                  <button class="flex items-center gap-2 cursor-pointer" @click="form.apple_music_classical_enabled = !form.apple_music_classical_enabled; saveMetaConfig()">
                     <span class="text-xs" :class="form.apple_music_classical_enabled ? 'text-green-500' : 'text-gray-400'">{{ form.apple_music_classical_enabled ? 'ON' : 'OFF' }}</span>
                     <span class="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200" :class="form.apple_music_classical_enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'">
                       <span class="inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200 mt-0.5" :class="form.apple_music_classical_enabled ? 'translate-x-4' : 'translate-x-0.5'"></span>
@@ -151,7 +180,7 @@
                 </div>
                 <div v-if="form.apple_music_classical_enabled" class="mt-2 flex items-center gap-2">
                   <label class="text-xs text-gray-500">{{ $t('settings.metadata.storefront') }}</label>
-                  <select v-model="form.apple_music_classical_storefront" class="field text-xs py-1 w-28">
+                  <select v-model="form.apple_music_classical_storefront" class="field text-xs py-1 w-28" @change="saveMetaConfig">
                     <option value="us">미국 (us)</option>
                     <option value="gb">영국 (gb)</option>
                     <option value="de">독일 (de)</option>
@@ -168,7 +197,7 @@
                   <span class="text-sm text-gray-600 dark:text-gray-300">Melon</span>
                   <span class="text-xs bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded">{{ $t('settings.metadata.available') }}</span>
                 </div>
-                <button class="flex items-center gap-2 cursor-pointer" @click="form.melon_enabled = !form.melon_enabled">
+                <button class="flex items-center gap-2 cursor-pointer" @click="form.melon_enabled = !form.melon_enabled; saveMetaConfig()">
                   <span class="text-xs" :class="form.melon_enabled ? 'text-green-500' : 'text-gray-400'">{{ form.melon_enabled ? 'ON' : 'OFF' }}</span>
                   <span class="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200" :class="form.melon_enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'">
                     <span class="inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200 mt-0.5" :class="form.melon_enabled ? 'translate-x-4' : 'translate-x-0.5'"></span>
@@ -186,7 +215,7 @@
                   <span class="text-sm font-medium text-gray-900 dark:text-white">YouTube</span>
                   <span class="text-xs text-gray-400">{{ $t('settings.metadata.youtubeHint') }}</span>
                 </div>
-                <button class="flex items-center gap-2 cursor-pointer" @click="form.youtube_enabled = !form.youtube_enabled">
+                <button class="flex items-center gap-2 cursor-pointer" @click="form.youtube_enabled = !form.youtube_enabled; saveMetaConfig()">
                   <span class="text-xs" :class="form.youtube_enabled ? 'text-green-500' : 'text-gray-400'">{{ form.youtube_enabled ? 'ON' : 'OFF' }}</span>
                   <span class="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200" :class="form.youtube_enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'">
                     <span class="inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200 mt-0.5" :class="form.youtube_enabled ? 'translate-x-4' : 'translate-x-0.5'"></span>
@@ -195,7 +224,13 @@
               </div>
               <div>
                 <label class="text-xs text-gray-500 block mb-1">API Key</label>
-                <input v-model="form.youtube_api_key" type="password" class="field w-full font-mono text-xs" placeholder="AIza..." />
+                <div class="relative">
+                  <input v-model="form.youtube_api_key" :type="showYoutubeKey ? 'text' : 'password'" class="field w-full font-mono text-xs pr-8" placeholder="AIza..." @blur="saveMetaConfig" />
+                  <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" @click="showYoutubeKey = !showYoutubeKey">
+                    <svg v-if="showYoutubeKey" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                    <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                  </button>
+                </div>
               </div>
               <p class="text-xs text-gray-400 mt-2">
                 <a href="https://console.cloud.google.com" target="_blank" class="text-blue-500 hover:underline">console.cloud.google.com</a>
@@ -203,13 +238,6 @@
               </p>
             </div>
 
-            <div class="flex justify-end mt-5">
-              <button
-                class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors disabled:opacity-60"
-                :disabled="savingMeta"
-                @click="saveMetaConfig"
-              >{{ savingMeta ? $t('settings.metadata.saving') : $t('settings.metadata.save') }}</button>
-            </div>
           </section>
 
           <!-- LRC 소스 우선순위 -->
@@ -218,25 +246,18 @@
             <p class="text-xs text-gray-500 mb-4">{{ $t('settings.lrcSource.desc') }}</p>
             <div class="space-y-3">
               <ConfigRow :label="$t('settings.lrcSource.primary')" :desc="$t('settings.lrcSource.primaryDesc')">
-                <select v-model="form.lrc_primary_source" class="field w-40">
+                <select v-model="form.lrc_primary_source" class="field w-40" @change="saveLrcSources">
                   <option value="bugs">🎵 Bugs 뮤직 (한국어)</option>
                   <option value="lrclib">🌐 LRCLIB.net (국제)</option>
                 </select>
               </ConfigRow>
               <ConfigRow :label="$t('settings.lrcSource.fallback')" :desc="$t('settings.lrcSource.fallbackDesc')">
-                <select v-model="form.lrc_fallback_source" class="field w-40">
+                <select v-model="form.lrc_fallback_source" class="field w-40" @change="saveLrcSources">
                   <option value="none">{{ $t('settings.lrcSource.fallbackNone') }}</option>
                   <option value="bugs">🎵 Bugs 뮤직 (한국어)</option>
                   <option value="lrclib">🌐 LRCLIB.net (국제)</option>
                 </select>
               </ConfigRow>
-              <div class="flex justify-end pt-1">
-                <button
-                  class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors disabled:opacity-60"
-                  :disabled="lrcSourceSaving"
-                  @click="saveLrcSources"
-                >{{ lrcSourceSaving ? $t('settings.saving') : $t('common.save') }}</button>
-              </div>
             </div>
           </section>
         </template>
@@ -331,7 +352,7 @@
                       <span v-if="item.username" class="text-xs text-gray-500">{{ item.username }}</span>
                       <span class="text-xs text-gray-400 ml-auto">{{ fmtDatetime(item.created_at) }}</span>
                     </div>
-                    <p class="text-sm text-gray-900 dark:text-white">{{ item.message }}</p>
+                    <p class="text-sm text-gray-900 dark:text-white">{{ translateLog(item) }}</p>
                     <p v-if="item.file_path" class="text-xs text-gray-400 font-mono truncate mt-0.5">{{ item.file_path }}</p>
                     <p v-if="item.detail" class="text-xs text-gray-400 truncate mt-0.5">{{ item.detail }}</p>
                   </div>
@@ -363,9 +384,28 @@
                 <span class="text-gray-500 w-32">{{ $t('settings.version.server') }}</span>
                 <span class="text-gray-900 dark:text-white font-mono">{{ serverVersion || '-' }}</span>
               </div>
-              <div class="flex items-center gap-4 py-2">
+              <div class="flex items-center gap-4 py-2 border-b border-gray-100 dark:border-gray-800">
                 <span class="text-gray-500 w-32">{{ $t('settings.version.build') }}</span>
                 <span class="text-gray-600 dark:text-gray-400">{{ buildDate || '-' }}</span>
+              </div>
+              <div class="flex items-center gap-4 py-2 border-b border-gray-100 dark:border-gray-800">
+                <span class="text-gray-500 w-32">{{ $t('settings.version.license') }}</span>
+                <span class="text-gray-900 dark:text-white">MIT</span>
+              </div>
+              <div class="flex items-center gap-4 py-2">
+                <span class="text-gray-500 w-32">{{ $t('settings.version.github') }}</span>
+                <a
+                  href="https://github.com/zardkim/eztag"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="flex items-center gap-1.5 text-blue-500 hover:text-blue-400 transition-colors"
+                >
+                  <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+                  </svg>
+                  <span class="text-sm">zardkim/eztag</span>
+                  <span class="text-xs text-gray-400">— {{ $t('settings.version.githubLink') }}</span>
+                </a>
               </div>
             </div>
           </section>
@@ -500,10 +540,12 @@ import client from '../api/index.js'
 import ConfigRow from '../components/ConfigRow.vue'
 import { useThemeStore } from '../stores/theme.js'
 import { useToastStore } from '../stores/toast.js'
+import { useAppConfigStore } from '../stores/appConfig.js'
 
 const { t, locale } = useI18n()
 const themeStore = useThemeStore()
 const toastStore = useToastStore()
+const appConfigStore = useAppConfigStore()
 
 const route = useRoute()
 const activeTab = ref(route.query.tab || 'general')
@@ -523,6 +565,8 @@ const serverVersion = ref('')
 const buildDate = ref('')
 
 const form = reactive({
+  site_name: 'eztag',
+  browser_title: 'eztag',
   app_language: 'ko',
   spotify_client_id: '',
   spotify_client_secret: '',
@@ -540,6 +584,9 @@ const form = reactive({
 })
 const savingMeta = ref(false)
 const lrcSourceSaving = ref(false)
+const showSpotifyId     = ref(false)
+const showSpotifySecret = ref(false)
+const showYoutubeKey    = ref(false)
 
 async function saveLrcSources() {
   lrcSourceSaving.value = true
@@ -580,10 +627,25 @@ watch(locale, (val) => {
   form.app_language = val
 })
 
+async function saveGeneralConfig() {
+  try {
+    await configApi.update({ site_name: form.site_name || 'eztag', browser_title: form.browser_title || 'eztag' })
+    appConfigStore.apply({
+      site_name:    { value: form.site_name    || 'eztag' },
+      browser_title: { value: form.browser_title || 'eztag' },
+    })
+    toastStore.success(t('settings.toast.saved'))
+  } catch (e) {
+    toastStore.error(t('settings.toast.saveFailed', { error: e.response?.data?.detail || e.message }))
+  }
+}
+
 async function loadConfig() {
   try {
     const { data } = await configApi.get()
     const c = data.config
+    form.site_name = c.site_name?.value ?? 'eztag'
+    form.browser_title = c.browser_title?.value ?? 'eztag'
     form.app_language = c.app_language?.value ?? 'ko'
     locale.value = form.app_language
     localStorage.setItem('eztag-lang', form.app_language)
@@ -751,6 +813,55 @@ const LOG_TYPE_BADGE = {
 
 function logTypeIcon(type) { return LOG_TYPE_ICONS[type] || '📄' }
 function logTypeBadgeClass(type) { return LOG_TYPE_BADGE[type] || 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' }
+
+function parseDetail(detail) {
+  if (!detail) return {}
+  const result = {}
+  for (const part of detail.split(', ')) {
+    const idx = part.indexOf('=')
+    if (idx > 0) result[part.slice(0, idx)] = part.slice(idx + 1)
+  }
+  return result
+}
+
+function translateLog(item) {
+  const action = item.action
+  if (!action) return item.message
+  const d = parseDetail(item.detail)
+  const fname = item.file_path ? item.file_path.split('/').pop() : ''
+  if (action === 'login_failed')
+    return t('settings.activityLog.action.login_failed', { username: item.username || '' })
+  if (action === 'login_success')
+    return t('settings.activityLog.action.login_success', { username: item.username || '' })
+  if (action.startsWith('fetch_lyrics_')) {
+    const source = action.slice('fetch_lyrics_'.length)
+    const fallback = d.fallback && d.fallback !== 'none' ? `→${d.fallback}` : ''
+    return t('settings.activityLog.action.fetch_lyrics', { source: source + fallback, saved: d.saved || '0', notfound: d.not_found || '0', error: d.error || '0' })
+  }
+  if (action.startsWith('library_fetch_lyrics_')) {
+    const source = action.slice('library_fetch_lyrics_'.length)
+    return t('settings.activityLog.action.library_fetch_lyrics', { source, saved: d.saved || '0', notfound: d.not_found || '0', error: d.error || '0' })
+  }
+  if (action === 'rename_by_tags')
+    return t('settings.activityLog.action.rename_by_tags', { success: d.success || '0', failed: d.failed || '0', pattern: d.pattern || '' })
+  if (action === 'update_track') {
+    const m = item.message.match(/\[(.+)\]$/)
+    return t('settings.activityLog.action.update_track', { filename: fname, fields: m ? m[1] : '' })
+  }
+  if (action === 'write_tags') {
+    const m = item.message.match(/\[(.+)\]$/)
+    return t('settings.activityLog.action.write_tags', { filename: fname, fields: m ? m[1] : '' })
+  }
+  if (action === 'batch_write_tags') {
+    const m = item.message.match(/\[(.+)\]$/)
+    return t('settings.activityLog.action.batch_write_tags', { n: d.written || d.total || '0', fields: m ? m[1] : '' })
+  }
+  if (action === 'rename') {
+    const m = item.message.match(/:\s*(.+?)\s*→\s*(.+)$/)
+    if (m) return t('settings.activityLog.action.rename', { oldname: m[1].trim(), newname: m[2].trim() })
+  }
+  return item.message
+}
 
 async function loadLogs(page = 1) {
   logsLoading.value = true

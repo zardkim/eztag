@@ -42,7 +42,7 @@ router.beforeEach(async (to) => {
   // Public routes
   if (to.meta.public) {
     if (authStore.isLoggedIn && to.path !== '/setup') {
-      return '/workspace'
+      return '/home'
     }
     return true
   }
@@ -62,7 +62,8 @@ router.beforeEach(async (to) => {
 })
 
 router.afterEach((to) => {
-  document.title = `${to.meta.title || 'eztag'} - eztag`
+  const appTitle = localStorage.getItem('eztag-browser-title') || 'eztag'
+  document.title = `${to.meta.title || appTitle} - ${appTitle}`
 })
 
 export default router

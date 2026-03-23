@@ -28,9 +28,9 @@
           <span>{{ themeStore.theme === 'dark' ? '☀️' : '🌙' }}</span>
         </button>
       </div>
-      <!-- 2행: 툴바 슬롯 (Browser.vue 버튼 삽입 대상, /browser 에서만 표시) -->
+      <!-- 2행: 툴바 슬롯 (Browser.vue / Workspace.vue 버튼 삽입 대상) -->
       <div
-        v-show="route.path === '/browser'"
+        v-show="route.path === '/browser' || route.path === '/workspace'"
         id="app-toolbar-slot-mobile"
         class="shrink-0 h-9 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center min-w-0 overflow-x-auto overflow-y-hidden scrollbar-none"
       >
@@ -56,22 +56,22 @@
           >
             <button
               class="w-full flex items-center gap-3 px-4 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-b border-gray-100 dark:border-gray-800"
-              @click="mobileAddOpen = false; workspaceSidebarRef?.openFolderPicker()"
+              @click="mobileAddOpen = false; mobileShowFolderPicker = true"
             >
               <span class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-xl shrink-0">📂</span>
               <div>
-                <div class="text-sm font-semibold text-gray-900 dark:text-white">폴더 열기</div>
-                <div class="text-xs text-gray-400 mt-0.5">폴더 내 전체 파일 불러오기</div>
+                <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ $t('sidebar.openFolder') }}</div>
+                <div class="text-xs text-gray-400 mt-0.5">{{ $t('sidebar.openFolderDesc') }}</div>
               </div>
             </button>
             <button
               class="w-full flex items-center gap-3 px-4 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              @click="mobileAddOpen = false; workspaceSidebarRef?.openFilePicker()"
+              @click="mobileAddOpen = false; mobileShowFilePicker = true"
             >
               <span class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-xl shrink-0">📄</span>
               <div>
-                <div class="text-sm font-semibold text-gray-900 dark:text-white">파일 열기</div>
-                <div class="text-xs text-gray-400 mt-0.5">개별 파일 선택</div>
+                <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ $t('sidebar.openFile') }}</div>
+                <div class="text-xs text-gray-400 mt-0.5">{{ $t('sidebar.openFileDesc') }}</div>
               </div>
             </button>
           </div>
@@ -117,7 +117,7 @@
                 <button class="w-full flex items-center gap-3 px-3 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition-colors text-left"
                         @click="mobileUserOpen = false; openPasswordModal()">
                   <span class="text-lg">🔑</span>
-                  <span>비밀번호 변경</span>
+                  <span>{{ $t('password.title') }}</span>
                 </button>
                 <button class="w-full flex items-center gap-3 px-3 py-3 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors text-left" @click="logout">
                   <span class="text-lg">🚪</span>
@@ -129,6 +129,25 @@
           </Transition>
         </div>
       </Transition>
+    </Teleport>
+
+    <!-- ══════════════════════════════════════════════
+         MOBILE: 폴더/파일 열기 모달
+    ══════════════════════════════════════════════ -->
+    <Teleport to="body">
+      <LibraryPickerModal
+        v-if="mobileShowFolderPicker"
+        :folder-mode="true"
+        @close="mobileShowFolderPicker = false"
+        @select-folder="onMobileSelectFolder"
+      />
+    </Teleport>
+    <Teleport to="body">
+      <LibraryPickerModal
+        v-if="mobileShowFilePicker"
+        @close="mobileShowFilePicker = false"
+        @added="onMobileFilesAdded"
+      />
     </Teleport>
 
     <!-- ══════════════════════════════════════════════
@@ -149,7 +168,9 @@
               alt="eztag"
               class="h-10 w-auto"
             />
-            <p class="text-[10px] text-gray-300 dark:text-gray-600 font-mono mt-0.5">v{{ appVersion }}</p>
+            <p class="text-[10px] text-gray-700 dark:text-gray-400 font-mono mt-0.5">
+              <span v-if="appConfigStore.siteName !== 'eztag'" class="mr-1 text-gray-500 dark:text-gray-300 font-sans not-italic font-medium">{{ appConfigStore.siteName }}</span>v{{ appVersion }}
+            </p>
           </div>
           <div class="flex items-center gap-1 shrink-0">
             <button
@@ -259,7 +280,7 @@
               <button
                 class="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
                 @click="openPasswordModal"
-              >🔑 비밀번호 변경</button>
+              >🔑 {{ $t('password.title') }}</button>
               <button
                 class="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left"
                 @click="logout"
@@ -274,12 +295,13 @@
          메인 콘텐츠
     ══════════════════════════════════════════════ -->
     <main
-      class="flex-1 overflow-hidden flex flex-col min-w-0 pb-16 lg:pt-0 lg:pb-0"
-      :class="route.path === '/browser' ? 'pt-20' : 'pt-11'"
+      class="flex-1 overflow-hidden flex flex-col min-w-0 lg:pt-0 lg:pb-0"
+      :class="(route.path === '/browser' || route.path === '/workspace') ? 'pt-20' : 'pt-11'"
+      style="padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));"
     >
       <!-- 데스크톱 툴바 슬롯 -->
       <div id="app-toolbar-slot" class="shrink-0 h-10 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center min-w-0 hidden lg:flex">
-        <template v-if="route.path !== '/browser'">
+        <template v-if="route.path !== '/browser' && route.path !== '/workspace'">
           <RouterLink
             to="/browser"
             class="flex items-center gap-1.5 px-3 py-1.5 ml-1 rounded-lg text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
@@ -296,7 +318,7 @@
     <!-- ══════════════════════════════════════════════
          MOBILE: 하단 내비게이션 바
     ══════════════════════════════════════════════ -->
-    <nav class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex h-16">
+    <nav class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex" style="height: calc(4rem + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px);">
       <!-- 홈 -->
       <RouterLink
         to="/home"
@@ -309,7 +331,7 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
         </svg>
-        <span class="text-[10px] font-medium">홈</span>
+        <span class="text-[10px] font-medium">{{ $t('nav.home') }}</span>
       </RouterLink>
 
       <!-- + 추가 -->
@@ -333,20 +355,19 @@
       </button>
 
       <!-- 설정 -->
-      <RouterLink
-        to="/settings"
+      <button
         class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
         :class="route.path === '/settings' && !mobileAddOpen && !mobileUserOpen
           ? 'text-blue-600 dark:text-blue-400'
           : 'text-gray-500 dark:text-gray-400'"
-        @click="mobileAddOpen = false; mobileUserOpen = false"
+        @click="router.push('/settings'); mobileAddOpen = false; mobileUserOpen = false"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
         </svg>
         <span class="text-[10px] font-medium">{{ $t('nav.settings') }}</span>
-      </RouterLink>
+      </button>
 
       <!-- 아이디 -->
       <button
@@ -373,29 +394,29 @@
     <Transition enter-from-class="opacity-0" leave-to-class="opacity-0" enter-active-class="transition duration-150" leave-active-class="transition duration-150">
       <div v-if="showPasswordModal" class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4" @click.self="showPasswordModal = false">
         <div class="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl p-6">
-          <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">🔑 비밀번호 변경</h3>
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">🔑 {{ $t('password.title') }}</h3>
           <div class="space-y-3">
             <div>
-              <label class="text-xs text-gray-500 block mb-1">현재 비밀번호</label>
-              <input v-model="passwordForm.current" type="password" class="field w-full" placeholder="현재 비밀번호 입력" @keyup.enter="changePassword" />
+              <label class="text-xs text-gray-500 block mb-1">{{ $t('password.currentLabel') }}</label>
+              <input v-model="passwordForm.current" type="password" class="field w-full" :placeholder="$t('password.currentPlaceholder')" @keyup.enter="changePassword" />
             </div>
             <div>
-              <label class="text-xs text-gray-500 block mb-1">새 비밀번호</label>
-              <input v-model="passwordForm.next" type="password" class="field w-full" placeholder="새 비밀번호 (8자+특수문자)" @keyup.enter="changePassword" />
+              <label class="text-xs text-gray-500 block mb-1">{{ $t('password.newLabel') }}</label>
+              <input v-model="passwordForm.next" type="password" class="field w-full" :placeholder="$t('password.newPlaceholder')" @keyup.enter="changePassword" />
             </div>
             <div>
-              <label class="text-xs text-gray-500 block mb-1">새 비밀번호 확인</label>
-              <input v-model="passwordForm.confirm" type="password" class="field w-full" placeholder="새 비밀번호 재입력" @keyup.enter="changePassword" />
+              <label class="text-xs text-gray-500 block mb-1">{{ $t('password.confirmLabel') }}</label>
+              <input v-model="passwordForm.confirm" type="password" class="field w-full" :placeholder="$t('password.confirmPlaceholder')" @keyup.enter="changePassword" />
             </div>
             <p v-if="passwordError" class="text-xs text-red-500">{{ passwordError }}</p>
           </div>
           <div class="flex justify-end gap-2 mt-5">
-            <button class="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors" @click="showPasswordModal = false">취소</button>
+            <button class="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors" @click="showPasswordModal = false">{{ $t('common.cancel') }}</button>
             <button
               class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors disabled:opacity-60"
               :disabled="passwordSaving"
               @click="changePassword"
-            >{{ passwordSaving ? '변경 중...' : '변경' }}</button>
+            >{{ passwordSaving ? $t('password.saving') : $t('password.save') }}</button>
           </div>
         </div>
       </div>
@@ -411,15 +432,18 @@ import { useThemeStore } from './stores/theme.js'
 import { useAuthStore } from './stores/auth.js'
 import { useWorkspaceStore } from './stores/workspace.js'
 import { useBrowserStore } from './stores/browser.js'
+import { useAppConfigStore } from './stores/appConfig.js'
 import { authApi } from './api/index.js'
 import { configApi } from './api/config.js'
 import WorkspaceSidebar from './components/WorkspaceSidebar.vue'
 import ToastContainer from './components/ToastContainer.vue'
+import LibraryPickerModal from './components/LibraryPickerModal.vue'
 
 /* global __APP_VERSION__ */
 const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.3.0'
+const appConfigStore = useAppConfigStore()
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const themeStore = useThemeStore()
 const authStore = useAuthStore()
 const workspaceStore = useWorkspaceStore()
@@ -432,6 +456,19 @@ const workspaceSidebarRef = ref(null)
 // 모바일 시트 상태
 const mobileAddOpen  = ref(false)
 const mobileUserOpen = ref(false)
+const mobileShowFolderPicker = ref(false)
+const mobileShowFilePicker   = ref(false)
+
+function onMobileSelectFolder(folder) {
+  mobileShowFolderPicker.value = false
+  browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }])
+  router.push('/browser')
+}
+
+function onMobileFilesAdded() {
+  mobileShowFilePicker.value = false
+  router.push('/workspace')
+}
 
 // 최근 폴더 저장
 const RECENT_FOLDERS_KEY = 'eztag-recent-folders'
@@ -444,7 +481,7 @@ function saveRecentFolder(folder) {
   } catch { /* ignore */ }
 }
 
-// 폴더 선택 시 최근 목록 저장
+// 폴더 선택 시 최근 목록 저장 (Browser.vue 직접 사용 시)
 watch(() => browserStore.selectedFolder, (folder) => {
   if (folder) {
     mobileAddOpen.value = false
@@ -496,21 +533,21 @@ function openPasswordModal() {
 }
 
 function validatePassword(pwd) {
-  if (pwd.length < 8) return '비밀번호는 8자 이상이어야 합니다'
-  if (!/[!@#$%^&*()\-_=+[\]{}|;:'",.<>?/\\`~]/.test(pwd)) return '비밀번호에 특수문자(!@#$ 등)가 포함되어야 합니다'
+  if (pwd.length < 8) return t('password.errTooShort')
+  if (!/[!@#$%^&*()\-_=+[\]{}|;:'",.<>?/\\`~]/.test(pwd)) return t('password.errNoSpecial')
   return null
 }
 
 async function changePassword() {
   passwordError.value = ''
   if (!passwordForm.current || !passwordForm.next || !passwordForm.confirm) {
-    passwordError.value = '모든 항목을 입력해 주세요'
+    passwordError.value = t('password.errRequired')
     return
   }
   const pwErr = validatePassword(passwordForm.next)
   if (pwErr) { passwordError.value = pwErr; return }
   if (passwordForm.next !== passwordForm.confirm) {
-    passwordError.value = '새 비밀번호가 일치하지 않습니다'
+    passwordError.value = t('password.errMismatch')
     return
   }
   passwordSaving.value = true
@@ -518,7 +555,7 @@ async function changePassword() {
     await authApi.changePassword({ current_password: passwordForm.current, new_password: passwordForm.next })
     showPasswordModal.value = false
   } catch (e) {
-    passwordError.value = e.response?.data?.detail || '비밀번호 변경에 실패했습니다'
+    passwordError.value = e.response?.data?.detail || t('password.errFailed')
   } finally {
     passwordSaving.value = false
   }
@@ -530,11 +567,20 @@ function toggleSidebar() {
   localStorage.setItem('eztag-sidebar-collapsed', String(sidebarCollapsed.value))
 }
 
+async function loadAppConfig() {
+  try {
+    const { data } = await configApi.get()
+    appConfigStore.apply(data.config)
+    document.title = document.title.replace(/ - .+$/, ` - ${appConfigStore.browserTitle}`)
+  } catch { /* ignore */ }
+}
+
 onMounted(() => {
   themeStore.apply()
   document.addEventListener('click', onClickOutside, true)
   if (authStore.isLoggedIn) {
     workspaceStore.loadCurrentSession()
+    loadAppConfig()
   }
 })
 onUnmounted(() => {
@@ -544,6 +590,7 @@ onUnmounted(() => {
 const isPublicRoute = computed(() => ['/setup', '/login'].includes(route.path))
 
 const bottomNav = [
+  { to: '/home',     icon: '🏠', labelKey: 'nav.home' },
   { to: '/settings', icon: '⚙️', labelKey: 'nav.settings' },
 ]
 

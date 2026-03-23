@@ -15,17 +15,33 @@
         <div
           v-if="minimized"
           class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 cursor-pointer"
-          style="backdrop-filter:blur(8px); min-width:260px; max-width:340px;"
+          style="backdrop-filter:blur(8px); min-width:280px; max-width:380px;"
           @click="minimized = false"
         >
-          <div class="w-8 h-8 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
+          <!-- 앨범커버 -->
+          <div class="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
             <img v-if="file.has_cover" :src="coverUrl" class="w-full h-full object-cover" />
             <span v-else class="w-full h-full flex items-center justify-center text-sm">🎵</span>
           </div>
+
+          <!-- 커버 우측: 제목 + 아티스트 + 메타 -->
           <div class="flex-1 min-w-0">
             <p class="text-xs font-semibold text-gray-900 dark:text-white truncate leading-tight">{{ file.title || file.filename }}</p>
-            <p class="text-[10px] text-gray-400 truncate">{{ file.artist || '—' }}</p>
+            <p class="text-[10px] text-gray-400 truncate leading-tight">{{ file.artist || '—' }}</p>
+            <p class="text-[9px] text-gray-400 dark:text-gray-500 truncate leading-tight mt-0.5 flex gap-1 flex-wrap">
+              <span v-if="file.year">{{ file.year }}</span>
+              <span v-if="file.year && (file.genre || file.track_no || file.bitrate || file.file_format)" class="opacity-40">·</span>
+              <span v-if="file.genre" class="truncate max-w-[5rem]">{{ file.genre }}</span>
+              <span v-if="file.genre && (file.track_no || file.bitrate || file.file_format)" class="opacity-40">·</span>
+              <span v-if="file.track_no">{{ file.track_no }}{{ file.total_tracks ? '/' + file.total_tracks : '' }}</span>
+              <span v-if="file.track_no && (file.bitrate || file.file_format)" class="opacity-40">·</span>
+              <span v-if="file.bitrate">{{ file.bitrate }}k</span>
+              <span v-if="file.bitrate && file.file_format" class="opacity-40">·</span>
+              <span v-if="file.file_format" class="uppercase">{{ file.file_format }}</span>
+            </p>
           </div>
+
+          <!-- 재생/시간/닫기 -->
           <button class="text-blue-500 hover:text-blue-700 text-base px-1 shrink-0" @click.stop="togglePlay">
             {{ isPlaying ? '⏸' : '▶' }}
           </button>
@@ -61,18 +77,46 @@
           <div class="flex flex-col sm:flex-row gap-4 p-4 flex-1 min-h-0 overflow-hidden">
 
             <!-- 왼쪽: 앨범아트 + 컨트롤 + 태그 -->
-            <div class="flex flex-col items-center gap-3 shrink-0 sm:w-44 w-full">
-              <!-- 앨범아트 -->
-              <div class="w-28 h-28 sm:w-40 sm:h-40 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-lg shrink-0">
-                <img v-if="file.has_cover" :src="coverUrl" class="w-full h-full object-cover" />
-                <div v-else class="w-full h-full flex items-center justify-center text-5xl">🎵</div>
-              </div>
+            <div class="flex flex-col gap-3 shrink-0 sm:w-44 sm:items-center w-full">
 
-              <!-- 제목/아티스트/앨범 -->
-              <div class="w-full text-center">
-                <p class="text-sm font-bold text-gray-900 dark:text-white truncate leading-snug">{{ file.title || file.filename }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ file.artist || '—' }}</p>
-                <p class="text-[10px] text-gray-400 truncate mt-0.5">{{ file.album_title }}</p>
+              <!-- 앨범아트 + 메타: 모바일=가로, 데스크톱=세로 -->
+              <div class="flex sm:flex-col items-start sm:items-center gap-3 w-full">
+                <!-- 앨범아트 -->
+                <div class="w-28 h-28 sm:w-40 sm:h-40 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-lg shrink-0">
+                  <img v-if="file.has_cover" :src="coverUrl" class="w-full h-full object-cover" />
+                  <div v-else class="w-full h-full flex items-center justify-center text-5xl">🎵</div>
+                </div>
+
+                <!-- 제목/아티스트/앨범 + 태그 (모바일: 앨범아트 우측) -->
+                <div class="flex-1 sm:w-full min-w-0 sm:text-center">
+                  <p class="text-sm font-bold text-gray-900 dark:text-white truncate leading-snug">{{ file.title || file.filename }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ file.artist || '—' }}</p>
+                  <p class="text-[10px] text-gray-400 truncate mt-0.5">{{ file.album_title }}</p>
+
+                  <!-- 태그 정보 (모바일 전용: 앨범아트 우측) -->
+                  <div class="sm:hidden mt-2 space-y-0.5 text-[10px]">
+                    <div v-if="file.year" class="flex gap-1">
+                      <span class="text-gray-400 w-12 shrink-0">{{ t('player.year') }}</span>
+                      <span class="text-gray-700 dark:text-gray-300">{{ file.year }}</span>
+                    </div>
+                    <div v-if="file.genre" class="flex gap-1">
+                      <span class="text-gray-400 w-12 shrink-0">{{ t('player.genre') }}</span>
+                      <span class="text-gray-700 dark:text-gray-300 truncate">{{ file.genre }}</span>
+                    </div>
+                    <div v-if="file.track_no" class="flex gap-1">
+                      <span class="text-gray-400 w-12 shrink-0">{{ t('player.track') }}</span>
+                      <span class="text-gray-700 dark:text-gray-300">{{ file.track_no }}{{ file.total_tracks ? ' / ' + file.total_tracks : '' }}</span>
+                    </div>
+                    <div v-if="file.bitrate" class="flex gap-1">
+                      <span class="text-gray-400 w-12 shrink-0">{{ t('player.bitrate') }}</span>
+                      <span class="text-gray-700 dark:text-gray-300">{{ file.bitrate }} kbps</span>
+                    </div>
+                    <div v-if="file.file_format" class="flex gap-1">
+                      <span class="text-gray-400 w-12 shrink-0">{{ t('player.format') }}</span>
+                      <span class="text-gray-700 dark:text-gray-300 uppercase">{{ file.file_format }}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <!-- 프로그레스 바 -->
@@ -88,7 +132,7 @@
 
               <!-- 재생 버튼 -->
               <button
-                class="w-10 h-10 rounded-full bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white flex items-center justify-center shadow-md transition-colors"
+                class="self-center w-11 h-11 rounded-full flex items-center justify-center shadow-sm transition-colors bg-gray-100 hover:bg-gray-200 active:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:active:bg-gray-500 text-gray-700 dark:text-gray-200"
                 @click="togglePlay"
               >
                 <span class="text-lg leading-none">{{ isPlaying ? '⏸' : '▶' }}</span>
@@ -104,8 +148,8 @@
                 />
               </div>
 
-              <!-- 태그 정보 -->
-              <div class="w-full space-y-1 text-[10px] border-t border-gray-100 dark:border-gray-800 pt-2">
+              <!-- 태그 정보 (데스크톱 전용) -->
+              <div class="hidden sm:block w-full space-y-1 text-[10px] border-t border-gray-100 dark:border-gray-800 pt-2">
                 <div v-if="file.year" class="flex gap-1">
                   <span class="text-gray-400 w-12 shrink-0">{{ t('player.year') }}</span>
                   <span class="text-gray-700 dark:text-gray-300">{{ file.year }}</span>
@@ -218,7 +262,7 @@ const audioEl = ref(null)
 const isPlaying = ref(false)
 const currentTime = ref(0)
 const duration = ref(0)
-const volume = ref(1)
+const volume = ref(0.5)
 
 // 가사
 const lyricsContent = ref('')
@@ -387,6 +431,9 @@ watch(minimized, (val) => {
   if (!val && !lyricsContent.value && !parsedLrc.value.length) loadLyrics()
 })
 
-onMounted(() => loadLyrics())
+onMounted(() => {
+  loadLyrics()
+  if (audioEl.value) audioEl.value.volume = volume.value
+})
 onUnmounted(() => stopDrag())
 </script>

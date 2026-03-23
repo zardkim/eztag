@@ -1684,6 +1684,7 @@ def export_folder_html_save(
     from app.core.tag_reader import read_tags
 
     path = data.get("path", "")
+    lang = data.get("lang", "ko")
     p = _validate_path(path, db)
     if not p.is_dir():
         raise HTTPException(status_code=400, detail="Not a directory")
@@ -1772,6 +1773,7 @@ def export_folder_html_save(
         source_path=str(p),
         description=album_description,
         youtube_url=youtube_url,
+        lang=lang,
     )
 
     # 폴더에 파일 저장
@@ -1807,6 +1809,20 @@ def rename_folder(
         raise HTTPException(status_code=409, detail="이미 존재하는 폴더명입니다")
 
     p.rename(new_path)
+
+    # DB의 file_path 일괄 업데이트 (구 경로 → 신 경로)
+    old_prefix = str(p) + "/"
+    new_prefix = str(new_path) + "/"
+    tracks = db.query(Track).filter(Track.file_path.like(old_prefix + "%")).all()
+    for track in tracks:
+        track.file_path = new_prefix + track.file_path[len(old_prefix):]
+    # ScanFolder 등록 경로도 업데이트
+    scan_folders = db.query(ScanFolder).filter(ScanFolder.path.like(str(p) + "%")).all()
+    for sf in scan_folders:
+        sf.path = str(new_path) + sf.path[len(str(p)):]
+    if tracks or scan_folders:
+        db.commit()
+
     _cache.invalidate_files(str(p.parent))
     return {"old_path": str(p), "new_path": str(new_path), "new_name": new_name}
 

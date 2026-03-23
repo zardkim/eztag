@@ -7,6 +7,8 @@ from app.models.app_config import AppConfig
 # (기본값, 설명)
 DEFAULTS: dict[str, tuple] = {
     # 일반
+    "site_name": ("eztag", "사이트 이름 (UI에 표시되는 앱 이름)"),
+    "browser_title": ("eztag", "브라우저 탭에 표시되는 타이틀"),
     "scan_interval_minutes": ("0", "자동 스캔 주기 (분). 0=비활성화"),
     "extract_covers": ("true", "커버아트 자동 추출 여부"),
     "supported_formats": (".mp3,.flac,.m4a,.ogg,.aac", "지원 파일 포맷 (콤마 구분)"),

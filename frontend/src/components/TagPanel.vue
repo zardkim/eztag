@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800">
+  <div class="flex flex-col bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800">
     <!-- Header -->
     <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0">
       <h3 class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ $t('browser.tagPanel') }}</h3>
@@ -17,8 +17,21 @@
       </div>
     </div>
 
+    <!-- 저장 / 취소 버튼 -->
+    <div class="px-4 py-2.5 border-b border-gray-200 dark:border-gray-800 flex gap-2">
+      <button
+        class="flex-1 py-2 text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white rounded-lg transition-colors"
+        :disabled="saving"
+        @click="save"
+      >{{ saving ? $t('common.saving') : (workspaceItem ? $t('tagPanel.stageSave') : $t('common.save')) }}</button>
+      <button
+        class="px-3 py-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 rounded-lg transition-colors"
+        @click="reset"
+      >{{ $t('common.cancel') }}</button>
+    </div>
+
     <!-- Scrollable content -->
-    <div class="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+    <div class="px-4 py-3 space-y-3">
       <!-- Current metadata form -->
       <div v-for="field in textFields" :key="field.key">
         <label class="text-xs text-gray-500 block mb-1">{{ $t(field.labelKey) }}</label>
@@ -53,7 +66,7 @@
 
       <!-- 타이틀곡 / YouTube (DB 전용, workspace 모드에서 숨김) -->
       <div v-if="!workspaceItem" class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-1">
-        <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-2">타이틀곡 / MV</span>
+        <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-2">{{ $t('tagPanel.sectionMv') }}</span>
 
         <!-- 타이틀곡 토글 -->
         <label class="flex items-center gap-2 cursor-pointer mb-3">
@@ -67,12 +80,12 @@
               :class="isTitleTrack ? 'translate-x-4' : 'translate-x-0'"
             ></span>
           </div>
-          <span class="text-xs text-gray-700 dark:text-gray-300">타이틀곡</span>
-          <span v-if="isTitleTrack" class="text-[10px] font-bold text-orange-500 bg-orange-50 dark:bg-orange-900/20 px-1.5 py-0.5 rounded">타이틀</span>
+          <span class="text-xs text-gray-700 dark:text-gray-300">{{ $t('tagPanel.titleTrack') }}</span>
+          <span v-if="isTitleTrack" class="text-[10px] font-bold text-orange-500 bg-orange-50 dark:bg-orange-900/20 px-1.5 py-0.5 rounded">{{ $t('tagPanel.titleBadge') }}</span>
         </label>
 
         <!-- YouTube URL + 자동 검색 -->
-        <label class="text-xs text-gray-500 block mb-1">YouTube 뮤직비디오 URL</label>
+        <label class="text-xs text-gray-500 block mb-1">{{ $t('tagPanel.ytUrlLabel') }}</label>
         <div class="flex gap-1.5 mb-1">
           <input v-model="youtubeUrl" class="field flex-1 text-sm min-w-0" placeholder="https://youtu.be/..." />
           <button
@@ -82,7 +95,7 @@
             title="YouTube 자동 검색"
           >
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
-            {{ ytSearchLoading ? '...' : '검색' }}
+            {{ ytSearchLoading ? '...' : $t('tagPanel.ytSearch') }}
           </button>
         </div>
 
@@ -114,7 +127,7 @@
           class="w-full py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors disabled:opacity-50"
           :disabled="trackInfoSaving"
           @click="saveTrackInfo"
-        >{{ trackInfoSaving ? '저장 중...' : '💾 타이틀곡/MV 저장' }}</button>
+        >{{ trackInfoSaving ? $t('tagPanel.ytSaving') : $t('tagPanel.ytSaveBtn') }}</button>
       </div>
 
       <!-- Spotify search section -->
@@ -144,22 +157,6 @@
       </div>
     </div>
 
-    <!-- Footer buttons -->
-    <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-800 flex gap-2 shrink-0">
-      <button
-        class="flex-1 py-2 text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white rounded-lg transition-colors"
-        :disabled="saving"
-        @click="save"
-      >
-        {{ saving ? $t('common.saving') : (workspaceItem ? '임시 저장' : $t('common.save')) }}
-      </button>
-      <button
-        class="px-3 py-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 rounded-lg transition-colors"
-        @click="reset"
-      >
-        {{ $t('common.cancel') }}
-      </button>
-    </div>
   </div>
 </template>
 
@@ -253,7 +250,7 @@ async function saveTrackInfo() {
       is_title_track: data.is_title_track,
       youtube_url: data.youtube_url,
     })
-    toastStore.success('저장됨')
+    toastStore.success(t('tagPanel.ytSaved'))
   } catch (e) {
     toastStore.error(e.response?.data?.detail || t('common.error'))
   } finally {
@@ -271,12 +268,12 @@ async function searchYoutube() {
   try {
     const { data } = await browseApi.searchYoutubeMV(artist, title)
     ytSearchResults.value = data.results
-    if (!data.results.length) ytSearchError.value = '검색 결과가 없습니다'
+    if (!data.results.length) ytSearchError.value = t('tagPanel.ytNoResults')
   } catch (e) {
     if (e.response?.data?.detail === 'youtube_not_configured') {
-      ytSearchError.value = 'YouTube API 키가 설정되지 않았습니다 (설정 > 메타데이터)'
+      ytSearchError.value = t('tagPanel.ytNoApiKey')
     } else {
-      ytSearchError.value = e.response?.data?.detail || '검색 실패'
+      ytSearchError.value = e.response?.data?.detail || t('tagPanel.ytSearchFailed')
     }
   } finally {
     ytSearchLoading.value = false
@@ -380,7 +377,7 @@ async function save() {
       // 전역 히스토리 등록
       const after = Object.fromEntries(tagFields.map(k => [k, form[k] ?? null]))
       historyStore.push({
-        label: `태그 편집: ${props.file.filename}`,
+        label: t('tagPanel.historyLabel', { filename: props.file.filename }),
         ops: [{ path: props.file.path, before, after }],
       })
 

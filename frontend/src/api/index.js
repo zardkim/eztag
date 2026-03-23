@@ -91,7 +91,7 @@ export const browseApi = {
   destChildren: (path) => client.get('/browse/dest-children', { params: { path } }),
   destMkdir: (data) => client.post('/browse/dest-mkdir', data),
   moveFolder: (data) => client.post('/browse/move-folder', data),
-  exportFolderHtml: (path) => client.post('/browse/export-html-save', { path }),
+  exportFolderHtml: (path, lang = 'ko') => client.post('/browse/export-html-save', { path, lang }),
   renameFolder: (path, newName) => client.post('/browse/rename-folder', { path, new_name: newName }),
   deleteExtraFile: (path) => client.post('/browse/delete-extra-file', { path }),
 }

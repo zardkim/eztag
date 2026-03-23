@@ -1,6 +1,6 @@
 <template>
-  <div class="fixed inset-0 bg-black/60 z-[300] flex items-center justify-center p-4" @click.self="$emit('close')">
-    <div class="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[80vh]">
+  <div class="fixed inset-0 bg-black/60 z-[300] flex items-end sm:items-center justify-center p-0 sm:p-4" @click.self="$emit('close')">
+    <div class="bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[80vh]">
 
       <!-- Header -->
       <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
@@ -23,30 +23,34 @@
         >
           <p class="text-xs font-medium text-gray-900 dark:text-white truncate mb-1.5">{{ item.filename }}</p>
           <!-- 태그 변경 항목 -->
-          <div v-if="item.pending_tags && Object.keys(item.pending_tags).length > 0" class="space-y-1">
+          <div v-if="item.pending_tags && Object.keys(item.pending_tags).length > 0" class="space-y-1.5">
             <div
               v-for="(val, key) in item.pending_tags"
               :key="key"
-              class="flex items-center gap-2 text-[11px]"
+              class="text-[11px]"
             >
-              <span class="text-gray-400 w-20 shrink-0 truncate">{{ fieldLabel(key) }}</span>
-              <span class="text-red-400 dark:text-red-400 line-through truncate max-w-[120px]">{{ originalVal(item, key) }}</span>
-              <span class="text-gray-300 dark:text-gray-600 shrink-0">→</span>
-              <span class="text-green-600 dark:text-green-400 font-medium truncate max-w-[120px]">{{ val }}</span>
+              <span class="text-gray-400 block">{{ fieldLabel(key) }}</span>
+              <div class="flex items-start gap-1.5 mt-0.5 flex-wrap">
+                <span class="text-red-400 line-through truncate">{{ originalVal(item, key) }}</span>
+                <span class="text-gray-300 dark:text-gray-600 shrink-0">→</span>
+                <span class="text-green-600 dark:text-green-400 font-medium break-all">{{ val }}</span>
+              </div>
             </div>
           </div>
           <!-- 파일명 변경 -->
-          <div v-if="item.pending_rename" class="flex items-center gap-2 text-[11px] mt-1">
-            <span class="text-gray-400 w-20 shrink-0">파일명</span>
-            <span class="text-red-400 line-through truncate max-w-[120px]">{{ item.filename }}</span>
-            <span class="text-gray-300 dark:text-gray-600 shrink-0">→</span>
-            <span class="text-green-600 dark:text-green-400 font-medium truncate max-w-[120px]">{{ item.pending_rename }}</span>
+          <div v-if="item.pending_rename" class="text-[11px] mt-1.5">
+            <span class="text-gray-400 block">파일명</span>
+            <div class="flex items-start gap-1.5 mt-0.5 flex-wrap">
+              <span class="text-red-400 line-through truncate">{{ item.filename }}</span>
+              <span class="text-gray-300 dark:text-gray-600 shrink-0">→</span>
+              <span class="text-green-600 dark:text-green-400 font-medium break-all">{{ item.pending_rename }}</span>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Footer -->
-      <div class="px-5 py-3 border-t border-gray-200 dark:border-gray-800 flex justify-end gap-2 shrink-0">
+      <div class="px-5 py-3 border-t border-gray-200 dark:border-gray-800 flex justify-end gap-2 shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
         <button
           class="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
           :disabled="applying"

@@ -4,7 +4,7 @@
 
       <!-- Header -->
       <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
-        <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ folderMode ? '📂 폴더 선택' : '📂 라이브러리에서 불러오기' }}</h3>
+        <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ folderMode ? $t('picker.titleFolder') : $t('picker.titleFile') }}</h3>
         <button class="text-gray-400 hover:text-gray-700 dark:hover:text-white p-1" @click="$emit('close')">✕</button>
       </div>
 
@@ -14,7 +14,7 @@
         <button
           v-if="breadcrumb.length > 0"
           class="shrink-0 w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors mr-0.5"
-          title="상위 폴더"
+          :title="$t('picker.parentFolder')"
           @click="goUp"
         >↑</button>
         <template v-for="(crumb, i) in breadcrumb" :key="crumb.path">
@@ -25,19 +25,19 @@
             @click="navigateTo(crumb, i)"
           >{{ crumb.name }}</button>
         </template>
-        <span v-if="breadcrumb.length === 0" class="text-gray-400 italic">라이브러리 루트</span>
+        <span v-if="breadcrumb.length === 0" class="text-gray-400 italic">{{ $t('picker.libraryRoot') }}</span>
       </div>
 
       <!-- 로딩 -->
       <div v-if="loading" class="flex-1 flex items-center justify-center py-10">
-        <p class="text-sm text-gray-400">불러오는 중...</p>
+        <p class="text-sm text-gray-400">{{ $t('common.loading') }}</p>
       </div>
 
       <!-- 목록 -->
       <div v-else class="flex-1 overflow-y-auto min-h-0">
         <!-- 폴더 -->
         <div v-if="folders.length > 0" class="px-4 pt-3 pb-1">
-          <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">폴더</p>
+          <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">{{ $t('picker.folderSection') }}</p>
           <div class="space-y-0.5">
             <div
               v-for="folder in folders"
@@ -53,7 +53,7 @@
                 v-if="folderMode"
                 class="shrink-0 text-xs px-2 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors opacity-0 group-hover:opacity-100"
                 @click.stop="$emit('select-folder', folder)"
-              >열기</button>
+              >{{ $t('picker.open') }}</button>
             </div>
           </div>
         </div>
@@ -61,12 +61,12 @@
         <!-- 오디오 파일 (폴더 모드에서는 숨김) -->
         <div v-if="files.length > 0 && !folderMode" class="px-4 pt-2 pb-3">
           <div class="flex items-center justify-between mb-1.5">
-            <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">오디오 파일 ({{ files.length }}개)</p>
+            <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ $t('picker.audioFiles', { n: files.length }) }}</p>
             <button
               class="text-xs px-2 py-0.5 rounded bg-blue-600 text-white hover:bg-blue-500 transition-colors"
               :disabled="adding"
               @click="addCurrentFolder"
-            >이 폴더 전체 추가</button>
+            >{{ $t('picker.addFolder') }}</button>
           </div>
           <div class="space-y-0.5 max-h-48 overflow-y-auto">
             <div
@@ -89,21 +89,21 @@
         <!-- 빈 폴더 -->
         <div v-if="!loading && folders.length === 0 && files.length === 0" class="flex flex-col items-center justify-center py-12 text-center px-6">
           <p class="text-3xl mb-2">📭</p>
-          <p class="text-sm text-gray-400">오디오 파일이 없습니다.</p>
+          <p class="text-sm text-gray-400">{{ $t('picker.noFiles') }}</p>
         </div>
       </div>
 
       <!-- Footer -->
       <div class="px-5 py-3 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0">
-        <p v-if="folderMode" class="text-xs text-gray-400">폴더를 선택하면 파일 브라우저에서 열립니다.</p>
+        <p v-if="folderMode" class="text-xs text-gray-400">{{ $t('picker.folderHint') }}</p>
         <template v-else>
           <p v-if="lastAdded" class="text-xs text-green-600 dark:text-green-400">✓ {{ lastAdded }}</p>
-          <p v-else class="text-xs text-gray-400">폴더나 파일을 선택하세요.</p>
+          <p v-else class="text-xs text-gray-400">{{ $t('picker.fileHint') }}</p>
         </template>
         <button
           class="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-lg transition-colors"
           @click="$emit('close')"
-        >닫기</button>
+        >{{ $t('common.close') }}</button>
       </div>
     </div>
   </div>
@@ -111,9 +111,12 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { workspaceApi } from '../api/index.js'
 import { useWorkspaceStore } from '../stores/workspace.js'
 import { useToastStore } from '../stores/toast.js'
+
+const { t } = useI18n()
 
 const props = defineProps({
   folderMode: { type: Boolean, default: false },
@@ -190,10 +193,10 @@ async function addFile(file) {
   try {
     const result = await workspaceStore.loadFiles([file.path])
     if (result.added > 0) {
-      lastAdded.value = `"${file.name}" 추가됨`
+      lastAdded.value = t('picker.fileAdded', { name: file.name })
       emit('added')
     } else {
-      lastAdded.value = `이미 추가된 파일입니다.`
+      lastAdded.value = t('picker.alreadyAdded')
     }
   } catch (e) {
     toastStore.error(e.response?.data?.detail || e.message)

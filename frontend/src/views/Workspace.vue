@@ -1,44 +1,44 @@
 <template>
   <div class="flex flex-col h-full">
 
-    <!-- ── 툴바 ── -->
-    <div class="shrink-0 h-10 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-      <div class="flex items-center gap-2 h-full px-4 overflow-x-auto scrollbar-none">
+    <!-- ── 툴바 (데스크톱): App 상단 바에 Teleport ── -->
+    <Teleport v-if="toolbarReady" to="#app-toolbar-slot">
+      <div class="flex items-center gap-2 h-full px-4 overflow-x-auto scrollbar-none flex-1 min-w-0">
         <template v-if="workspaceStore.items.length > 0">
           <!-- 다중 선택 카운트 -->
           <span v-if="checkedIds.size > 0" class="text-xs text-blue-600 dark:text-blue-400 font-medium shrink-0">
-            {{ checkedIds.size }}개 선택
+            {{ $t('workspace.selectedCount', { n: checkedIds.size }) }}
             <button class="ml-1 text-gray-400 hover:text-gray-600" @click="checkedIds.clear()">✕</button>
           </span>
           <!-- 정렬 -->
           <select v-model="sortKey" class="text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-1.5 py-1 focus:outline-none shrink-0">
-            <option value="sort_order">추가순</option>
-            <option value="filename">파일명</option>
-            <option value="title">제목</option>
-            <option value="artist">아티스트</option>
+            <option value="sort_order">{{ $t('workspace.sortOrder') }}</option>
+            <option value="filename">{{ $t('workspace.sortFilename') }}</option>
+            <option value="title">{{ $t('workspace.sortTitle') }}</option>
+            <option value="artist">{{ $t('workspace.sortArtist') }}</option>
           </select>
           <!-- 전체 선택 -->
           <button class="btn-toolbar shrink-0" @click="toggleSelectAll">
-            {{ checkedIds.size === displayItems.length && displayItems.length > 0 ? '선택 해제' : '전체 선택' }}
+            {{ checkedIds.size === displayItems.length && displayItems.length > 0 ? $t('workspace.deselectAll') : $t('workspace.selectAll') }}
           </button>
           <!-- 배치 편집 -->
           <button
             class="btn-toolbar shrink-0"
             :class="showPanel === 'batch' ? 'btn-toolbar-active' : ''"
             @click="showPanel = showPanel === 'batch' ? null : 'batch'"
-          >✏️ 일괄 편집</button>
+          >✏️ {{ $t('workspace.batchEdit') }}</button>
           <!-- 자동 태그 -->
           <div class="relative shrink-0" ref="autoTagRef">
             <button
               class="btn-toolbar !bg-green-100 !text-green-700 hover:!bg-green-200 dark:!bg-green-900/30 dark:!text-green-400 flex items-center gap-1"
               @click="showAutoTagMenu = !showAutoTagMenu"
-            >🏷 자동 태그<span class="text-[10px] opacity-60">▾</span></button>
+            >🏷 {{ $t('workspace.autoTag') }}<span class="text-[10px] opacity-60">▾</span></button>
             <div
               v-if="showAutoTagMenu"
               class="fixed top-10 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-[200] py-1.5"
               :style="autoTagMenuPos"
             >
-              <p class="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">소스 선택</p>
+              <p class="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ $t('workspace.selectSource') }}</p>
               <button
                 v-for="p in availableProviders"
                 :key="p.key"
@@ -72,20 +72,106 @@
             v-if="workspaceStore.pendingCount > 0"
             class="btn-toolbar !bg-blue-100 !text-blue-700 hover:!bg-blue-200 dark:!bg-blue-900/30 dark:!text-blue-400 shrink-0 font-medium"
             @click="showApply = true"
-          >✅ 적용 ({{ workspaceStore.pendingCount }})</button>
+          >{{ $t('workspace.applyBtn', { n: workspaceStore.pendingCount }) }}</button>
           <!-- 폴더 이동 (모두 적용됨 + 단일 폴더) -->
           <button
             v-if="canMove"
             class="btn-toolbar !bg-indigo-100 !text-indigo-700 hover:!bg-indigo-200 dark:!bg-indigo-900/30 dark:!text-indigo-400 shrink-0 font-medium"
             @click="showMoveModal = true"
-          >📦 폴더 이동</button>
+          >📦 {{ $t('workspace.moveFolder') }}</button>
         </template>
         <template v-else>
-          <span class="text-xs text-gray-400">워크스페이스가 비어있습니다. 사이드바에서 폴더를 열어 파일을 추가하세요.</span>
+          <span class="text-xs text-gray-400">{{ $t('workspace.emptyToolbar') }}</span>
         </template>
         <button class="btn-toolbar shrink-0 ml-auto" @click="workspaceStore.loadCurrentSession()" title="새로고침">🔄</button>
       </div>
-    </div>
+    </Teleport>
+
+    <!-- ── 툴바 (모바일): App 상단 모바일 슬롯에 Teleport ── -->
+    <Teleport v-if="toolbarReady" to="#app-toolbar-slot-mobile">
+      <div class="flex items-center gap-1.5 h-full px-2 flex-1 min-w-0">
+        <template v-if="workspaceStore.items.length > 0">
+          <!-- 전체선택 -->
+          <button
+            class="btn-toolbar shrink-0 text-xs"
+            :class="checkedIds.size > 0 ? 'btn-toolbar-active' : ''"
+            @click="toggleSelectAll"
+          >
+            <template v-if="checkedIds.size === 0">{{ $t('workspace.selectAll') }}</template>
+            <template v-else>{{ checkedIds.size }}/{{ displayItems.length }} ✕</template>
+          </button>
+          <!-- 배치 편집 -->
+          <button
+            class="btn-toolbar shrink-0 text-xs"
+            :class="showPanel === 'batch' ? 'btn-toolbar-active' : ''"
+            @click="showPanel = showPanel === 'batch' ? null : 'batch'"
+          >✏️</button>
+          <!-- 전체 적용 -->
+          <button
+            v-if="workspaceStore.pendingCount > 0"
+            class="btn-toolbar !bg-blue-100 !text-blue-700 shrink-0 text-xs font-medium"
+            @click="showApply = true"
+          >{{ $t('workspace.applyBtn', { n: workspaceStore.pendingCount }) }}</button>
+        </template>
+        <div class="flex-1"></div>
+        <button
+          class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0"
+          @click="workspaceStore.loadCurrentSession()"
+          title="새로고침"
+        >🔄</button>
+        <!-- 더보기 버튼 -->
+        <button
+          v-if="workspaceStore.items.length > 0"
+          class="w-9 h-9 flex items-center justify-center rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0 text-xl font-bold leading-none"
+          @click="showMobileMobileMenu = true"
+        >···</button>
+      </div>
+    </Teleport>
+
+    <!-- ── 모바일 액션 바텀시트 ── -->
+    <Teleport to="body">
+      <Transition enter-active-class="transition duration-200 ease-out" leave-active-class="transition duration-150 ease-in" enter-from-class="opacity-0" leave-to-class="opacity-0">
+        <div v-if="showMobileMobileMenu" class="lg:hidden fixed inset-0 z-[120] flex flex-col justify-end" @click="showMobileMobileMenu = false">
+          <div class="absolute inset-0 bg-black/40" />
+          <Transition enter-active-class="transition duration-200 ease-out" leave-active-class="transition duration-150 ease-in" enter-from-class="translate-y-full" leave-to-class="translate-y-full">
+            <div v-if="showMobileMobileMenu" class="relative bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl max-h-[80vh] flex flex-col" @click.stop>
+              <div class="flex justify-center pt-3 pb-1 shrink-0">
+                <div class="w-10 h-1 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+              </div>
+              <div class="overflow-y-auto flex-1 px-3 pb-2 space-y-0.5">
+                <!-- 자동 태그 -->
+                <div class="border-b border-gray-100 dark:border-gray-800 pb-1 mb-1">
+                  <p class="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">🏷 {{ $t('workspace.autoTag') }}</p>
+                  <button
+                    v-for="p in availableProviders"
+                    :key="p.key"
+                    class="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
+                    @click="openAutoTag(p.key); showMobileMobileMenu = false"
+                  ><img :src="p.logo" :alt="p.label" class="w-5 h-5 rounded object-cover shrink-0" />{{ p.label }}</button>
+                </div>
+                <!-- LRC -->
+                <div>
+                  <p class="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">🎵 LRC</p>
+                  <button
+                    v-for="src in [{key:'bugs',label:'Bugs'},{key:'lrclib',label:'LRCLIB'}]"
+                    :key="src.key"
+                    class="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
+                    :disabled="fetchingLyrics"
+                    @click="startLrc(src.key); showMobileMobileMenu = false"
+                  ><span class="text-xl">🎵</span>{{ src.label }}</button>
+                </div>
+                <!-- 폴더 이동 -->
+                <button
+                  v-if="canMove"
+                  class="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors text-left"
+                  @click="showMoveModal = true; showMobileMobileMenu = false"
+                ><span class="text-xl">📦</span>{{ $t('workspace.moveFolder') }}</button>
+              </div>
+            </div>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- LRC 진행 패널 -->
     <Transition enter-from-class="opacity-0 -translate-y-1" leave-to-class="opacity-0 -translate-y-1" enter-active-class="transition duration-200" leave-active-class="transition duration-150">
@@ -94,7 +180,7 @@
         <div class="flex-1 min-w-0">
           <div class="flex items-center justify-between mb-1">
             <span class="text-xs font-semibold text-purple-700 dark:text-purple-300">
-              {{ fetchingLyrics ? `LRC 검색 중 (${lrcProgress.current}/${lrcProgress.total})` : 'LRC 검색 완료' }}
+              {{ fetchingLyrics ? $t('workspace.lrcSearching', { current: lrcProgress.current, total: lrcProgress.total }) : $t('workspace.lrcDone') }}
             </span>
             <span class="text-xs text-purple-500">{{ lrcProgress.ok }}✅ {{ lrcProgress.notFound }}❌</span>
           </div>
@@ -117,12 +203,12 @@
         <!-- 빈 상태 -->
         <div v-if="workspaceStore.items.length === 0" class="flex flex-col items-center justify-center h-full text-center p-8">
           <p class="text-5xl mb-4">📭</p>
-          <p class="text-gray-500 dark:text-gray-400 text-sm mb-2">워크스페이스가 비어있습니다.</p>
-          <p class="text-xs text-gray-400">사이드바의 <strong>폴더 열기</strong> 버튼으로 음악 파일을 추가하세요.</p>
+          <p class="text-gray-500 dark:text-gray-400 text-sm mb-2">{{ $t('workspace.empty') }}</p>
+          <p class="text-xs text-gray-400" v-html="$t('workspace.emptyHint')"></p>
         </div>
 
         <div v-else-if="workspaceStore.loading" class="flex items-center justify-center h-32">
-          <p class="text-gray-400 text-sm">불러오는 중...</p>
+          <p class="text-gray-400 text-sm">{{ $t('workspace.loading') }}</p>
         </div>
 
         <template v-else>
@@ -138,11 +224,11 @@
                   </th>
                   <th class="w-8 px-1 py-2"></th><!-- 상태 -->
                   <th class="px-2 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider w-8">#</th>
-                  <th class="px-2 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider min-w-[160px]">제목</th>
-                  <th class="px-2 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider min-w-[120px]">아티스트</th>
-                  <th class="px-2 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider min-w-[120px]">앨범</th>
-                  <th class="px-2 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider w-16">연도</th>
-                  <th class="px-2 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider w-20">포맷</th>
+                  <th class="px-2 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider min-w-[160px]">{{ $t('workspace.colTitle') }}</th>
+                  <th class="px-2 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider min-w-[120px]">{{ $t('workspace.colArtist') }}</th>
+                  <th class="px-2 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider min-w-[120px]">{{ $t('workspace.colAlbum') }}</th>
+                  <th class="px-2 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider w-16">{{ $t('workspace.colYear') }}</th>
+                  <th class="px-2 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider w-20">{{ $t('workspace.colFormat') }}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
@@ -164,9 +250,9 @@
                   </td>
                   <!-- 상태 배지 -->
                   <td class="px-1 py-2 text-center">
-                    <span v-if="item._has_changes" class="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400" title="변경됨"></span>
-                    <span v-else-if="item._status === 'applied'" class="inline-block w-1.5 h-1.5 rounded-full bg-green-400" title="적용됨"></span>
-                    <span v-else class="inline-block w-1.5 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700" title="원본"></span>
+                    <span v-if="item._has_changes" class="inline-block w-1.5 h-1.5 rounded-full bg-yellow-400" :title="$t('workspace.statusChanged')"></span>
+                    <span v-else-if="item._status === 'applied'" class="inline-block w-1.5 h-1.5 rounded-full bg-green-400" :title="$t('workspace.statusApplied')"></span>
+                    <span v-else class="inline-block w-1.5 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700" :title="$t('workspace.statusOriginal')"></span>
                   </td>
                   <td class="px-2 py-2 text-xs text-gray-400 text-center font-mono">{{ item.track_no || '' }}</td>
                   <td class="px-2 py-2">
@@ -215,7 +301,7 @@
       <!-- 태그 패널 (우측) -->
       <div
         v-if="showPanel && workspaceStore.items.length > 0"
-        class="w-full sm:w-80 lg:w-96 shrink-0 overflow-hidden"
+        class="w-full sm:w-80 lg:w-96 shrink-0 overflow-y-auto max-h-full"
       >
         <TagPanel
           v-if="showPanel === 'tag' && selectedFile"
@@ -264,6 +350,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useWorkspaceStore } from '../stores/workspace.js'
 import { useToastStore } from '../stores/toast.js'
 import { configApi } from '../api/config.js'
@@ -274,15 +361,18 @@ import SpotifySearchDialog from '../components/SpotifySearchDialog.vue'
 import ApplyPreviewModal from '../components/ApplyPreviewModal.vue'
 import MoveToDestinationModal from '../components/MoveToDestinationModal.vue'
 
+const { t } = useI18n()
 const workspaceStore = useWorkspaceStore()
 const toastStore = useToastStore()
 
+const toolbarReady = ref(false)
 const showPanel = ref(null)
 const showApply = ref(false)
 const showMoveModal = ref(false)
 const showSpotifyDialog = ref(false)
 const showAutoTagMenu = ref(false)
 const showLrcMenu = ref(false)
+const showMobileMobileMenu = ref(false)
 const autoTagRef = ref(null)
 const lrcMenuRef = ref(null)
 const selectedAutoProviders = ref([])
@@ -327,7 +417,7 @@ const canMove = computed(() =>
 
 function onMoved(result) {
   showMoveModal.value = false
-  toastStore.success(`이동 완료: ${result.dest}`)
+  toastStore.success(t('workspace.moveSuccess', { dest: result.dest }))
   workspaceStore.newSession()
 }
 
@@ -431,7 +521,7 @@ async function startLrc(source) {
   fetchingLyrics.value = false
   lrcProgress.done = true
   lrcProgress.currentFile = ''
-  toastStore.success(`LRC 완료: ${lrcProgress.ok}개 저장`)
+  toastStore.success(t('workspace.lrcDoneToast', { n: lrcProgress.ok }))
 }
 
 // ── 포맷 배지 ──────────────────────────────────────────────
@@ -452,6 +542,7 @@ function onClickOutside(e) {
 }
 
 onMounted(async () => {
+  toolbarReady.value = true
   await workspaceStore.loadCurrentSession()
   await loadProviders()
   document.addEventListener('click', onClickOutside, true)

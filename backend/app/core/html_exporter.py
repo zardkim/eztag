@@ -224,22 +224,33 @@ details summary:hover { background: var(--row-hover); }
   margin-left: 6px; vertical-align: middle; flex-shrink: 0;
 }
 
-/* ── YouTube 섹션 ── */
-.yt-section { margin-bottom: 24px; }
-.yt-embed-wrap {
-  position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;
-  border-radius: 12px; background: #000;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+/* ── YouTube MV 다이얼로그 ── */
+.col-yt { text-align: center; width: 36px; }
+.yt-play-btn {
+  background: none; border: none; padding: 0; cursor: pointer;
+  display: inline-flex; align-items: center; color: #ff0000;
+  opacity: 0.8; transition: opacity 0.15s, transform 0.1s;
 }
-.yt-embed-wrap iframe {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;
+.yt-play-btn:hover { opacity: 1; transform: scale(1.15); }
+.yt-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.85); z-index: 9000;
+  align-items: center; justify-content: center;
 }
-.yt-label {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 11px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 1.5px; color: var(--text3); margin-bottom: 8px;
+.yt-overlay.open { display: flex; }
+.yt-dialog {
+  position: relative; width: min(854px, 95vw);
+  aspect-ratio: 16/9; background: #000;
+  border-radius: 10px; overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6);
 }
-.yt-label svg { color: #ff0000; }
+.yt-dialog iframe { width: 100%; height: 100%; border: none; display: block; }
+.yt-close {
+  position: absolute; top: -40px; right: 0;
+  background: none; border: none; color: rgba(255,255,255,0.85);
+  font-size: 28px; line-height: 1; cursor: pointer; padding: 4px 8px;
+}
+.yt-close:hover { color: #fff; }
 
 /* ── eztag 배지 ── */
 .eztag-badge {
@@ -326,6 +337,62 @@ def _extract_youtube_id(url: Optional[str]) -> Optional[str]:
     return None
 
 
+_I18N: dict[str, dict[str, str]] = {
+    "ko": {
+        "lang":            "ko",
+        "tracks":          "{n}곡",
+        "duration":        "재생시간 {dur}",
+        "album_intro":     "앨범 소개",
+        "track_list":      "트랙 목록",
+        "col_disc":        "디스크",
+        "col_track":       "트랙",
+        "col_title":       "제목",
+        "col_artist":      "아티스트",
+        "col_aa":          "앨범아티스트",
+        "col_album":       "앨범",
+        "col_year":        "연도",
+        "col_genre":       "장르",
+        "col_rel_date":    "발매일",
+        "col_isrc":        "ISRC",
+        "col_comment":     "설명",
+        "col_dur":         "길이",
+        "col_br":          "비트레이트",
+        "col_hz":          "주파수",
+        "col_size":        "용량",
+        "has_lyrics":      "가사 있음",
+        "title_track":     "타이틀",
+        "play_mv":         "뮤직비디오 재생",
+        "close":           "닫기",
+    },
+    "en": {
+        "lang":            "en",
+        "tracks":          "{n} tracks",
+        "duration":        "Duration {dur}",
+        "album_intro":     "About",
+        "track_list":      "Track List",
+        "col_disc":        "Disc",
+        "col_track":       "Track",
+        "col_title":       "Title",
+        "col_artist":      "Artist",
+        "col_aa":          "Album Artist",
+        "col_album":       "Album",
+        "col_year":        "Year",
+        "col_genre":       "Genre",
+        "col_rel_date":    "Release Date",
+        "col_isrc":        "ISRC",
+        "col_comment":     "Comment",
+        "col_dur":         "Duration",
+        "col_br":          "Bitrate",
+        "col_hz":          "Frequency",
+        "col_size":        "Size",
+        "has_lyrics":      "Has Lyrics",
+        "title_track":     "Title",
+        "play_mv":         "Play Music Video",
+        "close":           "Close",
+    },
+}
+
+
 def build_html(
     tracks: list[dict],
     album_title: str,
@@ -337,8 +404,10 @@ def build_html(
     source_path: Optional[str] = None,
     description: Optional[str] = None,
     youtube_url: Optional[str] = None,
+    lang: str = "ko",
 ) -> str:
     """트랙 목록 + 태그 메타데이터로 자체 완결형 HTML 생성."""
+    i18n = _I18N.get(lang, _I18N["ko"])
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
     page_title = f"{album_title}" + (f" – {album_artist}" if album_artist else "")
     folder_name = Path(source_path).name if source_path else ""
@@ -360,27 +429,12 @@ def build_html(
 
     # 통계
     total_dur = _total_duration(tracks)
-    stats_parts = [f"{len(tracks)}곡"]
+    stats_parts = [i18n["tracks"].format(n=len(tracks))]
     if total_dur:
-        stats_parts.append(f"재생시간 {total_dur}")
+        stats_parts.append(i18n["duration"].format(dur=total_dur))
     stats_html = " · ".join(stats_parts)
 
-    # YouTube 임베드
-    yt_html = ""
-    yt_id = _extract_youtube_id(youtube_url)
-    if yt_id:
-        yt_html = f"""
-  <!-- 뮤직비디오 -->
-  <div class="yt-section">
-    <div class="yt-label">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
-      뮤직비디오
-    </div>
-    <div class="yt-embed-wrap">
-      <iframe src="https://www.youtube.com/embed/{yt_id}" title="뮤직비디오" allowfullscreen loading="lazy"></iframe>
-    </div>
-  </div>
-"""
+    # (헤더 YouTube 버튼 제거됨 — 트랙 테이블 MV 컬럼에서 다이얼로그로 재생)
 
     # 앨범 소개 섹션
     desc_html = ""
@@ -388,11 +442,12 @@ def build_html(
         desc_escaped = _safe(description).replace("\n", "<br>")
         desc_html = f"""
   <!-- 앨범 소개 -->
-  <div class="section-title">앨범 소개</div>
+  <div class="section-title">{i18n["album_intro"]}</div>
   <div class="desc-box">{desc_escaped}</div>
 """
 
     # 옵션 컬럼 존재 여부
+    has_youtube       = any(t.get("youtube_url") for t in tracks)
     has_multi_disc    = True  # 디스크번호 항상 표시
     has_album_artist_col = any(
         t.get("album_artist") and t.get("album_artist") != t.get("artist")
@@ -411,31 +466,33 @@ def build_html(
     # 테이블 헤더
     th_parts = []
     if has_multi_disc:
-        th_parts.append('<th class="col-disc">디스크</th>')
-    th_parts.append('<th class="num">트랙</th>')
-    th_parts.append('<th>제목</th>')
-    th_parts.append('<th class="col-artist">아티스트</th>')
+        th_parts.append(f'<th class="col-disc">{i18n["col_disc"]}</th>')
+    th_parts.append(f'<th class="num">{i18n["col_track"]}</th>')
+    th_parts.append(f'<th>{i18n["col_title"]}</th>')
+    th_parts.append(f'<th class="col-artist">{i18n["col_artist"]}</th>')
     if has_album_artist_col:
-        th_parts.append('<th class="col-aa">앨범아티스트</th>')
+        th_parts.append(f'<th class="col-aa">{i18n["col_aa"]}</th>')
     if has_album_col:
-        th_parts.append('<th class="col-album">앨범</th>')
+        th_parts.append(f'<th class="col-album">{i18n["col_album"]}</th>')
     if has_year_col:
-        th_parts.append('<th class="col-year">연도</th>')
+        th_parts.append(f'<th class="col-year">{i18n["col_year"]}</th>')
     if has_genre_col:
-        th_parts.append('<th class="col-genre">장르</th>')
+        th_parts.append(f'<th class="col-genre">{i18n["col_genre"]}</th>')
     if has_rel_date:
-        th_parts.append('<th class="col-rd">발매일</th>')
+        th_parts.append(f'<th class="col-rd">{i18n["col_rel_date"]}</th>')
     if has_isrc:
-        th_parts.append('<th class="col-isrc">ISRC</th>')
+        th_parts.append(f'<th class="col-isrc">{i18n["col_isrc"]}</th>')
     if has_comment:
-        th_parts.append('<th class="col-comment">설명</th>')
-    th_parts.append('<th class="dur">길이</th>')
+        th_parts.append(f'<th class="col-comment">{i18n["col_comment"]}</th>')
+    th_parts.append(f'<th class="dur">{i18n["col_dur"]}</th>')
+    if has_youtube:
+        th_parts.append('<th class="col-yt">MV</th>')
     if has_bitrate:
-        th_parts.append('<th class="col-br">비트레이트</th>')
+        th_parts.append(f'<th class="col-br">{i18n["col_br"]}</th>')
     if has_samplerate:
-        th_parts.append('<th class="col-hz">주파수</th>')
+        th_parts.append(f'<th class="col-hz">{i18n["col_hz"]}</th>')
     if has_filesize:
-        th_parts.append('<th class="col-size">용량</th>')
+        th_parts.append(f'<th class="col-size">{i18n["col_size"]}</th>')
     thead_html = "<tr>" + "".join(th_parts) + "</tr>"
 
     # 트랙 행
@@ -445,8 +502,8 @@ def build_html(
         num  = t.get("track_no")
         num_str  = f"{num:02d}" if num else "—"
         disc_str = str(disc) if has_multi_disc else ""
-        lyrics_dot = '<span class="lyrics-badge" title="가사 있음"></span>' if t.get("has_lyrics") else ""
-        title_badge = '<span class="title-track-badge">타이틀</span>' if t.get("is_title_track") else ""
+        lyrics_dot = f'<span class="lyrics-badge" title="{i18n["has_lyrics"]}"></span>' if t.get("has_lyrics") else ""
+        title_badge = f'<span class="title-track-badge">{i18n["title_track"]}</span>' if t.get("is_title_track") else ""
 
         td_parts = []
         if has_multi_disc:
@@ -471,6 +528,17 @@ def build_html(
         if has_comment:
             td_parts.append(f'<td class="col-comment">{_safe(t.get("comment") or "")}</td>')
         td_parts.append(f'<td class="dur">{_fmt_duration(t.get("duration"))}</td>')
+        if has_youtube:
+            yt_url = t.get("youtube_url") or ""
+            yt_vid = _extract_youtube_id(yt_url)
+            if yt_vid:
+                td_parts.append(
+                    f'<td class="col-yt"><button class="yt-play-btn" onclick="openYT(\'{yt_vid}\')" title="{i18n["play_mv"]}">'
+                    '<svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>'
+                    '</button></td>'
+                )
+            else:
+                td_parts.append('<td class="col-yt"></td>')
         if has_bitrate:
             br = t.get("bitrate")
             td_parts.append(f'<td class="col-br">{f"{br}k" if br else "—"}</td>')
@@ -484,7 +552,7 @@ def build_html(
     source_note = f'<span style="font-size:10px;color:var(--text3);">{_safe(folder_name)}</span>' if folder_name else ""
 
     html = f"""<!DOCTYPE html>
-<html lang="ko">
+<html lang="{i18n["lang"]}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -503,6 +571,9 @@ def build_html(
 .col-hz      {{ text-align: center; width: 72px; color: var(--text3); font-size: 12px; }}
 .col-size    {{ text-align: right; width: 72px; color: var(--text3); font-size: 12px; font-family: ui-monospace, monospace; }}
 .desc-box    {{ background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin-bottom: 24px; font-size: 13px; color: var(--text2); line-height: 1.8; white-space: pre-wrap; word-break: break-word; }}
+.col-yt      {{ text-align: center; width: 36px; }}
+.yt-icon-link {{ display: inline-flex; align-items: center; color: #ff0000; opacity: 0.8; }}
+.yt-icon-link:hover {{ opacity: 1; }}
 </style>
 </head>
 <body>
@@ -522,9 +593,9 @@ def build_html(
       </div>
     </div>
   </div>
-{yt_html}{desc_html}
+{desc_html}
   <!-- 트랙 목록 -->
-  <div class="section-title">트랙 목록</div>
+  <div class="section-title">{i18n["track_list"]}</div>
   <div class="track-table-wrap">
     <table class="track-table">
       <thead>{thead_html}</thead>
@@ -541,6 +612,26 @@ def build_html(
   </div>
 
 </div>
+
+<!-- YouTube MV 다이얼로그 -->
+<div id="ytOverlay" class="yt-overlay" onclick="if(event.target===this)closeYT()">
+  <div class="yt-dialog">
+    <button class="yt-close" onclick="closeYT()" title="{i18n["close"]}">✕</button>
+    <iframe id="ytFrame" src="" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture"></iframe>
+  </div>
+</div>
+
+<script>
+function openYT(id) {{
+  document.getElementById('ytFrame').src = 'https://www.youtube.com/embed/' + id + '?autoplay=1';
+  document.getElementById('ytOverlay').classList.add('open');
+}}
+function closeYT() {{
+  document.getElementById('ytOverlay').classList.remove('open');
+  document.getElementById('ytFrame').src = '';
+}}
+document.addEventListener('keydown', function(e) {{ if (e.key === 'Escape') closeYT(); }});
+</script>
 </body>
 </html>"""
 

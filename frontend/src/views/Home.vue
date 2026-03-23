@@ -1,12 +1,40 @@
 <template>
   <div class="flex flex-col h-full overflow-y-auto bg-gray-50 dark:bg-gray-950">
-    <div class="p-4 pb-2 pt-5">
-      <h1 class="text-lg font-bold text-gray-900 dark:text-white">홈</h1>
+    <div class="p-4 pb-3 pt-5">
+      <h1 class="text-lg font-bold text-gray-900 dark:text-white mb-3">{{ t('home.title') }}</h1>
+      <div class="flex gap-2">
+        <button
+          class="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-semibold transition-colors"
+          @click="showFolderPicker = true"
+        >
+          <span class="text-base">📂</span>
+          <span>{{ t('home.openFolder') }}</span>
+        </button>
+        <button
+          class="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold transition-colors"
+          @click="showFilePicker = true"
+        >
+          <span class="text-base">📄</span>
+          <span>{{ t('home.openFile') }}</span>
+        </button>
+      </div>
     </div>
+
+    <LibraryPickerModal
+      v-if="showFolderPicker"
+      :folder-mode="true"
+      @close="showFolderPicker = false"
+      @select-folder="onSelectFolder"
+    />
+    <LibraryPickerModal
+      v-if="showFilePicker"
+      @close="showFilePicker = false"
+      @added="onFilesAdded"
+    />
 
     <!-- 현재 열린 폴더 -->
     <div v-if="browserStore.selectedFolder" class="px-4 mb-4">
-      <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">현재 폴더</div>
+      <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{{ t('home.currentFolder') }}</div>
       <div
         class="flex items-center gap-3 p-4 bg-white dark:bg-gray-900 rounded-2xl border border-blue-200 dark:border-blue-800 shadow-sm cursor-pointer active:scale-[.98] transition-transform"
         @click="router.push('/browser')"
@@ -15,7 +43,7 @@
         <div class="min-w-0 flex-1">
           <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ browserStore.selectedFolder.name }}</p>
           <p class="text-xs text-blue-500 dark:text-blue-400 mt-0.5">
-            {{ browserStore.files.length }}개 파일 · 탭하여 편집
+            {{ t('home.fileCount', { n: browserStore.files.length }) }}
           </p>
         </div>
         <svg class="w-4 h-4 text-blue-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
@@ -26,13 +54,13 @@
 
     <!-- 최근 폴더 -->
     <div class="px-4 flex-1">
-      <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">최근 폴더</div>
+      <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{{ t('home.recentFolders') }}</div>
 
       <!-- 빈 상태 -->
       <div v-if="recentFolders.length === 0" class="py-16 flex flex-col items-center text-center">
         <div class="w-20 h-20 rounded-3xl bg-gray-100 dark:bg-gray-900 flex items-center justify-center text-4xl mb-4">📁</div>
-        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">최근 작업한 폴더가 없습니다</p>
-        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1.5">하단 <strong class="text-gray-500 dark:text-gray-400">+</strong> 버튼으로 폴더를 열어보세요</p>
+        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('home.emptyTitle') }}</p>
+        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1.5">{{ t('home.emptyHint') }}</p>
       </div>
 
       <!-- 폴더 목록 -->
@@ -58,14 +86,19 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useBrowserStore } from '../stores/browser.js'
+import LibraryPickerModal from '../components/LibraryPickerModal.vue'
 
+const { t, locale } = useI18n()
 const router = useRouter()
 const browserStore = useBrowserStore()
 
 const RECENT_KEY = 'eztag-recent-folders'
+const showFolderPicker = ref(false)
+const showFilePicker   = ref(false)
 
 const recentFolders = computed(() => {
   try {
@@ -80,17 +113,28 @@ function openFolder(item) {
   router.push('/browser')
 }
 
+function onSelectFolder(folder) {
+  showFolderPicker.value = false
+  browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }])
+  router.push('/browser')
+}
+
+function onFilesAdded() {
+  showFilePicker.value = false
+  router.push('/workspace')
+}
+
 function formatTime(ts) {
   if (!ts) return ''
   const d = new Date(ts)
   const now = new Date()
   const diffMin = Math.floor((now - d) / 60000)
-  if (diffMin < 1) return '방금 전'
-  if (diffMin < 60) return `${diffMin}분 전`
+  if (diffMin < 1) return t('home.justNow')
+  if (diffMin < 60) return t('home.minutesAgo', { n: diffMin })
   const diffHour = Math.floor(diffMin / 60)
-  if (diffHour < 24) return `${diffHour}시간 전`
+  if (diffHour < 24) return t('home.hoursAgo', { n: diffHour })
   const diffDay = Math.floor(diffHour / 24)
-  if (diffDay < 7) return `${diffDay}일 전`
-  return d.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })
+  if (diffDay < 7) return t('home.daysAgo', { n: diffDay })
+  return d.toLocaleDateString(locale.value === 'ko' ? 'ko-KR' : 'en-US', { month: 'long', day: 'numeric' })
 }
 </script>

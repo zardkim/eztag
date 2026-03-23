@@ -1,21 +1,21 @@
 <template>
   <div class="flex flex-col h-full">
     <!-- ── Toolbar Row 1: App 상단 바에 Teleport ── -->
-    <Teleport to="#app-toolbar-slot">
+    <Teleport v-if="toolbarReady" to="#app-toolbar-slot">
       <div class="flex items-center gap-2 h-full px-3 overflow-x-auto scrollbar-none flex-1 min-w-0">
         <!-- undo / redo — 항상 표시 -->
         <button
           class="btn-toolbar shrink-0 gap-1 flex items-center disabled:opacity-30"
           :disabled="!historyStore.canUndo || historyStore.busy"
-          :title="historyStore.undoLabel ? `되돌리기: ${historyStore.undoLabel}` : '되돌릴 내역 없음'"
+          :title="historyStore.undoLabel ? t('browser.undoTitle', { label: historyStore.undoLabel }) : t('browser.undoEmpty')"
           @click="historyStore.undo(browserStore)"
-        >↩ 되돌리기</button>
+        >↩ {{ t('browser.undoLabel') }}</button>
         <button
           class="btn-toolbar shrink-0 gap-1 flex items-center disabled:opacity-30"
           :disabled="!historyStore.canRedo || historyStore.busy"
-          :title="historyStore.redoLabel ? `다시 실행: ${historyStore.redoLabel}` : '다시 실행할 내역 없음'"
+          :title="historyStore.redoLabel ? t('browser.redoTitle', { label: historyStore.redoLabel }) : t('browser.redoEmpty')"
           @click="historyStore.redo(browserStore)"
-        >다시 실행 ↪</button>
+        >{{ t('browser.redoLabel') }} ↪</button>
         <div v-if="browserStore.selectedFolder" class="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0"></div>
         <template v-if="browserStore.selectedFolder && !browserStore.loading">
           <template v-if="browserStore.files.length > 0">
@@ -79,7 +79,7 @@
                 <div class="mx-3 my-1 border-t border-gray-100 dark:border-gray-700"></div>
                 <p class="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ t('browser.lrcManual') }}</p>
                 <button
-                  v-for="src in [{key:'bugs', label:'Bugs 뮤직 (한국어)'}, {key:'lrclib', label:'LRCLIB.net (국제)'}]"
+                  v-for="src in [{key:'bugs', label:t('browser.lrcBugs')}, {key:'lrclib', label:t('browser.lrcLrclib')}]"
                   :key="src.key"
                   class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-left"
                   @click="startFetchLyrics(src.key)"
@@ -90,12 +90,18 @@
               class="btn-toolbar !bg-orange-100 !text-orange-700 hover:!bg-orange-200 dark:!bg-orange-900/30 dark:!text-orange-400 disabled:opacity-40 shrink-0"
               :disabled="browserStore.files.length === 0"
               @click="showRenameModal = true"
-            >{{ t('browser.rename') }}</button>
+            >🔤 {{ t('browser.rename') }}</button>
             <button
               v-if="isLibrarySubfolder"
               class="btn-toolbar !bg-indigo-100 !text-indigo-700 hover:!bg-indigo-200 dark:!bg-indigo-900/30 dark:!text-indigo-400 shrink-0"
               @click="showMoveModal = true"
             >{{ t('browser.moveFolder.button') }}</button>
+            <button
+              v-if="browserStore.files.length > 0"
+              class="btn-toolbar !bg-red-100 !text-red-700 hover:!bg-red-200 dark:!bg-red-900/30 dark:!text-red-400 shrink-0 disabled:opacity-50"
+              :disabled="searchingYoutube"
+              @click="startYoutubeSearch"
+            ><svg viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 shrink-0 inline-block mr-1"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>{{ searchingYoutube ? t('browser.ytBtnProgress', { current: ytProgress.current, total: ytProgress.total }) : t('browser.ytBtn') }}</button>
           </template>
           <button
             v-if="browserStore.files.length > 0"
@@ -103,7 +109,7 @@
             :disabled="exportingHtml"
             @click="exportFolderHtml"
           >📄 {{ exportingHtml ? '...' : t('browser.exportHtml') }}</button>
-          <button class="btn-toolbar shrink-0" @click="forceReload" title="새로고침">🔄</button>
+          <button class="btn-toolbar shrink-0" @click="forceReload" :title="t('browser.reload')">🔄</button>
         </template>
         <template v-else>
           <span class="text-xs text-gray-400 px-1">{{ $t('browser.selectFolder') }}</span>
@@ -112,114 +118,170 @@
     </Teleport>
 
     <!-- ── Toolbar Row 1 (모바일): App 상단 바 모바일 슬롯에 Teleport ── -->
-    <Teleport to="#app-toolbar-slot-mobile">
-      <div class="flex items-center gap-2 h-full px-3 overflow-x-auto scrollbar-none flex-1 min-w-0">
-        <!-- undo / redo — 항상 표시 -->
+    <Teleport v-if="toolbarReady" to="#app-toolbar-slot-mobile">
+      <div class="flex items-center gap-1.5 h-full px-2 flex-1 min-w-0">
+        <!-- undo / redo -->
         <button
-          class="btn-toolbar shrink-0 gap-1 flex items-center disabled:opacity-30"
+          class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0 text-base"
           :disabled="!historyStore.canUndo || historyStore.busy"
-          :title="historyStore.undoLabel ? `되돌리기: ${historyStore.undoLabel}` : '되돌릴 내역 없음'"
+          :title="historyStore.undoLabel ? t('browser.undoTitle', { label: historyStore.undoLabel }) : t('browser.undoEmpty')"
           @click="historyStore.undo(browserStore)"
-        >↩ 되돌리기</button>
+        >↩</button>
         <button
-          class="btn-toolbar shrink-0 gap-1 flex items-center disabled:opacity-30"
+          class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0 text-base"
           :disabled="!historyStore.canRedo || historyStore.busy"
-          :title="historyStore.redoLabel ? `다시 실행: ${historyStore.redoLabel}` : '다시 실행할 내역 없음'"
+          :title="historyStore.redoLabel ? t('browser.redoTitle', { label: historyStore.redoLabel }) : t('browser.redoEmpty')"
           @click="historyStore.redo(browserStore)"
-        >다시 실행 ↪</button>
-        <div v-if="browserStore.selectedFolder" class="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0"></div>
-        <template v-if="browserStore.selectedFolder && !browserStore.loading">
-          <template v-if="browserStore.files.length > 0">
-            <!-- 전체선택 버튼 (선택 수량 통합 표시) -->
-            <button
-              class="btn-toolbar shrink-0"
-              :class="browserStore.checkedPaths.size > 0 ? 'btn-toolbar-active' : ''"
-              @click="toggleSelectAll"
-            >
-              <template v-if="browserStore.checkedPaths.size === 0">{{ t('browser.selectAll') }}</template>
-              <template v-else>{{ browserStore.checkedPaths.size }}/{{ browserStore.displayFiles.length }} ✕</template>
-            </button>
-            <button
-              class="btn-toolbar shrink-0"
-              :class="showPanel === 'tag' ? 'btn-toolbar-active' : ''"
-              @click="openBatchPanel('tag')"
-            >✏️ {{ $t('browser.editTag') }}</button>
-            <!-- 자동 태그 드롭다운 -->
-            <div class="relative shrink-0">
-              <button
-                class="btn-toolbar !bg-green-100 !text-green-700 hover:!bg-green-200 dark:!bg-green-900/30 dark:!text-green-400 flex items-center gap-1"
-                @click="toggleAutoTagMenu"
-              >🏷 {{ t('browser.autoTag') }}<span class="text-[10px] opacity-60">▾</span></button>
-              <div
-                v-if="showAutoTagMenu"
-                class="fixed top-20 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-[200] py-1.5"
-                :style="autoTagMenuPos"
-              >
-                <p class="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ t('browser.selectSource') }}</p>
-                <button
-                  v-for="p in availableProviders"
-                  :key="p.key"
-                  class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
-                  @click="openAutoTagSearch(p.key)"
-                ><img :src="p.logo" :alt="p.label" class="w-5 h-5 rounded object-cover shrink-0" />{{ p.label }}</button>
-              </div>
-            </div>
-            <!-- LRC 드롭다운 -->
-            <div class="relative shrink-0">
-              <button
-                class="btn-toolbar !bg-purple-100 !text-purple-700 hover:!bg-purple-200 dark:!bg-purple-900/30 dark:!text-purple-400 disabled:opacity-40 flex items-center gap-1"
-                :disabled="fetchingLyrics || (browserStore.checkedPaths.size === 0 && browserStore.files.length === 0)"
-                @click="showLrcMenu = !showLrcMenu"
-              >🎵 LRC<span class="text-[10px] opacity-60">▾</span></button>
-              <div
-                v-if="showLrcMenu"
-                class="fixed top-20 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-[200] py-1.5"
-                :style="lrcMenuPos"
-              >
-                <p class="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ t('browser.lrcSourceLabel') }}</p>
-                <button
-                  class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-left"
-                  @click="startFetchLyrics('auto')"
-                >
-                  <span class="text-base">⚡</span>
-                  <div class="flex-1 min-w-0">
-                    <div class="font-medium">{{ t('browser.lrcAuto') }}</div>
-                    <div class="text-[10px] text-gray-400 truncate">{{ lrcAutoDesc }}</div>
-                  </div>
-                </button>
-                <div class="mx-3 my-1 border-t border-gray-100 dark:border-gray-700"></div>
-                <p class="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ t('browser.lrcManual') }}</p>
-                <button
-                  v-for="src in [{key:'bugs', label:'Bugs 뮤직 (한국어)'}, {key:'lrclib', label:'LRCLIB.net (국제)'}]"
-                  :key="src.key"
-                  class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-left"
-                  @click="startFetchLyrics(src.key)"
-                ><span class="text-base">🎵</span>{{ src.label }}</button>
-              </div>
-            </div>
-            <button
-              class="btn-toolbar !bg-orange-100 !text-orange-700 hover:!bg-orange-200 dark:!bg-orange-900/30 dark:!text-orange-400 disabled:opacity-40 shrink-0"
-              :disabled="browserStore.files.length === 0"
-              @click="showRenameModal = true"
-            >{{ t('browser.rename') }}</button>
-            <button
-              v-if="isLibrarySubfolder"
-              class="btn-toolbar !bg-indigo-100 !text-indigo-700 hover:!bg-indigo-200 dark:!bg-indigo-900/30 dark:!text-indigo-400 shrink-0"
-              @click="showMoveModal = true"
-            >{{ t('browser.moveFolder.button') }}</button>
-          </template>
-          <button
-            v-if="browserStore.files.length > 0"
-            class="btn-toolbar !bg-teal-100 !text-teal-700 hover:!bg-teal-200 dark:!bg-teal-900/30 dark:!text-teal-400 disabled:opacity-40 shrink-0"
-            :disabled="exportingHtml"
-            @click="exportFolderHtml"
-          >📄 {{ exportingHtml ? '...' : t('browser.exportHtml') }}</button>
-          <button class="btn-toolbar shrink-0" @click="forceReload" title="새로고침">🔄</button>
-        </template>
-        <template v-else>
-          <span class="text-xs text-gray-400 px-1">{{ $t('browser.selectFolder') }}</span>
-        </template>
+        >↪</button>
+        <div v-if="browserStore.selectedFolder && !browserStore.loading && browserStore.files.length > 0" class="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0"></div>
+        <!-- 전체선택 -->
+        <button
+          v-if="browserStore.selectedFolder && !browserStore.loading && browserStore.files.length > 0"
+          class="btn-toolbar shrink-0 text-xs"
+          :class="browserStore.checkedPaths.size > 0 ? 'btn-toolbar-active' : ''"
+          @click="toggleSelectAll"
+        >
+          <template v-if="browserStore.checkedPaths.size === 0">{{ t('browser.selectAll') }}</template>
+          <template v-else>{{ browserStore.checkedPaths.size }}/{{ browserStore.displayFiles.length }} ✕</template>
+        </button>
+        <!-- 새로고침 -->
+        <button
+          v-if="browserStore.selectedFolder && !browserStore.loading"
+          class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0"
+          :title="t('browser.reload')"
+          @click="forceReload()"
+        >🔄</button>
+        <div class="flex-1"></div>
+        <!-- 더보기 버튼 -->
+        <button
+          v-if="browserStore.selectedFolder && !browserStore.loading"
+          class="w-9 h-9 flex items-center justify-center rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0 text-xl font-bold leading-none"
+          @click="showMobileMenu = true"
+        >···</button>
       </div>
+    </Teleport>
+
+    <!-- ── 모바일 액션 바텀시트 ── -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        leave-active-class="transition duration-150 ease-in"
+        enter-from-class="opacity-0"
+        leave-to-class="opacity-0"
+      >
+        <div v-if="showMobileMenu" class="lg:hidden fixed inset-0 z-[120] flex flex-col justify-end" @click="showMobileMenu = false">
+          <div class="absolute inset-0 bg-black/40" />
+          <Transition
+            enter-active-class="transition duration-200 ease-out"
+            leave-active-class="transition duration-150 ease-in"
+            enter-from-class="translate-y-full"
+            leave-to-class="translate-y-full"
+          >
+            <div v-if="showMobileMenu" class="relative bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl max-h-[80vh] flex flex-col" @click.stop>
+              <!-- 드래그 핸들 -->
+              <div class="flex justify-center pt-3 pb-1 shrink-0">
+                <div class="w-10 h-1 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+              </div>
+
+              <div class="overflow-y-auto flex-1 px-3 pb-2 space-y-0.5">
+                <template v-if="browserStore.files.length > 0">
+                  <!-- 태그 편집 -->
+                  <button
+                    class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
+                    :class="showPanel === 'tag' ? 'bg-blue-50 dark:bg-blue-900/20 !text-blue-600 dark:!text-blue-400' : ''"
+                    @click="openBatchPanel('tag'); showMobileMenu = false"
+                  ><span class="text-xl">✏️</span>{{ $t('browser.editTag') }}</button>
+
+                  <!-- 자동 태그 (아코디언) -->
+                  <div>
+                    <button
+                      class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors text-left"
+                      @click="mobileAutoTagExpanded = !mobileAutoTagExpanded"
+                    >
+                      <span class="text-xl">🏷</span>
+                      <span class="flex-1">{{ t('browser.autoTag') }}</span>
+                      <span class="text-xs opacity-60 transition-transform duration-200 inline-block" :class="mobileAutoTagExpanded ? 'rotate-180' : ''">▾</span>
+                    </button>
+                    <div v-if="mobileAutoTagExpanded" class="mt-0.5 ml-6 space-y-0.5">
+                      <button
+                        v-for="p in availableProviders"
+                        :key="p.key"
+                        class="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
+                        @click="openAutoTagSearch(p.key); showMobileMenu = false; mobileAutoTagExpanded = false"
+                      ><img :src="p.logo" :alt="p.label" class="w-5 h-5 rounded object-cover shrink-0" />{{ p.label }}</button>
+                    </div>
+                  </div>
+
+                  <!-- LRC (아코디언) -->
+                  <div>
+                    <button
+                      class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors text-left disabled:opacity-50"
+                      :disabled="fetchingLyrics"
+                      @click="mobileLrcExpanded = !mobileLrcExpanded"
+                    >
+                      <span class="text-xl">🎵</span>
+                      <span class="flex-1">LRC</span>
+                      <span class="text-xs opacity-60 transition-transform duration-200 inline-block" :class="mobileLrcExpanded ? 'rotate-180' : ''">▾</span>
+                    </button>
+                    <div v-if="mobileLrcExpanded" class="mt-0.5 ml-6 space-y-0.5">
+                      <button
+                        class="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-left"
+                        @click="startFetchLyrics('auto'); showMobileMenu = false; mobileLrcExpanded = false"
+                      >
+                        <span class="text-lg">⚡</span>
+                        <div class="min-w-0">
+                          <div class="font-medium">{{ t('browser.lrcAuto') }}</div>
+                          <div class="text-[10px] text-gray-400 truncate">{{ lrcAutoDesc }}</div>
+                        </div>
+                      </button>
+                      <button
+                        v-for="src in [{key:'bugs', label:t('browser.lrcBugs')}, {key:'lrclib', label:t('browser.lrcLrclib')}]"
+                        :key="src.key"
+                        class="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-left"
+                        @click="startFetchLyrics(src.key); showMobileMenu = false; mobileLrcExpanded = false"
+                      ><span class="text-lg">🎵</span>{{ src.label }}</button>
+                    </div>
+                  </div>
+
+                  <!-- 이름 변경 -->
+                  <button
+                    class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors text-left"
+                    @click="showRenameModal = true; showMobileMenu = false"
+                  ><span class="text-xl">🔤</span>{{ t('browser.rename') }}</button>
+
+                  <!-- 폴더 이동 -->
+                  <button
+                    v-if="isLibrarySubfolder"
+                    class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors text-left"
+                    @click="showMoveModal = true; showMobileMenu = false"
+                  ><span class="text-xl">📦</span>{{ t('browser.moveFolder.button') }}</button>
+
+                  <!-- YouTube MV -->
+                  <button
+                    class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-left disabled:opacity-50"
+                    :disabled="searchingYoutube"
+                    @click="startYoutubeSearch(); showMobileMenu = false"
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 shrink-0"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                    {{ searchingYoutube ? t('browser.ytBtnProgress', { current: ytProgress.current, total: ytProgress.total }) : t('browser.ytBtn') }}
+                  </button>
+
+                  <!-- HTML 생성 -->
+                  <button
+                    class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-colors text-left disabled:opacity-50"
+                    :disabled="exportingHtml"
+                    @click="exportFolderHtml(); showMobileMenu = false"
+                  ><span class="text-xl">📄</span>{{ exportingHtml ? '...' : t('browser.exportHtml') }}</button>
+                </template>
+
+              </div>
+
+              <!-- safe area -->
+              <div class="shrink-0 pb-6"></div>
+            </div>
+          </Transition>
+        </div>
+      </Transition>
     </Teleport>
 
     <!-- ── Toolbar Row 2: 폴더 경로 ── -->
@@ -283,6 +345,61 @@
       </div>
     </Transition>
 
+    <!-- YouTube MV 검색 진행 패널 -->
+    <Transition enter-from-class="opacity-0 -translate-y-1" leave-to-class="opacity-0 -translate-y-1" enter-active-class="transition duration-200" leave-active-class="transition duration-150">
+      <div v-if="searchingYoutube || ytProgress.done" class="shrink-0 bg-red-50 dark:bg-red-900/20 border-b border-red-100 dark:border-red-800">
+        <!-- 진행 표시 -->
+        <div class="px-4 py-2 flex items-center gap-3">
+          <svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-red-500 shrink-0">
+            <path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/>
+          </svg>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-semibold text-red-700 dark:text-red-300">
+                {{ searchingYoutube
+                  ? t('browser.ytSearching', { current: ytProgress.current, total: ytProgress.total })
+                  : t('browser.ytDone', { n: ytProgress.found }) }}
+              </span>
+              <span class="text-xs text-red-500 dark:text-red-400">
+                {{ ytProgress.found }}✅ {{ ytProgress.current - ytProgress.found }}❌
+              </span>
+            </div>
+            <div class="h-1 bg-red-100 dark:bg-red-800 rounded-full overflow-hidden">
+              <div
+                class="h-full bg-red-500 rounded-full transition-all duration-300"
+                :style="{ width: ytProgress.total > 0 ? (ytProgress.current / ytProgress.total * 100) + '%' : '0%' }"
+              />
+            </div>
+            <p v-if="ytProgress.currentFile && searchingYoutube" class="text-[10px] text-red-500 dark:text-red-400 truncate mt-0.5">{{ ytProgress.currentFile }}</p>
+          </div>
+          <button v-if="ytProgress.done" class="text-red-400 hover:text-red-600 text-xs shrink-0" @click="ytProgress.done = false; ytResults = []">✕</button>
+        </div>
+        <!-- 결과 목록 (완료 후 표시) -->
+        <div v-if="ytProgress.done && ytResults.length > 0" class="max-h-44 overflow-y-auto border-t border-red-100 dark:border-red-800">
+          <div
+            v-for="r in ytResults"
+            :key="r.path"
+            class="flex items-center gap-2 px-4 py-1 text-xs border-b border-red-50 dark:border-red-900/30 last:border-0"
+          >
+            <span class="shrink-0">{{ r.found ? '✅' : '❌' }}</span>
+            <span class="flex-1 truncate text-gray-700 dark:text-gray-300">{{ r.title }}</span>
+            <a
+              v-if="r.url"
+              :href="r.url"
+              target="_blank"
+              class="shrink-0 text-red-500 hover:text-red-600 flex items-center"
+              :title="t('browser.ytWatch')"
+              @click.stop
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5">
+                <path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <!-- 태그 기반 파일명 변경 모달 -->
     <RenameByTagsModal
       v-if="showRenameModal"
@@ -309,7 +426,7 @@
           <button
             class="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white ml-4 shrink-0"
             @click="browserStore.selectExtraFile(null)"
-          >✕ 닫기</button>
+          >✕ {{ t('common.close') }}</button>
         </div>
         <iframe
           :src="`/api/browse/extra-file?path=${encodeURIComponent(browserStore.selectedExtraFile.path)}`"
@@ -372,13 +489,13 @@
 
           <!-- 앨범 설명 -->
           <div v-if="browserStore.albumDescription" class="mx-4 mt-2 mb-1 px-4 py-3 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl">
-            <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">앨범 소개</p>
+            <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">{{ t('browser.albumIntro') }}</p>
             <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap line-clamp-4" :title="browserStore.albumDescription">{{ browserStore.albumDescription }}</p>
           </div>
 
           <!-- 필터 결과 없음 -->
           <div v-if="browserStore.files.length > 0 && browserStore.displayFiles.length === 0" class="flex items-center justify-center h-24">
-            <p class="text-gray-400 text-sm">검색 결과가 없습니다.</p>
+            <p class="text-gray-400 text-sm">{{ t('browser.noFilterResults') }}</p>
           </div>
 
           <!-- ── 모바일 카드 뷰 (md 미만) ── -->
@@ -408,7 +525,7 @@
                 </div>
                 <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ file.artist }}<span v-if="file.artist && file.album_title"> · </span>{{ file.album_title }}</p>
                 <div class="flex items-center gap-2 text-[10px] text-gray-400 mt-0.5">
-                  <span v-if="file.track_no">{{ file.track_no }}번</span>
+                  <span v-if="file.track_no">{{ t('browser.trackNo', { n: file.track_no }) }}</span>
                   <span v-if="file.year">{{ file.year }}</span>
                   <span v-if="file.duration">{{ formatDuration(file.duration) }}</span>
                   <span v-if="file.bitrate">{{ file.bitrate }}k</span>
@@ -429,23 +546,24 @@
           <table class="w-full min-w-[1400px] text-sm">
               <thead class="sticky top-0 bg-indigo-50 dark:bg-slate-800 border-b border-indigo-100 dark:border-slate-700 z-10">
                 <tr class="text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap select-none">
-                  <th class="text-center px-2 py-2 font-semibold w-12 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('disc_no')">디스크<span class="ml-0.5 opacity-60">{{ sortIcon('disc_no') }}</span></th>
-                  <th class="text-center px-2 py-2 font-semibold w-12 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('track_no')">트랙<span class="ml-0.5 opacity-60">{{ sortIcon('track_no') }}</span></th>
+                  <th class="text-center px-2 py-2 font-semibold w-12 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('disc_no')">{{ t('browser.colDisc') }}<span class="ml-0.5 opacity-60">{{ sortIcon('disc_no') }}</span></th>
+                  <th class="text-center px-2 py-2 font-semibold w-12 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('track_no')">{{ t('browser.colTrack') }}<span class="ml-0.5 opacity-60">{{ sortIcon('track_no') }}</span></th>
                   <th class="w-9 shrink-0"></th>
                   <th class="text-left px-2 py-2 font-semibold min-w-[160px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('title')">{{ $t('common.title') }}<span class="ml-0.5 opacity-60">{{ sortIcon('title') }}</span></th>
                   <th class="text-left px-3 py-2 font-semibold min-w-[110px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('artist')">{{ $t('common.artist') }}<span class="ml-0.5 opacity-60">{{ sortIcon('artist') }}</span></th>
-                  <th class="text-left px-3 py-2 font-semibold min-w-[110px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('album_artist')">앨범 아티스트<span class="ml-0.5 opacity-60">{{ sortIcon('album_artist') }}</span></th>
+                  <th class="text-left px-3 py-2 font-semibold min-w-[110px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('album_artist')">{{ t('browser.colAlbumArtist') }}<span class="ml-0.5 opacity-60">{{ sortIcon('album_artist') }}</span></th>
                   <th class="text-left px-3 py-2 font-semibold min-w-[110px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('album_title')">{{ $t('common.album') }}<span class="ml-0.5 opacity-60">{{ sortIcon('album_title') }}</span></th>
-                  <th class="text-left px-3 py-2 font-semibold min-w-[80px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('genre')">장르<span class="ml-0.5 opacity-60">{{ sortIcon('genre') }}</span></th>
-                  <th class="text-center px-2 py-2 font-semibold w-14 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('year')">연도<span class="ml-0.5 opacity-60">{{ sortIcon('year') }}</span></th>
-                  <th class="text-left px-3 py-2 font-semibold min-w-[100px]">설명</th>
-                  <th class="text-center px-2 py-2 font-semibold w-16 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('file_format')">코덱<span class="ml-0.5 opacity-60">{{ sortIcon('file_format') }}</span></th>
+                  <th class="text-left px-3 py-2 font-semibold min-w-[80px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('genre')">{{ t('browser.colGenre') }}<span class="ml-0.5 opacity-60">{{ sortIcon('genre') }}</span></th>
+                  <th class="text-center px-2 py-2 font-semibold w-14 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('year')">{{ t('browser.colYear') }}<span class="ml-0.5 opacity-60">{{ sortIcon('year') }}</span></th>
+                  <th class="text-left px-3 py-2 font-semibold min-w-[100px]">{{ t('browser.colComment') }}</th>
+                  <th class="text-center px-2 py-2 font-semibold w-16 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('file_format')">{{ t('browser.colCodec') }}<span class="ml-0.5 opacity-60">{{ sortIcon('file_format') }}</span></th>
                   <th class="text-center px-2 py-2 font-semibold w-12">LRC</th>
-                  <th class="text-center px-2 py-2 font-semibold w-16">태그버전</th>
-                  <th class="text-center px-2 py-2 font-semibold w-20 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('bitrate')">비트레이트<span class="ml-0.5 opacity-60">{{ sortIcon('bitrate') }}</span></th>
-                  <th class="text-center px-2 py-2 font-semibold w-20 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('sample_rate')">주파수<span class="ml-0.5 opacity-60">{{ sortIcon('sample_rate') }}</span></th>
-                  <th class="text-center px-2 py-2 font-semibold w-16 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('duration')">길이<span class="ml-0.5 opacity-60">{{ sortIcon('duration') }}</span></th>
-                  <th class="text-left px-3 py-2 font-semibold min-w-[130px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('modified_time')">수정된 일시<span class="ml-0.5 opacity-60">{{ sortIcon('modified_time') }}</span></th>
+                  <th class="text-center px-2 py-2 font-semibold w-10">YT</th>
+                  <th class="text-center px-2 py-2 font-semibold w-16">{{ t('browser.colTagVersion') }}</th>
+                  <th class="text-center px-2 py-2 font-semibold w-20 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('bitrate')">{{ t('browser.colBitrate') }}<span class="ml-0.5 opacity-60">{{ sortIcon('bitrate') }}</span></th>
+                  <th class="text-center px-2 py-2 font-semibold w-20 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('sample_rate')">{{ t('browser.colFrequency') }}<span class="ml-0.5 opacity-60">{{ sortIcon('sample_rate') }}</span></th>
+                  <th class="text-center px-2 py-2 font-semibold w-16 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('duration')">{{ t('browser.colDuration') }}<span class="ml-0.5 opacity-60">{{ sortIcon('duration') }}</span></th>
+                  <th class="text-left px-3 py-2 font-semibold min-w-[130px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('modified_time')">{{ t('browser.colModified') }}<span class="ml-0.5 opacity-60">{{ sortIcon('modified_time') }}</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -480,14 +598,7 @@
                       <span v-if="file.is_title_track"
                         class="shrink-0 text-[9px] font-extrabold px-1.5 py-0.5 rounded
                                bg-gradient-to-r from-orange-500 to-red-500 text-white leading-none"
-                      >타이틀</span>
-                      <a v-if="file.youtube_url" :href="file.youtube_url" target="_blank"
-                        class="shrink-0 w-4 h-4 flex items-center justify-center text-red-500 hover:text-red-600 opacity-70 hover:opacity-100 transition-opacity"
-                        title="뮤직비디오 보기"
-                        @click.stop
-                      >
-                        <svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
-                      </a>
+                      >{{ t('browser.titleBadge') }}</span>
                     </div>
                   </td>
                   <td class="px-3 py-2 text-gray-600 dark:text-gray-400 max-w-[130px]">
@@ -512,6 +623,24 @@
                   <td class="px-2 py-2 text-center">
                     <span v-if="file.has_lrc" class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400">LRC</span>
                   </td>
+                  <td class="px-2 py-2 text-center">
+                    <div v-if="file.youtube_url" class="group/yt inline-flex items-center justify-center gap-0.5">
+                      <a
+                        :href="file.youtube_url"
+                        target="_blank"
+                        class="inline-flex items-center justify-center text-red-500 hover:text-red-600 opacity-70 hover:opacity-100 transition-opacity"
+                        :title="t('browser.ytWatch')"
+                        @click.stop
+                      >
+                        <svg viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
+                      </a>
+                      <button
+                        class="hidden group-hover/yt:flex items-center justify-center w-3.5 h-3.5 text-[9px] text-gray-300 hover:text-red-500 transition-colors leading-none"
+                        :title="t('browser.ytDeleteLink')"
+                        @click.stop="clearYoutubeUrl(file)"
+                      >✕</button>
+                    </div>
+                  </td>
                   <td class="px-2 py-2 text-center text-gray-400 text-xs font-mono">{{ file.tag_version }}</td>
                   <td class="px-2 py-2 text-center text-gray-400 text-xs">{{ file.bitrate ? `${file.bitrate}k` : '' }}</td>
                   <td class="px-2 py-2 text-center text-gray-400 text-xs">{{ formatHz(file.sample_rate) }}</td>
@@ -534,9 +663,10 @@
       <!-- Batch Tag Panel (right) -->
       <div
         v-if="showPanel && browserStore.files.length > 0"
-        class="w-full sm:w-80 lg:w-96 shrink-0 overflow-hidden"
+        class="w-full sm:w-80 lg:w-96 shrink-0 overflow-y-auto max-h-full"
       >
         <BatchTagPanel
+          v-if="showPanel === 'tag'"
           :focus-spotify="false"
           @close="closePanel"
           @saved="onSaved"
@@ -570,7 +700,7 @@ import { configApi } from '../api/config.js'
 import { browseApi } from '../api/index.js'
 import { downloadBlob } from '../utils/download.js'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const browserStore = useBrowserStore()
 const workspaceStore = useWorkspaceStore()
 const historyStore = useHistoryStore()
@@ -579,13 +709,83 @@ const showPanel = ref(null)
 const showSpotifyDialog = ref(false)
 const currentPlay = ref(null)
 const exportingHtml = ref(false)
+// ── YouTube MV 자동 검색 ────────────────────────────────────
+const searchingYoutube = ref(false)
+const ytProgress = reactive({ current: 0, total: 0, found: 0, currentFile: '', done: false })
+const ytResults = ref([])  // [{ path, title, url, found }]
 
+async function startYoutubeSearch() {
+  const targets = browserStore.files.filter(f => f.scanned !== false)
+  if (!targets.length) { toastStore.info(t('browser.ytNoFiles')); return }
+  if (!await toastStore.confirm(t('browser.ytConfirm', { n: targets.length }))) return
+
+  searchingYoutube.value = true
+  ytProgress.current = 0
+  ytProgress.total = targets.length
+  ytProgress.found = 0
+  ytProgress.currentFile = ''
+  ytProgress.done = false
+  ytResults.value = []
+
+  for (const file of targets) {
+    ytProgress.currentFile = file.title || file.filename
+    try {
+      const { data } = await browseApi.searchYoutubeMV(file.artist || '', file.title || file.filename || '')
+      const results = Array.isArray(data) ? data : (data.results || [])
+      if (results.length > 0) {
+        const url = results[0].url
+        await browseApi.setTrackInfo({ path: file.path, youtube_url: url, is_title_track: !!file.is_title_track })
+        browserStore.updateFiles([file.path], { youtube_url: url })
+        ytProgress.found++
+        ytResults.value.push({ path: file.path, title: file.title || file.filename, url, found: true })
+      } else {
+        ytResults.value.push({ path: file.path, title: file.title || file.filename, url: null, found: false })
+      }
+    } catch (e) {
+      const status = e.response?.status
+      const detail = e.response?.data?.detail
+      if (status === 422 && detail === 'youtube_not_configured') {
+        searchingYoutube.value = false
+        ytProgress.done = true
+        toastStore.info(t('browser.ytNotConfigured'))
+        return
+      }
+      ytResults.value.push({ path: file.path, title: file.title || file.filename, url: null, found: false })
+    } finally {
+      ytProgress.current++
+    }
+  }
+  searchingYoutube.value = false
+  ytProgress.done = true
+}
+
+async function clearYoutubeUrl(file) {
+  try {
+    await browseApi.setTrackInfo({ path: file.path, youtube_url: null, is_title_track: !!file.is_title_track })
+    browserStore.updateFiles([file.path], { youtube_url: null })
+  } catch {
+    toastStore.info(t('browser.ytDeleteFailed'))
+  }
+}
 
 // 폴더 변경 시 패널·선택 초기화
 watch(() => browserStore.selectedFolder, () => {
   showPanel.value = null
   currentPlay.value = null
+  ytProgress.done = false
+  ytResults.value = []
+  showMobileMenu.value = false
+  mobileAutoTagExpanded.value = false
+  mobileLrcExpanded.value = false
 })
+
+// ── 툴바 Teleport 준비 (DOM 커밋 이후에만 활성화) ──
+const toolbarReady = ref(false)
+
+// ── 모바일 바텀시트 ──────────────────────────────────
+const showMobileMenu = ref(false)
+const mobileAutoTagExpanded = ref(false)
+const mobileLrcExpanded = ref(false)
 
 // ── 자동 태그 드롭다운 ──────────────────────────────
 const showAutoTagMenu = ref(false)
@@ -731,6 +931,7 @@ function onDragEnd() {
 }
 
 onMounted(async () => {
+  toolbarReady.value = true
   await loadProviders()
   await loadLrcConfig()
   document.addEventListener('click', onClickOutside, true)
@@ -824,10 +1025,11 @@ function enterSubfolder(folder) {
 async function exportFolderHtml() {
   const path = browserStore.selectedFolder?.path
   if (!path || exportingHtml.value) return
+  if (!await toastStore.confirm(t('browser.exportHtmlConfirm'))) return
   exportingHtml.value = true
   try {
-    const { data } = await browseApi.exportFolderHtml(path)
-    toastStore.success(`${data.filename} 저장됨`)
+    const { data } = await browseApi.exportFolderHtml(path, locale.value)
+    toastStore.success(t('browser.htmlSaved', { filename: data.filename }))
     // 파일 목록 새로고침 (tracklist.html 표시)
     browserStore.invalidateFilesCache(path)
     browserStore.loadFiles(path, true)

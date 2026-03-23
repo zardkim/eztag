@@ -1,6 +1,6 @@
 <template>
-  <div class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" @click.self="$emit('close')">
-    <div class="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+  <div class="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" @click.self="$emit('close')">
+    <div class="bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
 
       <!-- ── Header ── -->
       <div class="px-5 py-3.5 border-b border-gray-200 dark:border-gray-800 flex items-center gap-3 shrink-0">
@@ -8,10 +8,10 @@
           v-if="mode !== 'search'"
           class="text-gray-400 hover:text-gray-700 dark:hover:text-white p-1 -ml-1 transition-colors text-sm"
           @click="mode = 'search'"
-        >← 목록</button>
+        >{{ $t('tagSearch.backToList') }}</button>
         <div class="flex-1 min-w-0">
           <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
-            {{ mode === 'search' ? '🎵 태그 검색' : mode === 'loading' ? '트랙 목록 로딩 중...' : '태그 비교 및 적용' }}
+            {{ mode === 'search' ? $t('tagSearch.titleSearch') : mode === 'loading' ? $t('tagSearch.titleLoading') : $t('tagSearch.titleCompare') }}
           </h2>
           <p class="text-xs text-gray-400 mt-0.5 truncate">{{ targetLabel }}</p>
         </div>
@@ -26,7 +26,7 @@
             <input
               v-model="query"
               class="field flex-1 text-sm"
-              placeholder="앨범명, 아티스트로 검색..."
+              :placeholder="$t('tagSearch.searchPlaceholder')"
               @keyup.enter="doSearch"
               ref="searchInput"
             />
@@ -34,11 +34,11 @@
               class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors disabled:opacity-60 shrink-0"
               :disabled="searchLoading || !activeProviders.length"
               @click="doSearch"
-            >{{ searchLoading ? '검색 중...' : '검색' }}</button>
+            >{{ searchLoading ? $t('tagSearch.searching') : $t('tagSearch.search') }}</button>
           </div>
           <!-- 소스 선택 -->
           <div class="flex items-center gap-2 flex-wrap">
-            <span class="text-xs text-gray-400 shrink-0">소스:</span>
+            <span class="text-xs text-gray-400 shrink-0">{{ $t('tagSearch.sourceLabel') }}</span>
             <template v-for="p in availableProviders" :key="p.key">
               <button
                 class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-all"
@@ -55,9 +55,9 @@
         </div>
 
         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-2">
-          <div v-if="searchLoading" class="flex items-center justify-center py-16 text-sm text-gray-400">검색 중...</div>
+          <div v-if="searchLoading" class="flex items-center justify-center py-16 text-sm text-gray-400">{{ $t('tagSearch.searching') }}</div>
           <div v-else-if="searchError" class="text-center py-10 text-sm text-red-500">{{ searchError }}</div>
-          <div v-else-if="results.length === 0 && searched" class="text-center py-10 text-sm text-gray-400">검색 결과가 없습니다.</div>
+          <div v-else-if="results.length === 0 && searched" class="text-center py-10 text-sm text-gray-400">{{ $t('tagSearch.noResults') }}</div>
 
           <div
             v-for="result in results"
@@ -82,20 +82,20 @@
               <p class="text-xs text-gray-500 truncate">{{ result.album_artist || result.artist }}</p>
               <div class="flex gap-2 mt-0.5 text-xs text-gray-400 flex-wrap">
                 <span v-if="result.release_date">{{ result.release_date }}</span>
-                <span v-if="result.total_tracks">· {{ result.total_tracks }}곡</span>
+                <span v-if="result.total_tracks">· {{ $t('tagSearch.trackCount', { n: result.total_tracks }) }}</span>
                 <span v-if="result.label">· {{ result.label }}</span>
                 <span v-if="result.genres && result.genres.length">· {{ result.genres[0] }}</span>
                 <span v-if="result.genre && !result.genres">· {{ result.genre }}</span>
               </div>
             </div>
-            <span class="text-xs text-blue-500 group-hover:text-blue-600 dark:text-blue-400 shrink-0 pr-1">선택 →</span>
+            <span class="text-xs text-blue-500 group-hover:text-blue-600 dark:text-blue-400 shrink-0 pr-1">{{ $t('tagSearch.selectArrow') }}</span>
           </div>
         </div>
       </template>
 
       <!-- ══════════════════ LOADING MODE ══════════════════ -->
       <div v-else-if="mode === 'loading'" class="flex-1 flex items-center justify-center text-sm text-gray-400">
-        {{ providerLabel(loadingProvider) }} 트랙 목록 로딩 중...
+        {{ $t('tagSearch.loadingTracks', { provider: providerLabel(loadingProvider) }) }}
       </div>
 
       <!-- ══════════════════ COMPARE MODE ══════════════════ -->
@@ -119,7 +119,7 @@
               <p class="text-gray-500 truncate">{{ selectedAlbum.album_artist || selectedAlbum.artist }}</p>
               <div class="flex gap-3 mt-1 text-xs text-gray-400 flex-wrap">
                 <span v-if="selectedAlbum.release_date">📅 {{ selectedAlbum.release_date }}</span>
-                <span v-if="selectedAlbum.total_tracks">🎵 {{ selectedAlbum.total_tracks }}곡</span>
+                <span v-if="selectedAlbum.total_tracks">🎵 {{ $t('tagSearch.trackCount', { n: selectedAlbum.total_tracks }) }}</span>
                 <span v-if="selectedAlbum.label">🏷 {{ selectedAlbum.label }}</span>
                 <span v-if="selectedAlbum.genres && selectedAlbum.genres.length">🎸 {{ selectedAlbum.genres.join(', ') }}</span>
                 <span v-if="selectedAlbum.genre && !selectedAlbum.genres">🎸 {{ selectedAlbum.genre }}</span>
@@ -130,97 +130,78 @@
 
           <!-- 앨범 공통 태그 변경사항 -->
           <div class="px-5 py-3 border-b border-gray-200 dark:border-gray-700">
-            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">앨범 공통 태그 (전체 파일 적용)</p>
-            <table class="w-full text-xs border-collapse">
-              <thead>
-                <tr class="border-b border-gray-100 dark:border-gray-800">
-                  <th class="text-left py-1.5 text-gray-400 font-normal w-28">필드</th>
-                  <th class="text-left py-1.5 text-gray-500 font-medium w-[38%]">현재 (첫 번째 파일 기준)</th>
-                  <th class="text-left py-1.5 font-medium" :class="compareHeaderClass">{{ providerLabel(selectedAlbum.provider) }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="row in albumRows"
-                  :key="row.key"
-                  class="border-b border-gray-50 dark:border-gray-800/40"
-                  :class="row.changed ? 'bg-green-50/60 dark:bg-green-900/10' : ''"
-                >
-                  <td class="py-1.5 text-gray-400 pr-2">{{ row.label }}</td>
-                  <td class="py-1.5 text-gray-600 dark:text-gray-400 pr-4">
-                    <span v-if="row.current != null && row.current !== ''">{{ row.current }}</span>
-                    <span v-else class="italic text-gray-300 dark:text-gray-600">없음</span>
-                  </td>
-                  <td class="py-1.5">
-                    <span v-if="row.new != null && row.new !== ''" :class="row.changed ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-700 dark:text-gray-300'">
-                      {{ row.new }}
-                    </span>
-                    <span v-else class="italic text-gray-300 dark:text-gray-600">없음</span>
-                    <span v-if="row.changed" class="ml-1.5 text-[10px] bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1 rounded">변경</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{{ $t('tagSearch.albumCommonTags') }}</p>
+            <div class="space-y-1.5">
+              <div
+                v-for="row in albumRows"
+                :key="row.key"
+                class="rounded-lg px-3 py-2 text-xs"
+                :class="row.changed ? 'bg-green-50 dark:bg-green-900/10' : 'bg-gray-50 dark:bg-gray-800/40'"
+              >
+                <div class="flex items-start gap-2">
+                  <span class="text-gray-400 shrink-0 w-20 pt-0.5">{{ row.label }}</span>
+                  <div class="flex-1 min-w-0">
+                    <div v-if="row.changed && row.current != null && row.current !== ''" class="text-gray-400 line-through truncate">{{ row.current }}</div>
+                    <div :class="row.changed ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-700 dark:text-gray-300'" class="truncate">
+                      <span v-if="row.new != null && row.new !== ''">{{ row.new }}</span>
+                      <span v-else class="italic text-gray-300 dark:text-gray-600">{{ $t('tagSearch.colEmpty') }}</span>
+                    </div>
+                  </div>
+                  <span v-if="row.changed" class="text-[10px] bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded shrink-0">{{ $t('tagSearch.changed') }}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- 트랙별 매칭 -->
           <div class="px-5 py-3">
             <div class="flex items-center justify-between mb-2">
-              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">트랙별 태그 (개별 적용)</p>
-              <span class="text-xs text-gray-400">{{ matchedCount }}개 매칭 / {{ trackMatches.length }}개 항목</span>
+              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ $t('tagSearch.trackTags') }}</p>
+              <span class="text-xs text-gray-400">{{ $t('tagSearch.matchCount', { matched: matchedCount, total: trackMatches.length }) }}</span>
             </div>
-            <table class="w-full text-xs border-collapse">
-              <thead>
-                <tr class="border-b border-gray-200 dark:border-gray-700">
-                  <th class="text-left py-1.5 text-gray-400 font-normal w-6">#</th>
-                  <th class="text-left py-1.5 text-gray-500 font-medium w-[38%]">로컬 파일</th>
-                  <th class="text-left py-1.5 font-medium" :class="compareHeaderClass">{{ providerLabel(selectedAlbum.provider) }} 트랙</th>
-                  <th class="text-right py-1.5 text-gray-400 font-normal w-12">제목 변경</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="(match, i) in trackMatches"
-                  :key="i"
-                  class="border-b border-gray-50 dark:border-gray-800/40"
-                  :class="!match.local || !match.remote ? 'opacity-50' : ''"
-                >
-                  <td class="py-1.5 text-gray-400 whitespace-nowrap">
-                    <span v-if="match.remote?.disc_no > 1" class="text-gray-300 dark:text-gray-600">{{ match.remote.disc_no }}-</span>{{ match.remote?.track_no || (i + 1) }}
-                  </td>
-                  <td class="py-1.5 pr-3">
-                    <span v-if="match.local" class="text-gray-700 dark:text-gray-300 truncate block max-w-[200px]">{{ match.local.title || match.local.filename }}</span>
-                    <span v-else class="italic text-gray-300 dark:text-gray-600">매칭 없음</span>
-                  </td>
-                  <td class="py-1.5">
-                    <span v-if="match.remote" class="text-gray-700 dark:text-gray-300 truncate block max-w-[200px]">{{ match.remote.title }}</span>
-                    <span v-else class="italic text-gray-300 dark:text-gray-600">매칭 없음</span>
-                  </td>
-                  <td class="py-1.5 text-right">
-                    <span
-                      v-if="match.local && match.remote && match.local.title !== match.remote.title"
-                      class="text-[10px] bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1 rounded"
-                    >변경</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="space-y-0.5">
+              <div
+                v-for="(match, i) in trackMatches"
+                :key="i"
+                class="flex items-start gap-2 py-2 px-2 rounded-lg text-xs"
+                :class="!match.local || !match.remote ? 'opacity-50' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'"
+              >
+                <span class="text-gray-400 shrink-0 w-6 text-right pt-0.5">
+                  <span v-if="match.remote?.disc_no > 1" class="text-gray-300 dark:text-gray-600">{{ match.remote.disc_no }}-</span>{{ match.remote?.track_no || (i + 1) }}.
+                </span>
+                <div class="flex-1 min-w-0">
+                  <div class="text-gray-700 dark:text-gray-300 truncate">
+                    <span v-if="match.local">{{ match.local.title || match.local.filename }}</span>
+                    <span v-else class="italic text-gray-300 dark:text-gray-600">{{ $t('tagSearch.noMatch') }}</span>
+                  </div>
+                  <div v-if="match.remote" class="text-gray-400 truncate mt-0.5">
+                    → {{ match.remote.title }}
+                  </div>
+                </div>
+                <span
+                  v-if="match.local && match.remote && match.local.title !== match.remote.title"
+                  class="text-[10px] bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded shrink-0"
+                >{{ $t('tagSearch.changed') }}</span>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- Footer -->
-        <div class="px-5 py-3.5 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0 bg-white dark:bg-gray-900">
-          <p class="text-xs text-gray-400">
-            앨범 공통 태그 → 전체 {{ targetPaths.length }}개 파일 ·
-            트랙별 태그 → {{ matchedCount }}개 매칭 파일
+        <div class="px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] border-t border-gray-200 dark:border-gray-800 shrink-0 bg-white dark:bg-gray-900">
+          <p class="text-xs text-gray-400 mb-2.5">
+            {{ $t('tagSearch.footerSummary', { files: targetPaths.length, matched: matchedCount }) }}
           </p>
           <div class="flex gap-2">
-            <button class="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors" @click="$emit('close')">취소</button>
             <button
-              class="px-5 py-2 bg-green-600 hover:bg-green-500 text-white text-sm rounded-lg transition-colors disabled:opacity-60"
+              class="flex-1 py-3 text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors"
+              @click="$emit('close')"
+            >{{ $t('common.cancel') }}</button>
+            <button
+              class="flex-[2] py-3 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-60"
               :disabled="applying"
               @click="applyAll"
-            >{{ applying ? '적용 중...' : '전체 적용' }}</button>
+            >{{ applying ? $t('tagSearch.applying') : $t('tagSearch.applyAll') }}</button>
           </div>
         </div>
       </template>
@@ -334,12 +315,12 @@ const firstFile = computed(() => localFiles.value[0] || null)
 
 const targetLabel = computed(() => {
   if (props.workspaceMode) {
-    return `워크스페이스 — ${localFiles.value.length}개 파일`
+    return t('tagSearch.targetWorkspace', { n: localFiles.value.length })
   }
   if (browserStore.checkedPaths.size > 0)
-    return `${browserStore.checkedPaths.size}개 파일 선택됨`
+    return t('tagSearch.targetSelected', { n: browserStore.checkedPaths.size })
   const folder = browserStore.selectedFolder
-  return folder ? `📂 ${folder.name || folder.path} — 전체 ${browserStore.files.length}개 파일` : ''
+  return folder ? t('tagSearch.targetFolder', { folder: folder.name || folder.path, n: browserStore.files.length }) : ''
 })
 
 // ── 초기화 ────────────────────────────────────
@@ -400,7 +381,7 @@ async function doSearch() {
     results.value = allResults.flat()
     searched.value = true
   } catch {
-    searchError.value = '검색 실패. 소스 설정을 확인해 주세요.'
+    searchError.value = t('tagSearch.searchFailed')
   } finally {
     searchLoading.value = false
   }
@@ -489,15 +470,15 @@ const albumRows = computed(() => {
   const truncate = (v, n = 80) => v && v.length > n ? v.slice(0, n) + '…' : v
 
   return [
-    { key: 'artist',       label: '아티스트',     current: c.artist,       new: s.album_artist || s.artist },
-    { key: 'album_artist', label: '앨범 아티스트', current: c.album_artist, new: s.album_artist },
-    { key: 'album_title',  label: '앨범',         current: c.album_title,  new: s.album_title || s.title },
-    { key: 'genre',        label: '장르',         current: c.genre,        new: genre,         alwaysShow: true },
-    { key: 'year',         label: '연도',         current: c.year,         new: s.year },
-    { key: 'release_date', label: '발매일',       current: null,           new: s.release_date },
-    { key: 'total_tracks', label: '총 트랙 수',   current: null,           new: s.total_tracks },
-    { key: 'label',        label: '레이블',       current: null,           new: s.label },
-    { key: 'description',  label: '앨범 소개',    current: null,           new: truncate(s.description), alwaysShow: true },
+    { key: 'artist',       label: t('tagSearch.fieldArtist'),       current: c.artist,       new: s.album_artist || s.artist },
+    { key: 'album_artist', label: t('tagSearch.fieldAlbumArtist'),  current: c.album_artist, new: s.album_artist },
+    { key: 'album_title',  label: t('tagSearch.fieldAlbum'),        current: c.album_title,  new: s.album_title || s.title },
+    { key: 'genre',        label: t('tagSearch.fieldGenre'),        current: c.genre,        new: genre,         alwaysShow: true },
+    { key: 'year',         label: t('tagSearch.fieldYear'),         current: c.year,         new: s.year },
+    { key: 'release_date', label: t('tagSearch.fieldReleaseDate'),  current: null,           new: s.release_date },
+    { key: 'total_tracks', label: t('tagSearch.fieldTotalTracks'),  current: null,           new: s.total_tracks },
+    { key: 'label',        label: t('tagSearch.fieldLabel'),        current: null,           new: s.label },
+    { key: 'description',  label: t('tagSearch.fieldDescription'),  current: null,           new: truncate(s.description), alwaysShow: true },
   ]
     .filter(r => r.alwaysShow || (r.new != null && r.new !== ''))
     .map(r => ({

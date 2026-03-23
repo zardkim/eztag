@@ -1,10 +1,10 @@
 <template>
-  <div class="relative flex flex-col h-full bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800">
+  <div class="relative flex flex-col bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800">
     <!-- Header -->
     <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0">
       <div class="min-w-0">
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">태그 편집
-          <span v-if="multiMode" class="ml-1.5 text-xs font-normal text-blue-500 dark:text-blue-400">{{ targetFiles.length }}개 파일</span>
+        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ $t('batchPanel.title') }}
+          <span v-if="multiMode" class="ml-1.5 text-xs font-normal text-blue-500 dark:text-blue-400">{{ $t('batchPanel.filesCount', { n: targetFiles.length }) }}</span>
         </h3>
         <p class="text-xs text-gray-400 mt-0.5 truncate">
           {{ referenceFile?.title || referenceFile?.filename || '-' }}
@@ -13,8 +13,21 @@
       <button class="text-gray-400 hover:text-gray-700 dark:hover:text-white p-1 shrink-0 ml-2" @click="$emit('close')">✕</button>
     </div>
 
-    <!-- Scrollable content -->
-    <div class="flex-1 overflow-y-auto">
+    <!-- 저장 / 초기화 버튼 -->
+    <div class="px-4 py-2.5 border-b border-gray-200 dark:border-gray-800 flex gap-2">
+      <button
+        class="flex-1 py-2 text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white rounded-lg transition-colors"
+        :disabled="saving"
+        @click="save"
+      >{{ saving ? $t('batchPanel.saving') : $t('batchPanel.save') }}</button>
+      <button
+        class="px-3 py-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 rounded-lg transition-colors"
+        @click="reset"
+      >{{ $t('batchPanel.reset') }}</button>
+    </div>
+
+    <!-- Content -->
+    <div>
       <!-- 커버 -->
       <div v-if="referenceFile" class="px-4 pt-3 pb-1">
         <div
@@ -30,7 +43,7 @@
 
           <div class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
             <span class="opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs font-medium text-center px-2">
-              🖼 폴더에서 선택
+              🖼 {{ $t('batchPanel.coverFromFolder') }}
             </span>
           </div>
 
@@ -47,7 +60,7 @@
               <span v-if="referenceFile.duration">{{ formatDuration(referenceFile.duration) }}</span>
               <span v-if="referenceFile.file_size">{{ formatSize(referenceFile.file_size) }}</span>
               <span v-if="referenceFile.has_lyrics">📝</span>
-              <span v-if="referenceFile.outdated" class="text-yellow-300">● 변경됨</span>
+              <span v-if="referenceFile.outdated" class="text-yellow-300">{{ $t('batchPanel.coverOutdated') }}</span>
             </p>
           </div>
         </div>
@@ -56,7 +69,7 @@
         <div class="flex items-center justify-between mt-1 px-0.5 text-[10px] text-gray-400">
           <span class="flex items-center gap-1.5 min-w-0 truncate">
             <template v-if="currentCover">
-              <span>{{ currentCover.type_name }}</span>
+              <span>{{ COVER_TYPES.find(ct => ct.id === currentCover.type)?.label || currentCover.type_name }}</span>
               <span v-if="currentCover.source === 'folder'" class="text-gray-300 dark:text-gray-600 truncate">📁 {{ currentCover.name }}</span>
               <span v-if="currentCover.width">{{ currentCover.width }}×{{ currentCover.height }}</span>
               <span v-if="currentCover.size_bytes">{{ formatSize(currentCover.size_bytes) }}</span>
@@ -66,14 +79,14 @@
           <div v-if="activeCoverUrl && currentCover?.source === 'embedded'" class="flex items-center gap-1 shrink-0 ml-1">
             <button
               class="text-[10px] px-2 py-0.5 rounded bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors border border-red-200 dark:border-red-800"
-              title="커버아트 제거"
+              :title="$t('batchPanel.coverRemove')"
               @click="removeCoverArt"
-            >제거</button>
+            >{{ $t('batchPanel.coverRemove') }}</button>
             <button
               class="text-[10px] px-2 py-0.5 rounded bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors border border-green-200 dark:border-green-800"
-              title="커버아트를 폴더에 이미지 파일로 추출"
+              :title="$t('batchPanel.coverExtract')"
               @click="extractCoverArt"
-            >추출</button>
+            >{{ $t('batchPanel.coverExtract') }}</button>
           </div>
         </div>
         <!-- 커버 타입 선택 + 업로드 -->
@@ -81,20 +94,20 @@
           <select
             v-model="selectedCoverType"
             class="flex-1 min-w-0 text-[10px] h-5 px-1 rounded-l bg-gray-100 dark:bg-gray-800 border border-r-0 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 focus:outline-none cursor-pointer"
-            title="업로드할 커버 타입 선택"
+            :title="$t('batchPanel.coverTypeLabel')"
           >
             <option v-for="ct in COVER_TYPES" :key="ct.id" :value="ct.id">{{ ct.label }}</option>
           </select>
           <button
             class="shrink-0 flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-r bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors border border-gray-200 dark:border-gray-700"
-            title="기기에서 이미지 업로드"
+            :title="$t('batchPanel.coverUpload')"
             @click="triggerCoverInput"
-          >⬆ 업로드</button>
+          >⬆ {{ $t('batchPanel.coverUpload') }}</button>
         </div>
 
         <!-- 대기 중인 커버 목록 -->
         <div v-if="pendingCovers.length > 0" class="mt-1.5 space-y-1 px-0.5">
-          <p class="text-[9px] font-semibold text-blue-500 dark:text-blue-400 uppercase tracking-wider">저장 대기 중 ({{ pendingCovers.length }})</p>
+          <p class="text-[9px] font-semibold text-blue-500 dark:text-blue-400 uppercase tracking-wider">{{ $t('batchPanel.coverPending', { n: pendingCovers.length }) }}</p>
           <div
             v-for="pc in pendingCovers"
             :key="pc.id"
@@ -102,7 +115,7 @@
           >
             <img :src="pc.preview" class="w-8 h-8 rounded object-cover shrink-0 border border-blue-200 dark:border-blue-700" />
             <span class="flex-1 text-[10px] text-blue-700 dark:text-blue-300 truncate">
-              {{ COVER_TYPES.find(t => t.id === pc.coverType)?.label }}
+              {{ COVER_TYPES.find(ct => ct.id === pc.coverType)?.label }}
             </span>
             <button
               class="text-[10px] text-blue-400 hover:text-red-500 dark:hover:text-red-400 transition-colors px-1"
@@ -125,7 +138,7 @@
             <!-- 모달 헤더 -->
             <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 shrink-0">
               <div>
-                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">폴더 이미지 선택</h3>
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ $t('batchPanel.coverPickTitle') }}</h3>
                 <p class="text-xs text-gray-400 mt-0.5">{{ folderImagesFolder }}</p>
               </div>
               <button class="text-gray-400 hover:text-gray-700 dark:hover:text-white p-1" @click="showFolderPicker = false">✕</button>
@@ -133,10 +146,10 @@
             <!-- 이미지 그리드 -->
             <div class="flex-1 overflow-y-auto p-4">
               <div v-if="folderImagesLoading" class="flex items-center justify-center h-32 text-gray-400 text-sm">
-                로딩 중...
+                {{ $t('batchPanel.coverPickLoading') }}
               </div>
               <div v-else-if="folderImages.length === 0" class="flex flex-col items-center justify-center h-32 text-gray-400">
-                <p class="text-sm">이미지 파일 없음</p>
+                <p class="text-sm">{{ $t('batchPanel.coverPickEmpty') }}</p>
                 <p class="text-xs mt-1">{{ folderImagesFolder }}</p>
               </div>
               <div v-else class="grid grid-cols-3 gap-3">
@@ -151,7 +164,7 @@
                 >
                   <img :src="img.url" :alt="img.name" class="w-full h-full object-cover" loading="lazy" />
                   <div class="absolute top-1.5 left-1.5 text-[8px] px-1 py-0.5 bg-black/50 rounded text-white">
-                    {{ COVER_TYPES.find(t => t.id === detectCoverTypeFromName(img.name))?.label }}
+                    {{ COVER_TYPES.find(ct => ct.id === detectCoverTypeFromName(img.name))?.label }}
                   </div>
                   <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent px-1.5 py-1">
                     <p class="text-white text-[9px] truncate">{{ img.name }}</p>
@@ -166,12 +179,12 @@
             <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-800 space-y-2 shrink-0">
               <!-- 커버 타입 선택 -->
               <div class="flex items-center gap-2">
-                <label class="text-xs text-gray-500 shrink-0">커버 타입</label>
+                <label class="text-xs text-gray-500 shrink-0">{{ $t('batchPanel.coverTypeLabel') }}</label>
                 <select
                   v-model="folderPickerCoverType"
                   class="flex-1 text-xs rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-1 focus:outline-none"
                 >
-                  <option v-for="t in COVER_TYPES" :key="t.id" :value="t.id">{{ t.label }}</option>
+                  <option v-for="ct in COVER_TYPES" :key="ct.id" :value="ct.id">{{ ct.label }}</option>
                 </select>
               </div>
               <div class="flex gap-2">
@@ -179,11 +192,11 @@
                   class="flex-1 py-2 text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg transition-colors"
                   :disabled="!selectedFolderImage"
                   @click="applyFolderImage"
-                >적용</button>
+                >{{ $t('common.apply') }}</button>
                 <button
                   class="px-4 py-2 text-sm border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg transition-colors"
                   @click="showFolderPicker = false"
-                >취소</button>
+                >{{ $t('common.cancel') }}</button>
               </div>
             </div>
           </div>
@@ -193,61 +206,61 @@
       <div class="px-4 space-y-2.5 pb-3">
         <!-- ── 기본 태그 ── -->
         <div class="border-t border-gray-100 dark:border-gray-800 pt-2.5">
-          <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">기본 태그</p>
+          <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">{{ $t('batchPanel.sectionBasic') }}</p>
         </div>
 
         <div>
-          <label class="tag-label">제목</label>
+          <label class="tag-label">{{ $t('batchPanel.fieldTitle') }}</label>
           <select v-if="showMixedSelect('title')" key="sel-title" :value="getFieldMode('title')" class="mixed-select" :class="getFieldMode('title') === 'clear' ? 'clear' : ''" @change="setFieldMode('title', $event.target.value)">
-            <option value="keep">(다중 값) — 유지하기</option>
-            <option value="clear">제거하기</option>
-            <option value="input">직접 입력...</option>
+            <option value="keep">{{ $t('batchPanel.optKeep') }}</option>
+            <option value="clear">{{ $t('batchPanel.optClear') }}</option>
+            <option value="input">{{ $t('batchPanel.optInput') }}</option>
           </select>
           <input v-else key="inp-title" v-model="form.title" class="field w-full text-sm" placeholder="" />
         </div>
         <div>
-          <label class="tag-label">아티스트</label>
+          <label class="tag-label">{{ $t('batchPanel.fieldArtist') }}</label>
           <select v-if="showMixedSelect('artist')" key="sel-artist" :value="getFieldMode('artist')" class="mixed-select" :class="getFieldMode('artist') === 'clear' ? 'clear' : ''" @change="setFieldMode('artist', $event.target.value)">
-            <option value="keep">(다중 값) — 유지하기</option>
-            <option value="clear">제거하기</option>
-            <option value="input">직접 입력...</option>
+            <option value="keep">{{ $t('batchPanel.optKeep') }}</option>
+            <option value="clear">{{ $t('batchPanel.optClear') }}</option>
+            <option value="input">{{ $t('batchPanel.optInput') }}</option>
           </select>
           <input v-else key="inp-artist" v-model="form.artist" class="field w-full text-sm" placeholder="" />
         </div>
         <div>
-          <label class="tag-label">앨범 아티스트</label>
+          <label class="tag-label">{{ $t('batchPanel.fieldAlbumArtist') }}</label>
           <select v-if="showMixedSelect('album_artist')" key="sel-album_artist" :value="getFieldMode('album_artist')" class="mixed-select" :class="getFieldMode('album_artist') === 'clear' ? 'clear' : ''" @change="setFieldMode('album_artist', $event.target.value)">
-            <option value="keep">(다중 값) — 유지하기</option>
-            <option value="clear">제거하기</option>
-            <option value="input">직접 입력...</option>
+            <option value="keep">{{ $t('batchPanel.optKeep') }}</option>
+            <option value="clear">{{ $t('batchPanel.optClear') }}</option>
+            <option value="input">{{ $t('batchPanel.optInput') }}</option>
           </select>
           <input v-else key="inp-album_artist" v-model="form.album_artist" class="field w-full text-sm" placeholder="" />
         </div>
         <div>
-          <label class="tag-label">앨범</label>
+          <label class="tag-label">{{ $t('batchPanel.fieldAlbum') }}</label>
           <select v-if="showMixedSelect('album_title')" key="sel-album_title" :value="getFieldMode('album_title')" class="mixed-select" :class="getFieldMode('album_title') === 'clear' ? 'clear' : ''" @change="setFieldMode('album_title', $event.target.value)">
-            <option value="keep">(다중 값) — 유지하기</option>
-            <option value="clear">제거하기</option>
-            <option value="input">직접 입력...</option>
+            <option value="keep">{{ $t('batchPanel.optKeep') }}</option>
+            <option value="clear">{{ $t('batchPanel.optClear') }}</option>
+            <option value="input">{{ $t('batchPanel.optInput') }}</option>
           </select>
           <input v-else key="inp-album_title" v-model="form.album_title" class="field w-full text-sm" placeholder="" />
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="tag-label">연도</label>
+            <label class="tag-label">{{ $t('batchPanel.fieldYear') }}</label>
             <select v-if="showMixedSelect('year')" key="sel-year" :value="getFieldMode('year')" class="mixed-select" :class="getFieldMode('year') === 'clear' ? 'clear' : ''" @change="setFieldMode('year', $event.target.value)">
-              <option value="keep">(다중 값) — 유지하기</option>
-              <option value="clear">제거하기</option>
-              <option value="input">직접 입력...</option>
+              <option value="keep">{{ $t('batchPanel.optKeep') }}</option>
+              <option value="clear">{{ $t('batchPanel.optClear') }}</option>
+              <option value="input">{{ $t('batchPanel.optInput') }}</option>
             </select>
             <input v-else key="inp-year" v-model.number="form.year" type="number" min="1900" max="2099" class="field w-full text-sm" placeholder="" />
           </div>
           <div>
-            <label class="tag-label">장르</label>
+            <label class="tag-label">{{ $t('batchPanel.fieldGenre') }}</label>
             <select v-if="showMixedSelect('genre')" key="sel-genre" :value="getFieldMode('genre')" class="mixed-select" :class="getFieldMode('genre') === 'clear' ? 'clear' : ''" @change="setFieldMode('genre', $event.target.value)">
-              <option value="keep">(다중 값) — 유지하기</option>
-              <option value="clear">제거하기</option>
-              <option value="input">직접 입력...</option>
+              <option value="keep">{{ $t('batchPanel.optKeep') }}</option>
+              <option value="clear">{{ $t('batchPanel.optClear') }}</option>
+              <option value="input">{{ $t('batchPanel.optInput') }}</option>
             </select>
             <template v-else>
               <input key="inp-genre" v-model="form.genre" list="genre-datalist" class="field w-full text-sm" placeholder="" autocomplete="off" />
@@ -256,37 +269,37 @@
         </div>
         <div class="grid grid-cols-3 gap-2">
           <div>
-            <label class="tag-label">디스크 #</label>
+            <label class="tag-label">{{ $t('batchPanel.fieldDisc') }}</label>
             <select v-if="showMixedSelect('disc_no')" key="sel-disc_no" :value="getFieldMode('disc_no')" class="mixed-select" :class="getFieldMode('disc_no') === 'clear' ? 'clear' : ''" @change="setFieldMode('disc_no', $event.target.value)">
-              <option value="keep">(다중) 유지</option>
-              <option value="clear">제거</option>
-              <option value="input">입력...</option>
+              <option value="keep">{{ $t('batchPanel.optKeepShort') }}</option>
+              <option value="clear">{{ $t('batchPanel.optClearShort') }}</option>
+              <option value="input">{{ $t('batchPanel.optInputShort') }}</option>
             </select>
             <input v-else key="inp-disc_no" v-model.number="form.disc_no" type="number" min="1" class="field w-full text-sm" placeholder="" />
           </div>
           <div>
             <label class="tag-label">
-              트랙 #
+              {{ $t('batchPanel.fieldTrack') }}
               <button
                 v-if="multiMode"
                 class="ml-1 text-[10px] text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-200 font-normal underline"
-                title="현재 정렬 순서대로 트랙 번호 자동 부여"
+                :title="$t('batchPanel.trackAutoTitle')"
                 @click.prevent="autoTrackNumber"
-              >자동</button>
+              >{{ $t('batchPanel.trackAutoBtn') }}</button>
             </label>
             <select v-if="showMixedSelect('track_no')" key="sel-track_no" :value="getFieldMode('track_no')" class="mixed-select" :class="getFieldMode('track_no') === 'clear' ? 'clear' : ''" @change="setFieldMode('track_no', $event.target.value)">
-              <option value="keep">(다중) 유지</option>
-              <option value="clear">제거</option>
-              <option value="input">입력...</option>
+              <option value="keep">{{ $t('batchPanel.optKeepShort') }}</option>
+              <option value="clear">{{ $t('batchPanel.optClearShort') }}</option>
+              <option value="input">{{ $t('batchPanel.optInputShort') }}</option>
             </select>
             <input v-else key="inp-track_no" v-model.number="form.track_no" type="number" min="1" class="field w-full text-sm" placeholder="" />
           </div>
           <div>
-            <label class="tag-label">총 트랙</label>
+            <label class="tag-label">{{ $t('batchPanel.fieldTotalTrack') }}</label>
             <select v-if="showMixedSelect('total_tracks')" key="sel-total_tracks" :value="getFieldMode('total_tracks')" class="mixed-select" :class="getFieldMode('total_tracks') === 'clear' ? 'clear' : ''" @change="setFieldMode('total_tracks', $event.target.value)">
-              <option value="keep">(다중) 유지</option>
-              <option value="clear">제거</option>
-              <option value="input">입력...</option>
+              <option value="keep">{{ $t('batchPanel.optKeepShort') }}</option>
+              <option value="clear">{{ $t('batchPanel.optClearShort') }}</option>
+              <option value="input">{{ $t('batchPanel.optInputShort') }}</option>
             </select>
             <input v-else key="inp-total_tracks" v-model.number="form.total_tracks" type="number" min="1" class="field w-full text-sm" placeholder="" />
           </div>
@@ -294,11 +307,11 @@
 
         <!-- 설명 -->
         <div>
-          <label class="tag-label">설명</label>
+          <label class="tag-label">{{ $t('batchPanel.fieldComment') }}</label>
           <select v-if="showMixedSelect('comment')" key="sel-comment" :value="getFieldMode('comment')" class="mixed-select" :class="getFieldMode('comment') === 'clear' ? 'clear' : ''" @change="setFieldMode('comment', $event.target.value)">
-            <option value="keep">{{ mixedFields.has('comment') ? '(다중 값) — 유지하기' : '유지하기' }}</option>
-            <option value="clear">제거하기</option>
-            <option value="input">직접 입력...</option>
+            <option value="keep">{{ mixedFields.has('comment') ? $t('batchPanel.optKeep') : $t('batchPanel.optKeepSingle') }}</option>
+            <option value="clear">{{ $t('batchPanel.optClear') }}</option>
+            <option value="input">{{ $t('batchPanel.optInput') }}</option>
           </select>
           <textarea v-else key="inp-comment" v-model="form.comment" class="field w-full text-sm resize-none" rows="3" placeholder=""></textarea>
         </div>
@@ -308,39 +321,39 @@
           class="w-full flex items-center justify-between py-2 text-xs font-semibold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 border-t border-gray-100 dark:border-gray-800 transition-colors"
           @click="expandExtra = !expandExtra"
         >
-          <span class="uppercase tracking-wider">추가 태그</span>
+          <span class="uppercase tracking-wider">{{ $t('batchPanel.sectionExtra') }}</span>
           <span class="text-base leading-none">{{ expandExtra ? '▴' : '▾' }}</span>
         </button>
 
         <div v-show="expandExtra" class="space-y-2.5">
           <div>
-            <label class="tag-label">발매일</label>
+            <label class="tag-label">{{ $t('batchPanel.fieldReleaseDate') }}</label>
             <select v-if="showMixedSelect('release_date')" key="sel-release_date" :value="getFieldMode('release_date')" class="mixed-select" :class="getFieldMode('release_date') === 'clear' ? 'clear' : ''" @change="setFieldMode('release_date', $event.target.value)">
-              <option value="keep">(다중 값) — 유지하기</option>
-              <option value="clear">제거하기</option>
-              <option value="input">직접 입력...</option>
+              <option value="keep">{{ $t('batchPanel.optKeep') }}</option>
+              <option value="clear">{{ $t('batchPanel.optClear') }}</option>
+              <option value="input">{{ $t('batchPanel.optInput') }}</option>
             </select>
             <input v-else key="inp-release_date" v-model="form.release_date" class="field w-full text-sm" placeholder="YYYY-MM-DD" />
           </div>
           <div>
-            <label class="tag-label">레이블</label>
+            <label class="tag-label">{{ $t('batchPanel.fieldLabel') }}</label>
             <select v-if="showMixedSelect('label')" key="sel-label" :value="getFieldMode('label')" class="mixed-select" :class="getFieldMode('label') === 'clear' ? 'clear' : ''" @change="setFieldMode('label', $event.target.value)">
-              <option value="keep">(다중 값) — 유지하기</option>
-              <option value="clear">제거하기</option>
-              <option value="input">직접 입력...</option>
+              <option value="keep">{{ $t('batchPanel.optKeep') }}</option>
+              <option value="clear">{{ $t('batchPanel.optClear') }}</option>
+              <option value="input">{{ $t('batchPanel.optInput') }}</option>
             </select>
             <input v-else key="inp-label" v-model="form.label" class="field w-full text-sm" placeholder="" />
           </div>
           <div>
             <label class="tag-label">ISRC</label>
-            <input v-model="form.isrc" class="field w-full text-sm font-mono" placeholder="읽기 전용" readonly />
+            <input v-model="form.isrc" class="field w-full text-sm font-mono" :placeholder="$t('batchPanel.readonlyPlaceholder')" readonly />
           </div>
           <div>
-            <label class="tag-label">가사</label>
+            <label class="tag-label">{{ $t('batchPanel.fieldLyrics') }}</label>
             <select v-if="showMixedSelect('lyrics')" key="sel-lyrics" :value="getFieldMode('lyrics')" class="mixed-select" :class="getFieldMode('lyrics') === 'clear' ? 'clear' : ''" @change="setFieldMode('lyrics', $event.target.value)">
-              <option value="keep">(다중 값) — 유지하기</option>
-              <option value="clear">제거하기</option>
-              <option value="input">직접 입력...</option>
+              <option value="keep">{{ $t('batchPanel.optKeep') }}</option>
+              <option value="clear">{{ $t('batchPanel.optClear') }}</option>
+              <option value="input">{{ $t('batchPanel.optInput') }}</option>
             </select>
             <textarea
               v-else
@@ -348,13 +361,13 @@
               v-model="form.lyrics"
               class="field w-full text-sm font-mono resize-y"
               rows="6"
-              placeholder="가사를 입력하세요"
+              :placeholder="$t('batchPanel.lyricsPlaceholder')"
             />
           </div>
 
           <!-- 파일 정보 (읽기 전용) -->
           <div class="border-t border-gray-100 dark:border-gray-800 pt-2">
-            <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">파일 정보</p>
+            <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">{{ $t('batchPanel.sectionFileInfo') }}</p>
             <div class="space-y-1 text-xs">
               <div v-for="row in fileInfoRows" :key="row.label" class="flex justify-between">
                 <span class="text-gray-400">{{ row.label }}</span>
@@ -366,23 +379,11 @@
 
         <!-- 안내 -->
         <p class="text-[10px] text-gray-400 border-t border-gray-100 dark:border-gray-800 pt-2">
-          빈 칸은 저장 시 무시됩니다.
-          <span v-if="multiMode">{{ targetFiles.length }}개 파일에 일괄 적용됩니다. <span class="text-red-400">제거하기</span> 선택 시 해당 필드를 삭제합니다.</span>
+          {{ $t('batchPanel.hintEmpty') }}
+          <span v-if="multiMode">{{ $t('batchPanel.hintBatch', { n: targetFiles.length }) }} <span class="text-red-400">{{ $t('batchPanel.optClear') }}</span> {{ $t('batchPanel.hintClear') }}</span>
         </p>
       </div>
-    </div>
 
-    <!-- Footer -->
-    <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-800 flex gap-2 shrink-0">
-      <button
-        class="flex-1 py-2 text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white rounded-lg transition-colors"
-        :disabled="saving"
-        @click="save"
-      >{{ saving ? '저장 중...' : '저장' }}</button>
-      <button
-        class="px-3 py-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 rounded-lg transition-colors"
-        @click="reset"
-      >초기화</button>
     </div>
 
 
@@ -403,27 +404,6 @@ import { useHistoryStore } from '../stores/history.js'
 import { GENRES } from '../constants/genres.js'
 import { useToastStore } from '../stores/toast.js'
 
-// ── 커버 타입 ──────────────────────────────────────────────
-const COVER_TYPES = [
-  { id: 3,  label: 'Front Cover' },
-  { id: 4,  label: 'Back Cover' },
-  { id: 0,  label: 'Other' },
-  { id: 1,  label: 'Icon' },
-  { id: 5,  label: 'Leaflet' },
-  { id: 6,  label: 'Media' },
-  { id: 7,  label: 'Lead Artist' },
-  { id: 9,  label: 'Conductor' },
-  { id: 10, label: 'Band' },
-  { id: 11, label: 'Composer' },
-  { id: 12, label: 'Lyricist' },
-  { id: 13, label: 'Recording Location' },
-  { id: 14, label: 'During Recording' },
-  { id: 15, label: 'During Performance' },
-  { id: 16, label: 'Video Capture' },
-  { id: 17, label: 'Illustration' },
-  { id: 18, label: 'Band Logotype' },
-  { id: 19, label: 'Publisher Logotype' },
-]
 
 function detectCoverTypeFromName(filename) {
   const name = filename.toLowerCase().replace(/\.[^.]+$/, '').trim()
@@ -534,6 +514,28 @@ function setCoverFile(file) {
 
 // ── 공통 ───────────────────────────────────────────────────
 const { t } = useI18n()
+
+// ── 커버 타입 ──────────────────────────────────────────────
+const COVER_TYPES = computed(() => [
+  { id: 3,  label: t('batchPanel.coverTypeFront') },
+  { id: 4,  label: t('batchPanel.coverTypeBack') },
+  { id: 0,  label: t('batchPanel.coverTypeOther') },
+  { id: 1,  label: t('batchPanel.coverTypeIcon') },
+  { id: 5,  label: t('batchPanel.coverTypeLeaflet') },
+  { id: 6,  label: t('batchPanel.coverTypeMedia') },
+  { id: 7,  label: t('batchPanel.coverTypeLeadArtist') },
+  { id: 9,  label: t('batchPanel.coverTypeConductor') },
+  { id: 10, label: t('batchPanel.coverTypeBand') },
+  { id: 11, label: t('batchPanel.coverTypeComposer') },
+  { id: 12, label: t('batchPanel.coverTypeLyricist') },
+  { id: 13, label: t('batchPanel.coverTypeRecordingLocation') },
+  { id: 14, label: t('batchPanel.coverTypeDuringRecording') },
+  { id: 15, label: t('batchPanel.coverTypeDuringPerformance') },
+  { id: 16, label: t('batchPanel.coverTypeVideoCapture') },
+  { id: 17, label: t('batchPanel.coverTypeIllustration') },
+  { id: 18, label: t('batchPanel.coverTypeBandLogo') },
+  { id: 19, label: t('batchPanel.coverTypePublisherLogo') },
+])
 const props = defineProps({
   workspaceMode: { type: Boolean, default: false },
   checkedWorkspaceIds: { type: Array, default: () => [] },
@@ -546,6 +548,7 @@ const historyStore = useHistoryStore()
 const saving = ref(false)
 const expandExtra = ref(false)
 const fieldMode = ref({})   // { [field]: 'keep'|'clear'|'input' } — 다중 값 필드 처리 모드
+
 
 function showToast(msg) { toastStore.info(msg) }
 
@@ -698,7 +701,7 @@ watch(targetFiles, async (fileList) => {
 
   // 내장 커버가 있으면 먼저 표시 — API 응답 전 flicker 방지
   if (ref?.has_cover && ref?.path) {
-    coverList.value = [{ source: 'embedded', url: `/api/browse/file-cover?path=${encodeURIComponent(ref.path)}`, index: 0, type: 3, type_name: 'Front Cover' }]
+    coverList.value = [{ source: 'embedded', url: `/api/browse/file-cover?path=${encodeURIComponent(ref.path)}`, index: 0, type: 3, type_name: t('batchPanel.coverTypeFront') }]
   } else {
     coverList.value = []
   }
@@ -721,7 +724,7 @@ watch(targetFiles, async (fileList) => {
             source: 'folder',
             url: img.url,
             type,
-            type_name: COVER_TYPES.find(t => t.id === type)?.label || 'Other',
+            type_name: COVER_TYPES.value.find(ct => ct.id === type)?.label || t('batchPanel.coverTypeOther'),
             name: img.name,
             folderPath: img.path,
           }
@@ -733,10 +736,11 @@ watch(targetFiles, async (fileList) => {
       coverList.value = combined
     } else if (ref.has_cover) {
       // fallback — 내장 커버는 있는데 list_covers가 빈 경우
-      coverList.value = [{ source: 'embedded', url: `/api/browse/file-cover?path=${encodeURIComponent(ref.path)}`, index: 0, type: 3, type_name: 'Front Cover' }]
+      coverList.value = [{ source: 'embedded', url: `/api/browse/file-cover?path=${encodeURIComponent(ref.path)}`, index: 0, type: 3, type_name: t('batchPanel.coverTypeFront') }]
     }
   }
   fillFromFiles(fileList)
+
 }, { immediate: true })
 
 // ── 파일 정보 (읽기 전용) ─────────────────────────────────
@@ -744,10 +748,10 @@ const fileInfoRows = computed(() => {
   const f = referenceFile.value
   if (!f) return []
   const rows = []
-  if (f.file_format)  rows.push({ label: '포맷',    value: f.file_format })
-  if (f.bitrate)      rows.push({ label: '비트레이트', value: `${f.bitrate} kbps` })
-  if (f.duration)     rows.push({ label: '재생시간',  value: formatDuration(f.duration) })
-  if (f.file_size)    rows.push({ label: '파일 크기', value: formatSize(f.file_size) })
+  if (f.file_format)  rows.push({ label: t('batchPanel.fileInfoFormat'),   value: f.file_format })
+  if (f.bitrate)      rows.push({ label: t('batchPanel.fileInfoBitrate'),  value: `${f.bitrate} kbps` })
+  if (f.duration)     rows.push({ label: t('batchPanel.fileInfoDuration'), value: formatDuration(f.duration) })
+  if (f.file_size)    rows.push({ label: t('batchPanel.fileInfoSize'),     value: formatSize(f.file_size) })
   if (f.isrc)         rows.push({ label: 'ISRC',     value: f.isrc })
   if (f.path) {
     const base = browserStore.breadcrumb[0]?.path
@@ -909,9 +913,9 @@ async function extractCoverArt() {
   try {
     const { data } = await browseApi.extractCovers(path)
     const names = data.saved.map(s => s.filename).join(', ')
-    showToast(`추출 완료: ${names}`)
+    showToast(t('batchPanel.coverExtractDone', { names }))
   } catch (e) {
-    const detail = e.response?.data?.detail || '추출 실패'
+    const detail = e.response?.data?.detail || t('batchPanel.coverExtractError')
     // 파일이 이미 존재하면 덮어쓸지 확인
     if (e.response?.status === 409 || detail.includes('exists')) {
       // 충돌 시 overwrite 재시도는 사용하지 않고 안내만
@@ -926,7 +930,7 @@ async function extractCoverArt() {
 
 // ── 커버아트 제거 ──────────────────────────────────────────
 async function removeCoverArt() {
-  if (!await toastStore.confirm(`커버아트를 제거하시겠습니까?\n${targetFiles.value.length}개 파일에 적용됩니다.`, '커버아트 제거')) return
+  if (!await toastStore.confirm(t('batchPanel.coverRemoveConfirm', { n: targetFiles.value.length }), t('batchPanel.coverRemoveTitle'))) return
   saving.value = true
   try {
     const { data } = await browseApi.removeCover(targetPaths.value)
@@ -946,13 +950,13 @@ async function removeCoverArt() {
     }
 
     if (failed.length > 0) {
-      const errMsg = failed.map(r => `${r.path.split('/').pop()}: ${r.error || '실패'}`).join('\n')
-      showToast(`제거 실패 ${failed.length}건:\n${errMsg}`)
+      const errMsg = failed.map(r => `${r.path.split('/').pop()}: ${r.error || t('batchPanel.coverExtractError')}`).join('\n')
+      showToast(t('batchPanel.coverRemoveFailed', { n: failed.length, msg: errMsg }))
     } else {
-      showToast('커버아트 제거 완료')
+      showToast(t('batchPanel.coverRemoveDone'))
     }
   } catch (e) {
-    showToast('커버아트 제거 실패')
+    showToast(t('batchPanel.coverRemoveError'))
   } finally {
     saving.value = false
   }

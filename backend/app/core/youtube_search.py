@@ -1,5 +1,7 @@
 """YouTube Data API v3를 이용한 뮤직비디오 검색."""
 import logging
+import re
+import unicodedata
 import urllib.parse
 import urllib.request
 import json
@@ -8,10 +10,69 @@ _log = logging.getLogger(__name__)
 
 YOUTUBE_SEARCH_URL = "https://www.googleapis.com/youtube/v3/search"
 
+# 공식 MV로 판단하는 제목 키워드
+_MV_KEYWORDS = ["mv", "m/v", "뮤직비디오", "music video", "official video", "official mv"]
+# 비공식/커버/라이브 등을 제외하는 키워드
+_EXCLUDE_KEYWORDS = ["cover", "live", "reaction", "lyrics", "lyric", "karaoke", "piano",
+                     "instrumental", "remix", "dance practice", "fancam", "fan cam", "직캠",
+                     "teaser", "making", "behind"]
 
-def search_music_video(artist: str, title: str, api_key: str, max_results: int = 5) -> list[dict]:
+
+def _normalize(text: str) -> str:
+    """소문자 변환, 괄호 내용·특수문자 제거."""
+    text = re.sub(r'\([^)]*\)|\[[^\]]*\]|\{[^}]*\}', '', text)
+    text = text.lower()
+    # 유니코드 NFC 정규화
+    text = unicodedata.normalize("NFC", text)
+    # 알파벳·숫자·한글·공백만 유지
+    text = re.sub(r"[^\w\s가-힣]", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _is_official_mv(video_title: str, channel_title: str) -> bool:
+    """제목/채널명 기반으로 공식 뮤직비디오 여부 판별."""
+    t_lower = video_title.lower()
+    for kw in _EXCLUDE_KEYWORDS:
+        if kw in t_lower:
+            return False
+    for kw in _MV_KEYWORDS:
+        if kw in t_lower:
+            return True
+    if "vevo" in channel_title.lower():
+        return True
+    return False
+
+
+def _title_matches(track_title: str, video_title: str, artist: str = "") -> bool:
+    """트랙 제목의 핵심 단어가 YouTube 영상 제목에 충분히 포함되는지 확인."""
+    norm_track = _normalize(track_title)
+    norm_video = _normalize(video_title)
+
+    words = [w for w in norm_track.split() if len(w) >= 2]
+    if not words:
+        return True  # 제목이 너무 짧으면 통과
+
+    matched = sum(1 for w in words if w in norm_video)
+    # 핵심 단어의 절반 이상 또는 1개 이상 매치 시 통과
+    threshold = max(1, len(words) // 2)
+    if matched >= threshold:
+        return True
+
+    # 아티스트 이름도 매치 안 되면 실패
+    if artist:
+        norm_artist = _normalize(artist)
+        artist_words = [w for w in norm_artist.split() if len(w) >= 2]
+        if not any(w in norm_video for w in artist_words):
+            return False
+
+    return False
+
+
+def search_music_video(artist: str, title: str, api_key: str, max_results: int = 10) -> list[dict]:
     """
-    YouTube Data API v3로 뮤직비디오 검색.
+    YouTube Data API v3로 공식 뮤직비디오 검색.
+    - 제목 불일치 결과 필터링
+    - 공식 MV 우선 정렬 후 최대 5개 반환
     반환: [{"video_id", "title", "url", "thumbnail", "channel"}]
     """
     query = f"{artist} {title} MV Official"
@@ -26,24 +87,42 @@ def search_music_video(artist: str, title: str, api_key: str, max_results: int =
     url = f"{YOUTUBE_SEARCH_URL}?{params}"
 
     try:
-        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        req = urllib.request.Request(url, headers={
+            "Accept": "application/json",
+            "Referer": "https://localhost/",
+        })
         with urllib.request.urlopen(req, timeout=8) as resp:
             data = json.loads(resp.read().decode())
     except Exception as e:
         _log.error(f"YouTube API 요청 실패: {e}")
         raise RuntimeError(f"YouTube API 오류: {e}")
 
-    results = []
+    official = []
+    others = []
     for item in data.get("items", []):
         vid = item.get("id", {}).get("videoId")
         snip = item.get("snippet", {})
         if not vid:
             continue
-        results.append({
+        video_title = snip.get("title", "")
+        channel = snip.get("channelTitle", "")
+
+        # 제목 불일치 결과 제외
+        if not _title_matches(title, video_title, artist):
+            _log.debug(f"제목 불일치 제외: '{video_title}' (검색: '{artist} {title}')")
+            continue
+
+        entry = {
             "video_id": vid,
-            "title": snip.get("title", ""),
+            "title": video_title,
             "url": f"https://www.youtube.com/watch?v={vid}",
             "thumbnail": snip.get("thumbnails", {}).get("medium", {}).get("url", ""),
-            "channel": snip.get("channelTitle", ""),
-        })
-    return results
+            "channel": channel,
+        }
+        if _is_official_mv(video_title, channel):
+            official.append(entry)
+        else:
+            others.append(entry)
+
+    # 공식 MV를 앞에, 나머지를 뒤에, 최대 5개
+    return (official + others)[:5]
