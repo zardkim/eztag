@@ -10,13 +10,6 @@
           <span class="text-base">📂</span>
           <span>{{ t('home.openFolder') }}</span>
         </button>
-        <button
-          class="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold transition-colors"
-          @click="showFilePicker = true"
-        >
-          <span class="text-base">📄</span>
-          <span>{{ t('home.openFile') }}</span>
-        </button>
       </div>
     </div>
 
@@ -25,11 +18,6 @@
       :folder-mode="true"
       @close="showFolderPicker = false"
       @select-folder="onSelectFolder"
-    />
-    <LibraryPickerModal
-      v-if="showFilePicker"
-      @close="showFilePicker = false"
-      @added="onFilesAdded"
     />
 
     <!-- 현재 열린 폴더 -->
@@ -98,7 +86,6 @@ const browserStore = useBrowserStore()
 
 const RECENT_KEY = 'eztag-recent-folders'
 const showFolderPicker = ref(false)
-const showFilePicker   = ref(false)
 
 const recentFolders = computed(() => {
   try {
@@ -117,11 +104,6 @@ function onSelectFolder(folder) {
   showFolderPicker.value = false
   browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }])
   router.push('/browser')
-}
-
-function onFilesAdded() {
-  showFilePicker.value = false
-  router.push('/workspace')
 }
 
 function formatTime(ts) {

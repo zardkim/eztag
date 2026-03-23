@@ -12,7 +12,6 @@ export default {
   home: {
     title: 'Home',
     openFolder: 'Open Folder',
-    openFile: 'Open File',
     currentFolder: 'Current Folder',
     fileCount: '{n} files · Tap to edit',
     recentFolders: 'Recent Folders',
@@ -723,8 +722,6 @@ export default {
     fileCount: '{n} file(s)',
     openFolder: 'Open Folder',
     openFolderDesc: 'Load all files in folder',
-    openFile: 'Open File',
-    openFileDesc: 'Select individual files',
     renameFolder: 'Rename Folder',
     confirm: 'Confirm',
     goBrowser: 'Go to Tag Editor',

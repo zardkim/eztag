@@ -12,7 +12,6 @@ export default {
   home: {
     title: '홈',
     openFolder: '폴더 열기',
-    openFile: '파일 열기',
     currentFolder: '현재 폴더',
     fileCount: '{n}개 파일 · 탭하여 편집',
     recentFolders: '최근 폴더',
@@ -722,8 +721,6 @@ export default {
     fileCount: '{n}개 파일',
     openFolder: '폴더 열기',
     openFolderDesc: '폴더 내 전체 파일 불러오기',
-    openFile: '파일 열기',
-    openFileDesc: '개별 파일 선택',
     renameFolder: '폴더 이름 변경',
     confirm: '확인',
     goBrowser: '태그편집 페이지로 이동',

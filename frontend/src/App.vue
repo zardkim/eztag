@@ -38,46 +38,6 @@
       </div>
     </header>
 
-    <!-- ══════════════════════════════════════════════
-         MOBILE: 추가 메뉴 팝업 (+ 버튼)
-    ══════════════════════════════════════════════ -->
-    <Teleport to="body">
-      <Transition
-        enter-active-class="transition duration-150 ease-out"
-        leave-active-class="transition duration-100 ease-in"
-        enter-from-class="opacity-0"
-        leave-to-class="opacity-0"
-      >
-        <div v-if="mobileAddOpen" class="lg:hidden fixed inset-0 z-50" @click="mobileAddOpen = false">
-          <!-- 팝업 카드 -->
-          <div
-            class="absolute bottom-20 left-4 right-4 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden"
-            @click.stop
-          >
-            <button
-              class="w-full flex items-center gap-3 px-4 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-b border-gray-100 dark:border-gray-800"
-              @click="mobileAddOpen = false; mobileShowFolderPicker = true"
-            >
-              <span class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-xl shrink-0">📂</span>
-              <div>
-                <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ $t('sidebar.openFolder') }}</div>
-                <div class="text-xs text-gray-400 mt-0.5">{{ $t('sidebar.openFolderDesc') }}</div>
-              </div>
-            </button>
-            <button
-              class="w-full flex items-center gap-3 px-4 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              @click="mobileAddOpen = false; mobileShowFilePicker = true"
-            >
-              <span class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-xl shrink-0">📄</span>
-              <div>
-                <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ $t('sidebar.openFile') }}</div>
-                <div class="text-xs text-gray-400 mt-0.5">{{ $t('sidebar.openFileDesc') }}</div>
-              </div>
-            </button>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
 
     <!-- ══════════════════════════════════════════════
          MOBILE: 계정 바텀 시트
@@ -140,13 +100,6 @@
         :folder-mode="true"
         @close="mobileShowFolderPicker = false"
         @select-folder="onMobileSelectFolder"
-      />
-    </Teleport>
-    <Teleport to="body">
-      <LibraryPickerModal
-        v-if="mobileShowFilePicker"
-        @close="mobileShowFilePicker = false"
-        @added="onMobileFilesAdded"
       />
     </Teleport>
 
@@ -218,13 +171,6 @@
           title="폴더 열기"
           @click="workspaceSidebarRef?.openFolderPicker()"
         ><span class="text-base">📂</span></button>
-        <button
-          v-if="sidebarCollapsed"
-          class="w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
-          title="파일 열기"
-          @click="workspaceSidebarRef?.openFilePicker()"
-        ><span class="text-base">📄</span></button>
-
         <RouterLink
           v-for="item in bottomNav"
           :key="item.to"
@@ -323,10 +269,10 @@
       <RouterLink
         to="/home"
         class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
-        :class="route.path === '/home' && !mobileAddOpen && !mobileUserOpen
+        :class="route.path === '/home' && !mobileUserOpen
           ? 'text-blue-600 dark:text-blue-400'
           : 'text-gray-500 dark:text-gray-400'"
-        @click="mobileAddOpen = false; mobileUserOpen = false"
+        @click="mobileUserOpen = false"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
@@ -334,20 +280,12 @@
         <span class="text-[10px] font-medium">{{ $t('nav.home') }}</span>
       </RouterLink>
 
-      <!-- + 추가 -->
+      <!-- + 폴더 열기 -->
       <button
-        class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
-        :class="mobileAddOpen
-          ? 'text-blue-600 dark:text-blue-400'
-          : 'text-gray-500 dark:text-gray-400'"
-        @click="mobileAddOpen = !mobileAddOpen; mobileUserOpen = false"
+        class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors text-gray-500 dark:text-gray-400"
+        @click="mobileUserOpen = false; mobileShowFolderPicker = true"
       >
-        <div
-          class="w-9 h-9 rounded-2xl flex items-center justify-center transition-all"
-          :class="mobileAddOpen
-            ? 'bg-blue-600 text-white rotate-45'
-            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'"
-        >
+        <div class="w-9 h-9 rounded-2xl flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 transition-all">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
           </svg>
@@ -357,10 +295,10 @@
       <!-- 설정 -->
       <button
         class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
-        :class="route.path === '/settings' && !mobileAddOpen && !mobileUserOpen
+        :class="route.path === '/settings' && !mobileUserOpen
           ? 'text-blue-600 dark:text-blue-400'
           : 'text-gray-500 dark:text-gray-400'"
-        @click="router.push('/settings'); mobileAddOpen = false; mobileUserOpen = false"
+        @click="router.push('/settings'); mobileUserOpen = false"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
@@ -375,7 +313,7 @@
         :class="mobileUserOpen
           ? 'text-blue-600 dark:text-blue-400'
           : 'text-gray-500 dark:text-gray-400'"
-        @click="mobileUserOpen = !mobileUserOpen; mobileAddOpen = false"
+        @click="mobileUserOpen = !mobileUserOpen"
       >
         <span
           class="w-7 h-7 rounded-full text-white flex items-center justify-center text-xs font-bold transition-colors"
@@ -454,20 +392,13 @@ const sidebarCollapsed = ref(localStorage.getItem('eztag-sidebar-collapsed') ===
 const workspaceSidebarRef = ref(null)
 
 // 모바일 시트 상태
-const mobileAddOpen  = ref(false)
 const mobileUserOpen = ref(false)
 const mobileShowFolderPicker = ref(false)
-const mobileShowFilePicker   = ref(false)
 
 function onMobileSelectFolder(folder) {
   mobileShowFolderPicker.value = false
   browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }])
   router.push('/browser')
-}
-
-function onMobileFilesAdded() {
-  mobileShowFilePicker.value = false
-  router.push('/workspace')
 }
 
 // 최근 폴더 저장
@@ -484,14 +415,12 @@ function saveRecentFolder(folder) {
 // 폴더 선택 시 최근 목록 저장 (Browser.vue 직접 사용 시)
 watch(() => browserStore.selectedFolder, (folder) => {
   if (folder) {
-    mobileAddOpen.value = false
     saveRecentFolder(folder)
   }
 })
 
 // 라우트 변경 시 시트 닫기
 watch(() => route.path, () => {
-  mobileAddOpen.value  = false
   mobileUserOpen.value = false
 })
 
