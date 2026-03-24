@@ -134,6 +134,7 @@ export const useBrowserStore = defineStore('browser', () => {
   function selectFolder(folder, crumb = null, area = null) {
     selectedFolder.value = folder
     selectedFile.value = null
+    selectedExtraFile.value = null
     if (area) currentArea.value = area
     checkedPaths.value = new Set()
     filterText.value = ''
