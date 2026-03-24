@@ -13,34 +13,21 @@
       </RouterLink>
     </div>
 
-    <!-- WORKSPACE 섹션 -->
-    <div class="px-3 pt-1 pb-1 shrink-0">
-      <span class="text-[10px] font-semibold text-orange-500 dark:text-orange-400 uppercase tracking-wider">{{ $t('sidebar.workspaceSection') }}</span>
-    </div>
-    <div class="px-3 pb-2 shrink-0">
+    <!-- WORKSPACE / LIBRARY 버튼 한 줄 -->
+    <div class="px-3 pt-1 pb-2 flex gap-1.5 shrink-0">
       <button
-        class="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-dashed border-orange-300 dark:border-orange-700 text-xs text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
+        class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-dashed border-orange-300 dark:border-orange-700 text-xs text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
         @click="showWorkspacePicker = true"
       >
         <span>📂</span>
-        <span>{{ $t('sidebar.openWorkspace') }}</span>
+        <span>{{ $t('sidebar.workspaceSection') }}</span>
       </button>
-    </div>
-
-    <!-- 구분선 -->
-    <div class="mx-3 mb-1 border-t border-gray-200 dark:border-gray-700 shrink-0"></div>
-
-    <!-- LIBRARY 섹션 -->
-    <div class="px-3 pt-1 pb-1 shrink-0">
-      <span class="text-[10px] font-semibold text-blue-500 dark:text-blue-400 uppercase tracking-wider">{{ $t('sidebar.librarySection') }}</span>
-    </div>
-    <div class="px-3 pb-2 shrink-0">
       <button
-        class="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-dashed border-blue-300 dark:border-blue-700 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+        class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-dashed border-blue-300 dark:border-blue-700 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
         @click="showLibraryPicker = true"
       >
         <span>📚</span>
-        <span>{{ $t('sidebar.openLibrary') }}</span>
+        <span>{{ $t('sidebar.librarySection') }}</span>
       </button>
     </div>
 
