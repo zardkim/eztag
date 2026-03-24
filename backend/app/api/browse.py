@@ -41,6 +41,11 @@ def _validate_path(path: str, db: Session, allow_destinations: bool = False, all
     import os as _os
     p = Path(path).resolve()
     roots = [Path(f.path).resolve() for f in db.query(ScanFolder).all()]
+    # library_path(라이브러리 열기 피커에서 선택한 경로 허용)
+    from app.core.config_store import get_library_path as _get_lib
+    lib_root = _get_lib(db)
+    if lib_root and lib_root.is_dir():
+        roots.append(lib_root)
     if allow_destinations:
         from app.core.config_store import get_destination_folders
         for d in get_destination_folders(db):

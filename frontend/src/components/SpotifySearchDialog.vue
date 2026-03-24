@@ -411,13 +411,34 @@ onMounted(async () => {
 
   const f = firstFile.value
   query.value = f?.album_title
-    || browserStore.selectedFolder?.name
+    || parseFolderNameToQuery(browserStore.selectedFolder?.name)
     || f?.title
     || ''
   await nextTick()
   searchInput.value?.focus()
   if (query.value) doSearch()
 })
+
+// ── 폴더명 파싱 (노이즈 제거 후 아티스트+앨범 추출) ──────────
+function parseFolderNameToQuery(name) {
+  if (!name) return ''
+  let s = name
+  // 연도: [2023], (2023), [2023.03.15], (2023-05)
+  s = s.replace(/[\[(]\d{4}[\d.\s/-]*[\])]/g, '')
+  // 오디오 포맷/품질: [FLAC], [MP3 320], [320kbps], [24bit-96kHz], [HQ], [Hi-Res] 등
+  s = s.replace(/[\[(][^\]([]*?(flac|mp3|aac|wav|alac|ape|ogg|wma|\d+kbps?|\d+bit|\d+-\d+|hq|hi-?res|hifi|lossless)[^\]([]*[\])]/gi, '')
+  // 음원 서비스 태그: [Bugs], [Melon], [Genie], [FLO], [Spotify] 등
+  s = s.replace(/[\[(](bugs|melon|genie|flo|spotify|itunes|apple\s*music|youtube|soundcloud|tidal)[\])]/gi, '')
+  // 에디션 정보: (Deluxe Edition), (Remastered 2021), (Special Version), (Re-release) 등
+  s = s.replace(/\((deluxe|special|standard|limited|expanded|remaster(?:ed)?|edition|version|re-?release|anniversary|single|mini)[^)]*\)/gi, '')
+  // 디스크/볼륨: [Disc 1], [CD1], [Vol.2] 등
+  s = s.replace(/[\[(](disc|disk|cd|vol\.?)\s*\d+[\])]/gi, '')
+  // 잔여 빈 괄호 및 앞뒤 공백 정리
+  s = s.replace(/[\[(]\s*[\])]/g, '').replace(/\s{2,}/g, ' ').trim()
+  // 끝에 남은 구분자 제거 (- _ . 로 끝나는 경우)
+  s = s.replace(/[-_.]+$/, '').trim()
+  return s
+}
 
 // ── 검색 ──────────────────────────────────────
 async function doSearch() {
