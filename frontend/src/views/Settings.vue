@@ -54,6 +54,13 @@
                   <option value="en">English</option>
                 </select>
               </ConfigRow>
+              <ConfigRow :label="$t('settings.startupFolder')" :desc="$t('settings.startupFolderDesc')">
+                <select v-model="form.startup_folder" class="field w-44">
+                  <option value="workspace">Workspace</option>
+                  <option value="library">Library</option>
+                  <option value="none">{{ $t('settings.startupFolderNone') }}</option>
+                </select>
+              </ConfigRow>
               <ConfigRow :label="$t('settings.theme')" :desc="$t('settings.themeDesc')">
                 <div class="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700 text-sm">
                   <button
@@ -621,6 +628,7 @@ const form = reactive({
   site_name: 'eztag',
   browser_title: 'eztag',
   app_language: 'ko',
+  startup_folder: 'workspace',
   spotify_client_id: '',
   spotify_client_secret: '',
   spotify_enabled: true,
@@ -684,6 +692,14 @@ watch(locale, (val) => {
   form.app_language = val
 })
 
+watch(() => form.startup_folder, async (val) => {
+  try {
+    await configApi.update({ startup_folder: val })
+  } catch (e) {
+    console.warn('startup_folder 저장 실패:', e)
+  }
+})
+
 async function saveGeneralConfig() {
   try {
     await configApi.update({ site_name: form.site_name || 'eztag', browser_title: form.browser_title || 'eztag' })
@@ -704,6 +720,7 @@ async function loadConfig() {
     form.site_name = c.site_name?.value ?? 'eztag'
     form.browser_title = c.browser_title?.value ?? 'eztag'
     form.app_language = c.app_language?.value ?? 'ko'
+    form.startup_folder = c.startup_folder?.value ?? 'workspace'
     locale.value = form.app_language
     localStorage.setItem('eztag-lang', form.app_language)
     form.spotify_client_id = c.spotify_client_id?.value ?? ''

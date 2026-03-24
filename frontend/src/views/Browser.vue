@@ -92,6 +92,11 @@
               @click="showRenameModal = true"
             >🔤 {{ t('browser.rename') }}</button>
             <button
+              v-if="browserStore.currentArea === 'workspace'"
+              class="btn-toolbar !bg-orange-100 !text-orange-700 hover:!bg-orange-200 dark:!bg-orange-900/30 dark:!text-orange-400 shrink-0"
+              @click="showMoveToLibraryModal = true"
+            >{{ t('browser.moveToLibrary.button') }}</button>
+            <button
               v-if="isLibrarySubfolder"
               class="btn-toolbar !bg-indigo-100 !text-indigo-700 hover:!bg-indigo-200 dark:!bg-indigo-900/30 dark:!text-indigo-400 shrink-0"
               @click="showMoveModal = true"
@@ -256,7 +261,14 @@
                     @click="showRenameModal = true; showMobileMenu = false"
                   ><span class="text-xl">🔤</span>{{ t('browser.rename') }}</button>
 
-                  <!-- 폴더 이동 -->
+                  <!-- 라이브러리로 이동 (워크스페이스) -->
+                  <button
+                    v-if="browserStore.currentArea === 'workspace'"
+                    class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors text-left"
+                    @click="showMoveToLibraryModal = true; showMobileMenu = false"
+                  ><span class="text-xl">📤</span>{{ t('browser.moveToLibrary.button') }}</button>
+
+                  <!-- 폴더 이동 (라이브러리 내부) -->
                   <button
                     v-if="isLibrarySubfolder"
                     class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors text-left"
@@ -302,6 +314,15 @@
     <div class="shrink-0 h-8 border-b border-gray-100 dark:border-gray-800/60 bg-gray-50 dark:bg-gray-900/60">
       <div class="flex items-center h-full px-4 overflow-x-auto scrollbar-none gap-1 text-xs text-gray-500 dark:text-gray-400">
         <template v-if="browserStore.breadcrumb.length > 0">
+          <!-- 영역 뱃지 -->
+          <span
+            v-if="browserStore.currentArea === 'workspace'"
+            class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400 border border-orange-200 dark:border-orange-700"
+          >WS</span>
+          <span
+            v-else-if="browserStore.currentArea === 'library'"
+            class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 border border-blue-200 dark:border-blue-700"
+          >LIB</span>
           <!-- 루트 폴더 (첫 번째 crumb) — 현재 폴더와 같으면 생략 -->
           <button
             v-if="browserStore.breadcrumb.length > 1"
@@ -429,6 +450,15 @@
       :source-file-count="browserStore.files.length"
       @close="showMoveModal = false"
       @moved="onMoved"
+    />
+
+    <!-- 라이브러리로 이동 모달 (워크스페이스 → 라이브러리) -->
+    <MoveToLibraryModal
+      v-if="showMoveToLibraryModal"
+      :source-path="browserStore.selectedFolder?.path || ''"
+      :source-file-count="browserStore.files.length"
+      @close="showMoveToLibraryModal = false"
+      @moved="onMovedToLibrary"
     />
 
     <!-- AI 커버아트 생성 모달 (개발 중단)
@@ -714,6 +744,7 @@ import BatchTagPanel from '../components/BatchTagPanel.vue'
 import SpotifySearchDialog from '../components/SpotifySearchDialog.vue'
 import RenameByTagsModal from '../components/RenameByTagsModal.vue'
 import MoveToDestinationModal from '../components/MoveToDestinationModal.vue'
+import MoveToLibraryModal from '../components/MoveToLibraryModal.vue'
 // import AICoverModal from '../components/AICoverModal.vue' // AI 커버아트 (개발 중단)
 import MiniPlayer from '../components/MiniPlayer.vue'
 import { useBrowserStore } from '../stores/browser.js'
@@ -1120,6 +1151,7 @@ onUnmounted(() => document.removeEventListener('click', onLrcClickOutside, true)
 
 // ── 폴더 이동 ─────────────────────────────────────────────
 const showMoveModal = ref(false)
+const showMoveToLibraryModal = ref(false)
 
 // library 경로 환경 (Docker: /app/data/library, 환경변수 없으면 그에 준하는 경로)
 // 브라우저에서는 정확한 경로를 알 수 없으므로, 브레드크럼 depth == 1 (루트 직속)인지로 판단
@@ -1138,6 +1170,13 @@ async function onMoved(result) {
     const rootCrumb = roots[0]
     browserStore.selectFolder({ name: rootCrumb.name, path: rootCrumb.path }, [rootCrumb])
   }
+}
+
+async function onMovedToLibrary(result) {
+  showMoveToLibraryModal.value = false
+  showLrcToast(t('browser.moveToLibrary.success', { path: result.dest }))
+  // 이동 후 폴더 선택 해제
+  browserStore.selectFolder(null, [])
 }
 
 // ── AI 커버아트 생성 (개발 중단) ─────────────────────────

@@ -370,7 +370,7 @@ import { useThemeStore } from './stores/theme.js'
 import { useAuthStore } from './stores/auth.js'
 import { useBrowserStore } from './stores/browser.js'
 import { useAppConfigStore } from './stores/appConfig.js'
-import { authApi } from './api/index.js'
+import { authApi, workspaceApi } from './api/index.js'
 import { configApi } from './api/config.js'
 import WorkspaceSidebar from './components/WorkspaceSidebar.vue'
 import ToastContainer from './components/ToastContainer.vue'
@@ -499,6 +499,27 @@ async function loadAppConfig() {
     const { data } = await configApi.get()
     appConfigStore.apply(data.config)
     document.title = document.title.replace(/ - .+$/, ` - ${appConfigStore.browserTitle}`)
+    // 시작 폴더 자동 열기 (폴더가 아직 선택되지 않은 경우만)
+    if (!browserStore.selectedFolder) {
+      const startupFolder = data.config.startup_folder?.value || 'none'
+      if (startupFolder === 'workspace') {
+        try {
+          const { data: ws } = await workspaceApi.workspaceRoots()
+          if (ws.configured && ws.roots?.length > 0) {
+            const root = ws.roots[0]
+            browserStore.selectFolder({ name: root.name, path: root.path }, [{ name: root.name, path: root.path }], 'workspace')
+          }
+        } catch { /* ignore */ }
+      } else if (startupFolder === 'library') {
+        try {
+          const { data: lib } = await workspaceApi.libraryRoots()
+          if (lib.roots?.length > 0) {
+            const root = lib.roots[0]
+            browserStore.selectFolder({ name: root.name, path: root.path }, [{ name: root.name, path: root.path }], 'library')
+          }
+        } catch { /* ignore */ }
+      }
+    }
   } catch { /* ignore */ }
 }
 

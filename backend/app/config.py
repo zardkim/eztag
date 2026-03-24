@@ -6,6 +6,7 @@ import os
 class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql://eztag:eztag@localhost:5432/eztag"
     MUSIC_BASE_PATH: str = "/music"
+    WORKSPACE_PATH: str = "/workspace"
     COVERS_PATH: str = "/app/data/covers"
     SECRET_KEY: str = "changeme"
     TOKEN_EXPIRE_DAYS: int = 30

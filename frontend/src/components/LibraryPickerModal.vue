@@ -119,6 +119,7 @@ const { t } = useI18n()
 
 const props = defineProps({
   folderMode: { type: Boolean, default: false },
+  area: { type: String, default: 'library' },  // 'library' | 'workspace'
 })
 const emit = defineEmits(['close', 'added', 'select-folder'])
 const toastStore = useToastStore()
@@ -131,7 +132,8 @@ const breadcrumb = ref([])
 async function loadChildren(path) {
   loading.value = true
   try {
-    const { data } = await workspaceApi.libraryChildren(path)
+    const fn = props.area === 'workspace' ? workspaceApi.workspaceChildren : workspaceApi.libraryChildren
+    const { data } = await fn(path)
     folders.value = data.folders
     files.value = data.files
   } catch (e) {
@@ -144,7 +146,8 @@ async function loadChildren(path) {
 async function loadRoots() {
   loading.value = true
   try {
-    const { data } = await workspaceApi.libraryRoots()
+    const fn = props.area === 'workspace' ? workspaceApi.workspaceRoots : workspaceApi.libraryRoots
+    const { data } = await fn()
     folders.value = data.roots
     files.value = []
     breadcrumb.value = []

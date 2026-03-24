@@ -9,6 +9,7 @@ const FILES_TTL_MS = 3 * 60 * 1000  // 3분
 export const useBrowserStore = defineStore('browser', () => {
   const selectedFolder = ref(null)
   const selectedFile = ref(null)
+  const currentArea = ref(null)  // 'workspace' | 'library' | null
   const files = ref([])
   const extraFiles = ref([])   // [{ filename, path, file_type, file_size, modified_time, is_eztag? }, ...]
   const albumDescription = ref(null)
@@ -130,9 +131,10 @@ export const useBrowserStore = defineStore('browser', () => {
     }
   }
 
-  function selectFolder(folder, crumb = null) {
+  function selectFolder(folder, crumb = null, area = null) {
     selectedFolder.value = folder
     selectedFile.value = null
+    if (area) currentArea.value = area
     checkedPaths.value = new Set()
     filterText.value = ''
     subfolders.value = []
@@ -221,7 +223,7 @@ export const useBrowserStore = defineStore('browser', () => {
     selectedFolder, selectedFile, selectedExtraFile, files, extraFiles, albumDescription, hasEztagReport, subfolders, displayFiles,
     loading, error, fileWarning,
     checkedPaths, checkedFiles, isAllChecked,
-    sortKey, sortOrder, filterText, breadcrumb,
+    sortKey, sortOrder, filterText, breadcrumb, currentArea,
     loadFiles, selectFolder, selectFile, selectExtraFile, toggleCheck, toggleAll, setCheckedPaths,
     updateFile, updateFiles, invalidateFilesCache,
   }

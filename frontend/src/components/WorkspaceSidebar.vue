@@ -13,33 +13,62 @@
       </RouterLink>
     </div>
 
-    <!-- 헤더 -->
-    <div class="px-3 pt-1 pb-2 shrink-0">
-      <span class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">{{ $t('sidebar.title') }}</span>
+    <!-- WORKSPACE 섹션 -->
+    <div class="px-3 pt-1 pb-1 shrink-0">
+      <span class="text-[10px] font-semibold text-orange-500 dark:text-orange-400 uppercase tracking-wider">{{ $t('sidebar.workspaceSection') }}</span>
+    </div>
+    <div class="px-3 pb-2 shrink-0">
+      <button
+        class="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-dashed border-orange-300 dark:border-orange-700 text-xs text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
+        @click="showWorkspacePicker = true"
+      >
+        <span>📂</span>
+        <span>{{ $t('sidebar.openWorkspace') }}</span>
+      </button>
     </div>
 
-    <!-- 폴더 열기 버튼 -->
+    <!-- 구분선 -->
+    <div class="mx-3 mb-1 border-t border-gray-200 dark:border-gray-700 shrink-0"></div>
+
+    <!-- LIBRARY 섹션 -->
+    <div class="px-3 pt-1 pb-1 shrink-0">
+      <span class="text-[10px] font-semibold text-blue-500 dark:text-blue-400 uppercase tracking-wider">{{ $t('sidebar.librarySection') }}</span>
+    </div>
     <div class="px-3 pb-2 shrink-0">
       <button
         class="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-dashed border-blue-300 dark:border-blue-700 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-        @click="showFolderPicker = true"
+        @click="showLibraryPicker = true"
       >
-        <span>📂</span>
-        <span>{{ $t('sidebar.openFolder') }}</span>
+        <span>📚</span>
+        <span>{{ $t('sidebar.openLibrary') }}</span>
       </button>
     </div>
+
+    <!-- 구분선 -->
+    <div class="mx-3 mb-2 border-t border-gray-200 dark:border-gray-700 shrink-0"></div>
 
     <!-- 현재 열린 폴더 경로 (상대경로) -->
     <div v-if="browserStore.selectedFolder" class="px-3 pb-1 shrink-0">
       <div
-        class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg px-2.5 py-2 cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors group"
+        class="rounded-lg px-2.5 py-2 cursor-pointer transition-colors group"
+        :class="browserStore.currentArea === 'workspace'
+          ? 'bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30'
+          : 'bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 dark:hover:bg-yellow-900/30'"
         :title="$t('sidebar.goBrowser')"
         @click="router.push('/browser')"
       >
         <div class="flex items-center justify-between mb-0.5">
-          <p class="text-[10px] font-semibold text-yellow-600 dark:text-yellow-500 uppercase tracking-wider">{{ $t('sidebar.currentFolder') }}</p>
+          <p
+            class="text-[10px] font-semibold uppercase tracking-wider"
+            :class="browserStore.currentArea === 'workspace'
+              ? 'text-orange-500 dark:text-orange-400'
+              : 'text-yellow-600 dark:text-yellow-500'"
+          >
+            {{ browserStore.currentArea === 'workspace' ? $t('sidebar.workspaceSection') : $t('sidebar.librarySection') }}
+            <span class="ml-1">↗</span>
+          </p>
           <button
-            class="text-[10px] text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 opacity-0 group-hover:opacity-100 transition-all px-1"
+            class="text-[10px] text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 opacity-0 group-hover:opacity-100 transition-all px-1"
             :title="$t('sidebar.renameFolder')"
             @click.stop="showRenameFolderModal = true"
           >✎</button>
@@ -48,7 +77,7 @@
       </div>
     </div>
 
-    <!-- 폴더 이름 변경 모달 (body에 텔레포트 → 화면 중앙) -->
+    <!-- 폴더 이름 변경 모달 -->
     <Teleport to="body">
       <RenameFolderModal
         v-if="showRenameFolderModal && browserStore.selectedFolder"
@@ -59,7 +88,7 @@
       />
     </Teleport>
 
-    <!-- 파일 목록 (폴더 열기 모드) -->
+    <!-- 파일 목록 -->
     <div v-if="browserStore.selectedFolder" class="flex-1 overflow-y-auto min-h-0 px-2 pb-2">
       <div v-if="browserStore.loading" class="py-4 text-center text-xs text-gray-400">{{ $t('common.loading') }}</div>
       <div v-else-if="browserStore.files.length === 0 && browserStore.extraFiles.length === 0" class="py-4 text-center text-xs text-gray-400">{{ $t('sidebar.noFiles') }}</div>
@@ -94,7 +123,6 @@
           >
             <span class="text-[9px] px-1 py-0.5 rounded font-mono uppercase shrink-0" :class="extraBadge(file.file_type)">{{ extFromName(file.filename) }}</span>
             <span class="flex-1 text-[11px] truncate">{{ file.filename }}</span>
-            <!-- 이미지/HTML만 삭제 버튼 -->
             <button
               v-if="file.file_type === 'image' || file.file_type === 'html'"
               class="shrink-0 w-4 h-4 flex items-center justify-center text-gray-300 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 text-xs"
@@ -106,14 +134,25 @@
       </div>
     </div>
 
-
-    <!-- 폴더 열기 (folderMode) -->
+    <!-- 워크스페이스 폴더 피커 -->
     <Teleport to="body">
       <LibraryPickerModal
-        v-if="showFolderPicker"
+        v-if="showWorkspacePicker"
         :folder-mode="true"
-        @close="showFolderPicker = false"
-        @select-folder="onSelectFolder"
+        area="workspace"
+        @close="showWorkspacePicker = false"
+        @select-folder="onSelectWorkspaceFolder"
+      />
+    </Teleport>
+
+    <!-- 라이브러리 폴더 피커 -->
+    <Teleport to="body">
+      <LibraryPickerModal
+        v-if="showLibraryPicker"
+        :folder-mode="true"
+        area="library"
+        @close="showLibraryPicker = false"
+        @select-folder="onSelectLibraryFolder"
       />
     </Teleport>
 
@@ -156,11 +195,10 @@ const router = useRouter()
 const browserStore = useBrowserStore()
 const toastStore = useToastStore()
 
-const showFolderPicker = ref(false)
+const showWorkspacePicker = ref(false)
+const showLibraryPicker = ref(false)
 const showImageModal = ref(false)
 const selectedImage = ref(null)
-
-// ── 폴더 이름 변경 모달 ────────────────────────────────────
 const showRenameFolderModal = ref(false)
 
 function onFolderRenamed(data) {
@@ -169,7 +207,6 @@ function onFolderRenamed(data) {
   const newCrumb = browserStore.breadcrumb.map(b =>
     b.path === folder.path ? newFolder : b
   )
-  // 구 경로 캐시 삭제 후 새 경로로 강제 새로고침
   browserStore.invalidateFilesCache(folder.path)
   browserStore.selectedFolder = newFolder
   browserStore.breadcrumb = newCrumb
@@ -178,16 +215,13 @@ function onFolderRenamed(data) {
   toastStore.success(t('sidebar.renameSuccess', { name: data.new_name }))
 }
 
-// ── 기타 파일 삭제 ─────────────────────────────────────────
 async function deleteExtraFile(file) {
   if (!confirm(t('sidebar.deleteConfirm', { filename: file.filename }))) return
   try {
     await browseApi.deleteExtraFile(file.path)
-    // selectedExtraFile이 삭제된 파일이면 초기화
     if (browserStore.selectedExtraFile?.path === file.path) {
       browserStore.selectExtraFile(null)
     }
-    // 파일 목록 새로고침
     const path = browserStore.selectedFolder?.path
     if (path) {
       browserStore.invalidateFilesCache(path)
@@ -233,7 +267,6 @@ function extraBadge(fileType) {
   return 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
 }
 
-// 현재 폴더의 상대경로 (라이브러리 루트 기준)
 const relativeFolderPath = computed(() => {
   const folder = browserStore.selectedFolder
   if (!folder) return ''
@@ -244,13 +277,19 @@ const relativeFolderPath = computed(() => {
   return rel || folder.name
 })
 
-function onSelectFolder(folder) {
-  showFolderPicker.value = false
-  browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }])
+function onSelectWorkspaceFolder(folder) {
+  showWorkspacePicker.value = false
+  browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'workspace')
+  router.push('/browser')
+}
+
+function onSelectLibraryFolder(folder) {
+  showLibraryPicker.value = false
+  browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'library')
   router.push('/browser')
 }
 
 defineExpose({
-  openFolderPicker: () => { showFolderPicker.value = true },
+  openFolderPicker: () => { showLibraryPicker.value = true },
 })
 </script>

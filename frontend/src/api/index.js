@@ -91,6 +91,7 @@ export const browseApi = {
   destChildren: (path) => client.get('/browse/dest-children', { params: { path } }),
   destMkdir: (data) => client.post('/browse/dest-mkdir', data),
   moveFolder: (data) => client.post('/browse/move-folder', data),
+  moveToLibrary: (data) => client.post('/browse/move-to-library', data),
   exportFolderHtml: (path, lang = 'ko') => client.post('/browse/export-html-save', { path, lang }),
   renameFolder: (path, newName) => client.post('/browse/rename-folder', { path, new_name: newName }),
   deleteExtraFile: (path) => client.post('/browse/delete-extra-file', { path }),
@@ -123,6 +124,8 @@ export const tracksApi = {
 export const workspaceApi = {
   libraryRoots: () => client.get('/workspace/library/roots'),
   libraryChildren: (path) => client.get('/workspace/library/children', { params: { path } }),
+  workspaceRoots: () => client.get('/workspace/workspace/roots'),
+  workspaceChildren: (path) => client.get('/workspace/workspace/children', { params: { path } }),
 }
 
 // AI Cover Art (개발 중단)

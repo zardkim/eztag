@@ -103,6 +103,17 @@ def _validate_library_path(path: str, db: Session) -> Path:
     raise HTTPException(status_code=403, detail=f"허용되지 않는 경로입니다: {path}")
 
 
+def _validate_workspace_path(path: str) -> Path:
+    """워크스페이스 경로 검증 (WORKSPACE_PATH 하위인지 확인)."""
+    workspace_base = Path(os.getenv("WORKSPACE_PATH", "/workspace")).resolve()
+    p = Path(path).resolve()
+    try:
+        p.relative_to(workspace_base)
+        return p
+    except ValueError:
+        raise HTTPException(status_code=403, detail=f"허용되지 않는 워크스페이스 경로입니다: {path}")
+
+
 # ── 세션 관리 ──────────────────────────────────────────────
 
 @router.get("/current-session")
@@ -184,7 +195,11 @@ def load_folder(
 ):
     """라이브러리 폴더의 오디오 파일들을 현재 세션에 추가."""
     username = getattr(current_user, "username", None)
-    p = _validate_library_path(req.folder_path, db)
+    # 라이브러리 또는 워크스페이스 경로 허용
+    try:
+        p = _validate_library_path(req.folder_path, db)
+    except HTTPException:
+        p = _validate_workspace_path(req.folder_path)
     if not p.is_dir():
         raise HTTPException(status_code=404, detail="폴더를 찾을 수 없습니다")
 
@@ -251,7 +266,10 @@ def load_files(
 
     for path_str in req.file_paths:
         try:
-            p = _validate_library_path(path_str, db)
+            try:
+                p = _validate_library_path(path_str, db)
+            except HTTPException:
+                p = _validate_workspace_path(path_str)
             if not p.is_file():
                 errors.append({"path": path_str, "error": "파일이 아닙니다"})
                 continue
@@ -751,6 +769,70 @@ def delete_history(
 
 
 # ── 라이브러리 탐색 (피커용) ──────────────────────────────────
+
+@router.get("/workspace/roots")
+def workspace_roots(
+    _=Depends(get_current_user),
+):
+    """워크스페이스 루트 폴더 (피커용)."""
+    workspace_base = os.getenv("WORKSPACE_PATH", "/workspace")
+    p = Path(workspace_base)
+    if not p.is_dir():
+        return {"roots": [], "configured": False}
+    return {
+        "roots": [{
+            "name": p.name or "workspace",
+            "path": str(p),
+            "has_children": any(True for x in p.iterdir() if x.is_dir()),
+        }],
+        "configured": True,
+    }
+
+
+@router.get("/workspace/children")
+def workspace_children(
+    path: str = Query(...),
+    _=Depends(get_current_user),
+):
+    """워크스페이스 폴더의 하위 목록 (폴더 + 오디오 파일)."""
+    AUDIO_EXTS_LOCAL = {".mp3", ".flac", ".m4a", ".aac", ".ogg", ".wav", ".wma"}
+    p = _validate_workspace_path(path)
+    if not p.is_dir():
+        raise HTTPException(status_code=404, detail="폴더를 찾을 수 없습니다")
+
+    items = sorted(p.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower()))
+    result_dirs = []
+    result_files = []
+
+    for item in items:
+        if item.name.startswith("."):
+            continue
+        if item.is_dir():
+            has_audio = any(
+                f.suffix.lower() in AUDIO_EXTS_LOCAL
+                for f in item.rglob("*") if f.is_file()
+            )
+            result_dirs.append({
+                "name": item.name,
+                "path": str(item),
+                "type": "folder",
+                "has_children": any(True for x in item.iterdir() if x.is_dir()),
+                "has_audio": has_audio,
+            })
+        elif item.is_file() and item.suffix.lower() in AUDIO_EXTS_LOCAL:
+            result_files.append({
+                "name": item.name,
+                "path": str(item),
+                "type": "file",
+                "ext": item.suffix.lower().lstrip("."),
+            })
+
+    return {
+        "path": str(p),
+        "folders": result_dirs,
+        "files": result_files,
+    }
+
 
 @router.get("/library/roots")
 def library_roots(

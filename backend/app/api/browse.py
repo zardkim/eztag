@@ -36,8 +36,9 @@ def _is_under_root(p: Path, root: Path) -> bool:
         return False
 
 
-def _validate_path(path: str, db: Session, allow_destinations: bool = False, allow_lrc_folder: bool = False) -> Path:
+def _validate_path(path: str, db: Session, allow_destinations: bool = False, allow_lrc_folder: bool = False, allow_workspace: bool = False) -> Path:
     """등록된 스캔 폴더(또는 이동할 폴더) 하위 경로인지 검증."""
+    import os as _os
     p = Path(path).resolve()
     roots = [Path(f.path).resolve() for f in db.query(ScanFolder).all()]
     if allow_destinations:
@@ -49,6 +50,10 @@ def _validate_path(path: str, db: Session, allow_destinations: bool = False, all
         lrc_base = get_config(db, "lrc_base_folder") or ""
         if lrc_base:
             roots.append(Path(lrc_base).resolve())
+    if allow_workspace:
+        workspace = _os.getenv("WORKSPACE_PATH", "/workspace")
+        if workspace:
+            roots.append(Path(workspace).resolve())
     for root in roots:
         try:
             p.relative_to(root)
@@ -1613,6 +1618,62 @@ def move_folder(
         "source": str(source),
         "dest": str(new_path),
         "tracks_updated": updated_count,
+    }
+
+
+class MoveToLibraryBody(BaseModel):
+    source_path: str   # 워크스페이스 내 폴더
+    dest_path: str     # 라이브러리 내 대상 폴더 (이동할 위치)
+
+
+@router.post("/move-to-library")
+def move_to_library(
+    body: MoveToLibraryBody,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """워크스페이스 폴더를 라이브러리로 이동."""
+    import os as _os
+    workspace_base = Path(_os.getenv("WORKSPACE_PATH", "/workspace")).resolve()
+    music_base = Path(_os.getenv("MUSIC_BASE_PATH", "/music")).resolve()
+
+    source = Path(body.source_path).resolve()
+    dest_parent = Path(body.dest_path).resolve()
+
+    # 소스: 워크스페이스 하위여야 함
+    try:
+        source.relative_to(workspace_base)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Source must be under the workspace folder")
+
+    if not source.is_dir():
+        raise HTTPException(status_code=400, detail="Source is not a directory")
+
+    # 대상: 라이브러리 하위여야 함
+    try:
+        dest_parent.relative_to(music_base)
+    except ValueError:
+        # scan_folder 에 등록된 경로도 허용
+        roots = [Path(f.path).resolve() for f in db.query(ScanFolder).all()]
+        if not any(_is_under_root(dest_parent, r) or dest_parent == r for r in roots):
+            raise HTTPException(status_code=403, detail="Destination must be under the library folder")
+
+    if not dest_parent.is_dir():
+        raise HTTPException(status_code=400, detail="Destination parent is not a directory")
+
+    new_path = dest_parent / source.name
+    if new_path.exists():
+        raise HTTPException(status_code=409, detail=f"Folder '{source.name}' already exists in destination")
+
+    try:
+        shutil.move(str(source), str(new_path))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Move failed: {e}")
+
+    return {
+        "ok": True,
+        "source": str(source),
+        "dest": str(new_path),
     }
 
 

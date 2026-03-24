@@ -16,6 +16,7 @@ DEFAULTS: dict[str, tuple] = {
     "cover_size": ("500", "커버 이미지 최대 크기 (px)"),
     "cleanup_on_scan": ("false", "스캔 시 누락 파일 자동 정리"),
     "destination_folders": ('[{"path":"/volume1/music","label":"NAS Music"}]', "이동 대상 폴더 목록 (JSON: [{path, label}])"),
+    "startup_folder": ("workspace", "앱 시작 시 자동으로 열 폴더 (workspace/library/none)"),
     "lrc_base_folder": ("", "Get LRC 기본 폴더 경로"),
     "lrc_primary_source": ("bugs", "LRC 기본 소스 (bugs/lrclib)"),
     "lrc_fallback_source": ("lrclib", "LRC 보조 소스 (bugs/lrclib/none)"),

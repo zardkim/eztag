@@ -26,13 +26,15 @@ services:
     environment:
       DATABASE_URL: postgresql://eztag:${DB_PASSWORD:-eztag_password}@postgres:5432/eztag
       MUSIC_BASE_PATH: /music
+      WORKSPACE_PATH: /workspace
       COVERS_PATH: /app/data/covers
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set in .env file}
       LOG_DIR: /app/data/logs
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       BACKUP_DIR: /app/data/backup
     volumes:
-      - ${MUSIC_PATH:-./data/library}:/music:ro
+      - ${MUSIC_PATH:-./data/library}:/music
+      - ${WORKSPACE_PATH:-./data/workspace}:/workspace
       - ./data/covers:/app/data/covers
       - ./data/logs:/app/data/logs
       - ./data/backup:/app/data/backup
