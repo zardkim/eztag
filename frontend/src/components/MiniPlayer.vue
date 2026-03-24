@@ -124,8 +124,10 @@
                 <span class="text-[10px] text-gray-400 w-7 text-right shrink-0">{{ formatTime(currentTime) }}</span>
                 <input
                   type="range" min="0" :max="duration || 100" step="0.1" :value="currentTime"
-                  class="flex-1 h-1.5 accent-blue-500 cursor-pointer"
+                  class="flex-1 h-3 accent-blue-500 cursor-pointer"
+                  style="user-select:auto;-webkit-user-select:auto;touch-action:pan-y;"
                   @input="seek($event.target.value)"
+                  @change="seek($event.target.value)"
                 />
                 <span class="text-[10px] text-gray-400 w-7 shrink-0">{{ formatTime(duration) }}</span>
               </div>
@@ -142,10 +144,11 @@
               <div class="w-full flex items-center gap-1.5">
                 <span class="text-[11px] text-gray-400 shrink-0">🔊</span>
                 <input
-                  type="range" min="0" max="1" step="0.05" :value="volume"
-                  class="flex-1 h-1.5 accent-blue-500 cursor-pointer"
-                  @input="setVolume($event.target.value)"
+                  type="range" min="0" max="1" step="0.05" v-model.number="volume"
+                  class="flex-1 h-3 accent-blue-500 cursor-pointer"
+                  style="user-select:auto;-webkit-user-select:auto;touch-action:pan-y;"
                 />
+                <span class="text-[11px] text-gray-400 shrink-0 w-6 text-right">{{ Math.round(volume * 100) }}</span>
               </div>
 
               <!-- 태그 정보 (데스크톱 전용) -->
@@ -383,10 +386,9 @@ function seekToLine(time) {
   audioEl.value.currentTime = Math.max(0, time - 0.1)
   if (!isPlaying.value) audioEl.value.play()
 }
-function setVolume(val) {
-  volume.value = parseFloat(val)
-  if (audioEl.value) audioEl.value.volume = volume.value
-}
+watch(volume, (val) => {
+  if (audioEl.value) audioEl.value.volume = val
+})
 
 // ── LRC 싱크 ─────────────────────────────────────────────
 function syncLrc() {
