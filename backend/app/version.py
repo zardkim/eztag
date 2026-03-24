@@ -1,3 +1,3 @@
-APP_VERSION = "0.8.1"
+APP_VERSION = "0.8.2"
 APP_NAME = "eztag"
 BUILD_DATE = "2026-03-24"
