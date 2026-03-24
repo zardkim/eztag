@@ -169,7 +169,7 @@ ln -s /path/to/your/work  ./data/workspace/MyWork
 ### 5. 실행
 
 ```bash
-docker compose up -d
+docker-compose up -d
 ```
 
 브라우저에서 `http://localhost:5850` 접속 → 관리자 계정 생성 후 사용
@@ -177,7 +177,7 @@ docker compose up -d
 ### 6. 업데이트
 
 ```bash
-docker compose pull && docker compose up -d
+docker-compose pull && docker-compose up -d
 ```
 
 ## 시놀로지 NAS 설치
