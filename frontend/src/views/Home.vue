@@ -4,20 +4,35 @@
       <h1 class="text-lg font-bold text-gray-900 dark:text-white mb-3">{{ t('home.title') }}</h1>
       <div class="flex gap-2">
         <button
-          class="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-semibold transition-colors"
-          @click="showFolderPicker = true"
+          class="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-orange-500 hover:bg-orange-400 active:bg-orange-600 text-white text-sm font-semibold transition-colors"
+          @click="showWorkspacePicker = true"
         >
           <span class="text-base">📂</span>
-          <span>{{ t('home.openFolder') }}</span>
+          <span>{{ t('sidebar.openWorkspace') }}</span>
+        </button>
+        <button
+          class="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-semibold transition-colors"
+          @click="showLibraryPicker = true"
+        >
+          <span class="text-base">📚</span>
+          <span>{{ t('sidebar.openLibrary') }}</span>
         </button>
       </div>
     </div>
 
     <LibraryPickerModal
-      v-if="showFolderPicker"
+      v-if="showWorkspacePicker"
       :folder-mode="true"
-      @close="showFolderPicker = false"
-      @select-folder="onSelectFolder"
+      area="workspace"
+      @close="showWorkspacePicker = false"
+      @select-folder="onSelectWorkspaceFolder"
+    />
+    <LibraryPickerModal
+      v-if="showLibraryPicker"
+      :folder-mode="true"
+      area="library"
+      @close="showLibraryPicker = false"
+      @select-folder="onSelectLibraryFolder"
     />
 
     <!-- 현재 열린 폴더 -->
@@ -27,10 +42,26 @@
         class="flex items-center gap-3 p-4 bg-white dark:bg-gray-900 rounded-2xl border border-blue-200 dark:border-blue-800 shadow-sm cursor-pointer active:scale-[.98] transition-transform"
         @click="router.push('/browser')"
       >
-        <div class="w-11 h-11 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-2xl shrink-0">📂</div>
+        <div
+          class="w-11 h-11 rounded-xl flex items-center justify-center text-2xl shrink-0"
+          :class="browserStore.currentArea === 'workspace' ? 'bg-orange-100 dark:bg-orange-900/40' : 'bg-blue-100 dark:bg-blue-900/40'"
+        >{{ browserStore.currentArea === 'workspace' ? '📂' : '📚' }}</div>
         <div class="min-w-0 flex-1">
-          <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ browserStore.selectedFolder.name }}</p>
-          <p class="text-xs text-blue-500 dark:text-blue-400 mt-0.5">
+          <div class="flex items-center gap-1.5 mb-0.5">
+            <span
+              v-if="browserStore.currentArea === 'workspace'"
+              class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400"
+            >WS</span>
+            <span
+              v-else-if="browserStore.currentArea === 'library'"
+              class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400"
+            >LIB</span>
+            <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ browserStore.selectedFolder.name }}</p>
+          </div>
+          <p
+            class="text-xs mt-0"
+            :class="browserStore.currentArea === 'workspace' ? 'text-orange-500 dark:text-orange-400' : 'text-blue-500 dark:text-blue-400'"
+          >
             {{ t('home.fileCount', { n: browserStore.files.length }) }}
           </p>
         </div>
@@ -85,7 +116,8 @@ const router = useRouter()
 const browserStore = useBrowserStore()
 
 const RECENT_KEY = 'eztag-recent-folders'
-const showFolderPicker = ref(false)
+const showWorkspacePicker = ref(false)
+const showLibraryPicker = ref(false)
 
 const recentFolders = computed(() => {
   try {
@@ -100,9 +132,15 @@ function openFolder(item) {
   router.push('/browser')
 }
 
-function onSelectFolder(folder) {
-  showFolderPicker.value = false
-  browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }])
+function onSelectWorkspaceFolder(folder) {
+  showWorkspacePicker.value = false
+  browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'workspace')
+  router.push('/browser')
+}
+
+function onSelectLibraryFolder(folder) {
+  showLibraryPicker.value = false
+  browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'library')
   router.push('/browser')
 }
 
