@@ -1,6 +1,7 @@
 """폴더 탐색 + 파일 목록 + 태그 쓰기 + 파일명 변경 API."""
 import logging
 import os
+import re
 import shutil
 from pathlib import Path
 
@@ -25,6 +26,30 @@ router = APIRouter(prefix="/api/browse", tags=["browse"])
 
 AUDIO_EXTS = {".mp3", ".flac", ".m4a", ".aac", ".ogg", ".wav", ".wma"}
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tiff", ".tif"}
+
+# 반주/경음악 감지 패턴 (LRC 검색 및 YouTube MV 검색 건너뜀)
+_INST_RE = re.compile(
+    r"""
+    (?:                                      # 괄호 안 패턴
+        [\(\[\{]
+        \s*
+        (?:
+            inst(?:r(?:a?u?mental?)?)?\s*(?:ver(?:sion?)?)?  # (inst), (instr), (instrumental)
+            | m\.?\s*r\.?                                     # (mr), (m.r), (m.r.)
+            | minus\s*one                                     # (minus one)
+        )
+        \s*
+        [\)\]\}]
+    )
+    | (?:경음악|반주)                          # 한국어 단어 (괄호 없어도 감지)
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
+
+def _is_instrumental(title: str) -> bool:
+    """곡 제목에 반주/경음악 패턴이 포함되면 True."""
+    return bool(_INST_RE.search(title))
 
 
 # ── 경로 보안 검증 ──────────────────────────────────────────
@@ -1152,6 +1177,11 @@ def fetch_lyrics_endpoint(
                 results.append({"path": path_str, "status": "error", "message": "제목 태그가 없습니다"})
                 continue
 
+            # 반주/경음악 제목이면 LRC 검색 건너뜀
+            if _is_instrumental(title):
+                results.append({"path": path_str, "status": "not_found", "message": "반주/경음악 건너뜀"})
+                continue
+
             # 기본 소스로 검색
             result = _do_fetch_lrc(primary, p, artist, title, album)
             source_used = primary
@@ -1291,6 +1321,9 @@ def library_fetch_lyrics(
             album = (tags.get("album") or "").strip()
             if not artist or not title:
                 results.append({"path": path_str, "status": "error", "message": "아티스트 또는 제목 태그가 없습니다"})
+                continue
+            if _is_instrumental(title):
+                results.append({"path": path_str, "status": "not_found", "message": "반주/경음악 건너뜀"})
                 continue
             if req.source == "lrclib":
                 result = fetch_lrc_for_file(str(p), artist, title, album)
@@ -1769,6 +1802,10 @@ def search_youtube_mv(
     api_key = get_config(db, "youtube_api_key") or ""
     if not enabled or not api_key:
         raise HTTPException(status_code=422, detail="youtube_not_configured")
+
+    # 반주/경음악 제목이면 YouTube MV 검색 건너뜀
+    if _is_instrumental(title):
+        return {"results": [], "skipped": True}
 
     try:
         results = search_music_video(artist, title, api_key)
