@@ -93,7 +93,7 @@ async function submit() {
     const { data } = await authApi.login(form)
     authStore.setToken(data.token)
     authStore.setUser({ username: data.username, role: data.role })
-    router.replace('/browser')
+    router.replace('/home')
   } catch (e) {
     errorMsg.value = e.response?.data?.detail || t('login.failed')
   } finally {

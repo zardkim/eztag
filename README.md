@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.8.3-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.8.4-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -199,7 +199,9 @@ docker-compose pull && docker-compose up -d
 
 | 버전 | 날짜 | 주요 변경사항 |
 |------|------|--------------|
-| **v0.8.0** | 2026-03-24 | 작업공간/라이브러리 이중 영역, YT 인앱 플레이어, 커버 자동 임베드, 백업 안정화, 다수 버그 수정 |
+| **v0.8.4** | 2026-03-24 | HTML 뷰어 사이드바 클릭 버그 수정, YouTube 검색 정확도 개선, 로그인 후 홈 화면 표시 |
+| v0.8.3 | 2026-03-24 | cachetools 의존성 추가, 포트 매핑 수정 |
+| v0.8.0 | 2026-03-24 | 작업공간/라이브러리 이중 영역, YT 인앱 플레이어, 커버 자동 임베드, 백업 안정화, 다수 버그 수정 |
 | v0.7.0 | 2026-03-23 | PWA 지원, AI 커버아트 생성, 보안 개선 |
 | v0.6.0 | 2026-03-23 | YouTube MV 패널, 폴더 이름 변경, i18n 전면 확장, UI 전반 개선 |
 | v0.5.0 | 2026-03-22 | 타이틀곡/YouTube MV, 모바일 레이아웃 개편, 로그인 언어 전환 |

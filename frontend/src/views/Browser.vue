@@ -464,7 +464,7 @@
         <iframe
           :src="`/api/browse/extra-file?path=${encodeURIComponent(browserStore.selectedExtraFile.path)}`"
           class="flex-1 w-full border-none bg-white"
-          sandbox="allow-same-origin allow-scripts"
+          sandbox="allow-scripts"
         ></iframe>
       </div>
 
@@ -543,7 +543,7 @@
               :class="ef.file_type === 'html'
                 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
                 : 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-400'"
-              @click="ef.file_type === 'image' ? (mobileImageFile = ef, showMobileImageModal = true) : (browserStore.selectExtraFile(ef), $router.push('/browser'))"
+              @click="ef.file_type === 'image' ? (mobileImageFile = ef, showMobileImageModal = true) : browserStore.selectExtraFile(ef)"
             >
               <span class="font-mono text-[10px] uppercase">{{ ef.filename.split('.').pop() }}</span>
               <span class="truncate max-w-[120px]">{{ ef.filename }}</span>

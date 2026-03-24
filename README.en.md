@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.8.3-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.8.4-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -199,7 +199,9 @@ docker-compose pull && docker-compose up -d
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **v0.8.0** | 2026-03-24 | Workspace/Library dual areas, YouTube in-app player, auto cover embed, backup stability, various bug fixes |
+| **v0.8.4** | 2026-03-24 | HTML viewer sidebar click fix, YouTube search accuracy improvements, redirect to home after login |
+| v0.8.3 | 2026-03-24 | cachetools dependency fix, port mapping fix |
+| v0.8.0 | 2026-03-24 | Workspace/Library dual areas, YouTube in-app player, auto cover embed, backup stability, various bug fixes |
 | v0.7.0 | 2026-03-23 | PWA support, AI cover art generation, security improvements |
 | v0.6.0 | 2026-03-23 | YouTube MV panel, folder rename, full i18n expansion, UI improvements |
 | v0.5.0 | 2026-03-22 | Title track / YouTube MV, mobile layout overhaul, login language toggle |

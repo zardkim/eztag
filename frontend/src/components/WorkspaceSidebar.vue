@@ -169,7 +169,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { browseApi } from '../api/index.js'
 import { useBrowserStore } from '../stores/browser.js'
@@ -179,6 +179,7 @@ import RenameFolderModal from './RenameFolderModal.vue'
 
 const { t } = useI18n()
 const router = useRouter()
+const route = useRoute()
 const browserStore = useBrowserStore()
 const toastStore = useToastStore()
 
@@ -227,7 +228,7 @@ function onExtraFileClick(file) {
     showImageModal.value = true
   } else if (file.file_type === 'html') {
     browserStore.selectExtraFile(file)
-    router.push('/browser')
+    if (route.path !== '/browser') router.push('/browser')
   }
 }
 

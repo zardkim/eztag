@@ -43,29 +43,37 @@ def _is_official_mv(video_title: str, channel_title: str) -> bool:
     return False
 
 
-def _title_matches(track_title: str, video_title: str, artist: str = "") -> bool:
+def _title_matches(track_title: str, video_title: str, artist: str = "", channel: str = "") -> bool:
     """트랙 제목의 핵심 단어가 YouTube 영상 제목에 충분히 포함되는지 확인."""
     norm_track = _normalize(track_title)
     norm_video = _normalize(video_title)
 
     words = [w for w in norm_track.split() if len(w) >= 2]
     if not words:
-        return True  # 제목이 너무 짧으면 통과
+        return False  # 제목이 너무 짧으면 거부
 
     matched = sum(1 for w in words if w in norm_video)
-    # 핵심 단어의 절반 이상 또는 1개 이상 매치 시 통과
-    threshold = max(1, len(words) // 2)
-    if matched >= threshold:
-        return True
+    # 1-2 단어: 전부 매치, 3단어 이상: 80% 이상 매치
+    if len(words) <= 2:
+        threshold = len(words)
+    else:
+        threshold = max(1, round(len(words) * 0.8))
 
-    # 아티스트 이름도 매치 안 되면 실패
+    if matched < threshold:
+        return False
+
+    # 아티스트 이름이 영상 제목 또는 채널명에 포함되어야 함
     if artist:
         norm_artist = _normalize(artist)
         artist_words = [w for w in norm_artist.split() if len(w) >= 2]
-        if not any(w in norm_video for w in artist_words):
-            return False
+        norm_channel = _normalize(channel)
+        if artist_words:
+            in_title = any(w in norm_video for w in artist_words)
+            in_channel = any(w in norm_channel for w in artist_words) if channel else False
+            if not in_title and not in_channel:
+                return False
 
-    return False
+    return True
 
 
 def search_music_video(artist: str, title: str, api_key: str, max_results: int = 10) -> list[dict]:
@@ -108,7 +116,7 @@ def search_music_video(artist: str, title: str, api_key: str, max_results: int =
         channel = snip.get("channelTitle", "")
 
         # 제목 불일치 결과 제외
-        if not _title_matches(title, video_title, artist):
+        if not _title_matches(title, video_title, artist, channel):
             _log.debug(f"제목 불일치 제외: '{video_title}' (검색: '{artist} {title}')")
             continue
 
