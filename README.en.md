@@ -169,7 +169,7 @@ ln -s /path/to/your/work  ./data/workspace/MyWork
 ### 5. Start
 
 ```bash
-docker compose up -d
+docker-compose up -d
 ```
 
 Open `http://localhost:5850` in your browser → create an admin account → start using eztag.
@@ -177,7 +177,7 @@ Open `http://localhost:5850` in your browser → create an admin account → sta
 ### 6. Update
 
 ```bash
-docker compose pull && docker compose up -d
+docker-compose pull && docker-compose up -d
 ```
 
 ## Synology NAS Installation
