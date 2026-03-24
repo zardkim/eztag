@@ -401,11 +401,11 @@ function onMobileSelectFolder(folder) {
 
 // 최근 폴더 저장
 const RECENT_FOLDERS_KEY = 'eztag-recent-folders'
-function saveRecentFolder(folder) {
+function saveRecentFolder(folder, area) {
   try {
     const list = JSON.parse(localStorage.getItem(RECENT_FOLDERS_KEY) || '[]')
     const filtered = list.filter(f => f.path !== folder.path)
-    const updated = [{ name: folder.name, path: folder.path, timestamp: Date.now() }, ...filtered].slice(0, 15)
+    const updated = [{ name: folder.name, path: folder.path, area: area || null, timestamp: Date.now() }, ...filtered].slice(0, 15)
     localStorage.setItem(RECENT_FOLDERS_KEY, JSON.stringify(updated))
   } catch { /* ignore */ }
 }
@@ -413,7 +413,7 @@ function saveRecentFolder(folder) {
 // 폴더 선택 시 최근 목록 저장 (Browser.vue 직접 사용 시)
 watch(() => browserStore.selectedFolder, (folder) => {
   if (folder) {
-    saveRecentFolder(folder)
+    saveRecentFolder(folder, browserStore.currentArea)
   }
 })
 
