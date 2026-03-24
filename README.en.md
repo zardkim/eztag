@@ -112,7 +112,7 @@ services:
     image: zardkim/eztag-frontend:${VERSION:-latest}
     restart: unless-stopped
     ports:
-      - "5850:5850"
+      - "5850:80"
     depends_on:
       - backend
     networks:
