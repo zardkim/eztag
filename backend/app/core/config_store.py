@@ -1,5 +1,7 @@
 """DB 기반 앱 설정 읽기/쓰기 헬퍼."""
 import json
+import os
+from pathlib import Path
 from typing import Optional
 from sqlalchemy.orm import Session
 from app.models.app_config import AppConfig
@@ -17,6 +19,8 @@ DEFAULTS: dict[str, tuple] = {
     "cleanup_on_scan": ("false", "스캔 시 누락 파일 자동 정리"),
     "destination_folders": ('[{"path":"/volume1/music","label":"NAS Music"}]', "이동 대상 폴더 목록 (JSON: [{path, label}])"),
     "startup_folder": ("workspace", "앱 시작 시 자동으로 열 폴더 (workspace/library/none)"),
+    "workspace_path": ("../data/workspace", "워크스페이스 폴더 경로 (환경변수 WORKSPACE_PATH 설정 시 무시됨)"),
+    "library_path": ("../data/library", "라이브러리 폴더 경로 (환경변수 MUSIC_BASE_PATH 설정 시 무시됨)"),
     "lrc_base_folder": ("", "Get LRC 기본 폴더 경로"),
     "lrc_primary_source": ("bugs", "LRC 기본 소스 (bugs/lrclib)"),
     "lrc_fallback_source": ("lrclib", "LRC 보조 소스 (bugs/lrclib/none)"),
@@ -103,3 +107,25 @@ def get_destination_folders(db: Session) -> list:
 def set_destination_folders(db: Session, folders: list) -> None:
     """이동 대상 폴더 목록 저장."""
     set_config(db, "destination_folders", json.dumps(folders, ensure_ascii=False))
+
+
+def get_workspace_path(db: Session) -> Path:
+    """워크스페이스 경로 반환. 환경변수(WORKSPACE_PATH) > DB 설정 순."""
+    env_val = os.getenv("WORKSPACE_PATH", "")
+    if env_val:
+        return Path(env_val).resolve()
+    db_val = get_config(db, "workspace_path") or ""
+    if db_val:
+        return Path(db_val).resolve()
+    return Path("/workspace").resolve()
+
+
+def get_library_path(db: Session) -> Path:
+    """라이브러리 경로 반환. 환경변수(MUSIC_BASE_PATH) > DB 설정 순."""
+    env_val = os.getenv("MUSIC_BASE_PATH", "")
+    if env_val:
+        return Path(env_val).resolve()
+    db_val = get_config(db, "library_path") or ""
+    if db_val:
+        return Path(db_val).resolve()
+    return Path("/music").resolve()

@@ -547,7 +547,8 @@ def build_html(
             td_parts.append(f'<td class="col-hz">{f"{sr // 1000}kHz" if sr else "—"}</td>')
         if has_filesize:
             td_parts.append(f'<td class="col-size">{_fmt_size(t.get("file_size"))}</td>')
-        track_rows.append("<tr>" + "".join(td_parts) + "</tr>")
+        file_attr = Path(t.get("file_path", "")).name if t.get("file_path") else ""
+        track_rows.append(f'<tr data-file="{_safe(file_attr)}">' + "".join(td_parts) + "</tr>")
 
     source_note = f'<span style="font-size:10px;color:var(--text3);">{_safe(folder_name)}</span>' if folder_name else ""
 
@@ -623,7 +624,7 @@ def build_html(
 
 <script>
 function openYT(id) {{
-  document.getElementById('ytFrame').src = 'https://www.youtube.com/embed/' + id + '?autoplay=1';
+  document.getElementById('ytFrame').src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1';
   document.getElementById('ytOverlay').classList.add('open');
 }}
 function closeYT() {{
@@ -666,3 +667,21 @@ def track_model_to_dict(t) -> dict:
         "is_title_track": bool(t.is_title_track),
         "youtube_url": t.youtube_url,
     }
+
+
+def parse_youtube_urls_from_html(html_path: str) -> dict:
+    """eztag HTML 파일에서 파일명 → YouTube watch URL 매핑 추출.
+    <tr data-file="filename.flac">..openYT('VIDEO_ID').. 패턴 파싱.
+    """
+    result = {}
+    try:
+        with open(html_path, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read()
+        pattern = r'<tr[^>]+data-file="([^"]+)"[^>]*>.*?openYT\(\'([A-Za-z0-9_-]{11})\'\)'
+        for m in re.finditer(pattern, content, re.DOTALL):
+            filename, yt_id = m.group(1), m.group(2)
+            if filename:
+                result[filename] = f"https://www.youtube.com/watch?v={yt_id}"
+    except Exception:
+        pass
+    return result

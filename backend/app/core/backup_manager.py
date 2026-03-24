@@ -1,22 +1,20 @@
 """
 백업 및 복원 핵심 로직.
 백업 파일: eztag_backup_YYYYMMDD_HHMMSS.tar.gz
-  ├── db.dump         (pg_dump --format=custom)
-  ├── covers/         (커버아트 전체)
+  ├── db.dump         (pg_dump --format=custom)  ← DB 전체 (설정, 프리셋 포함)
   └── backup_meta.txt
+커버아트는 크기가 크므로 백업에서 제외.
 """
 import os
 import subprocess
 import tarfile
 import tempfile
-import shutil
 from pathlib import Path
 from datetime import datetime
 from typing import List
 from urllib.parse import urlparse
 
 BACKUP_DIR = os.environ.get("BACKUP_DIR", "/app/data/backup")
-COVERS_PATH = os.environ.get("COVERS_PATH", "/app/data/covers")
 
 
 def _parse_db_url(db_url: str) -> dict:
@@ -61,20 +59,13 @@ def create_backup(db_url: str) -> str:
         if result.returncode != 0:
             raise RuntimeError(f"pg_dump 실패: {result.stderr}")
 
-        covers_tmp = Path(tmpdir) / "covers"
-        if Path(COVERS_PATH).exists():
-            shutil.copytree(COVERS_PATH, str(covers_tmp))
-        else:
-            covers_tmp.mkdir()
-
         meta_path = Path(tmpdir) / "backup_meta.txt"
         meta_path.write_text(
-            f"backup_version=2.0\ntimestamp={timestamp}\ndb_name={db_info['dbname']}\n"
+            f"backup_version=3.0\ntimestamp={timestamp}\ndb_name={db_info['dbname']}\n"
         )
 
         with tarfile.open(str(backup_path), "w:gz") as tar:
             tar.add(str(db_dump_path), arcname="db.dump")
-            tar.add(str(covers_tmp), arcname="covers")
             tar.add(str(meta_path), arcname="backup_meta.txt")
 
     return backup_name
@@ -143,12 +134,6 @@ def restore_backup(filename: str, db_url: str) -> dict:
         )
         if result.returncode not in (0, 1):
             raise RuntimeError(f"pg_restore 실패: {result.stderr}")
-
-        covers_src = Path(tmpdir) / "covers"
-        if covers_src.exists():
-            if Path(COVERS_PATH).exists():
-                shutil.rmtree(COVERS_PATH)
-            shutil.copytree(str(covers_src), COVERS_PATH)
 
     return {
         "ok": True,

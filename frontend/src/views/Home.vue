@@ -73,7 +73,14 @@
 
     <!-- 최근 폴더 -->
     <div class="px-4 flex-1">
-      <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{{ t('home.recentFolders') }}</div>
+      <div class="flex items-center justify-between mb-2">
+        <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('home.recentFolders') }}</div>
+        <button
+          v-if="recentFolders.length > 0"
+          class="text-[10px] text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+          @click="clearRecent"
+        >{{ t('home.clearRecent') }}</button>
+      </div>
 
       <!-- 빈 상태 -->
       <div v-if="recentFolders.length === 0" class="py-16 flex flex-col items-center text-center">
@@ -118,7 +125,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useBrowserStore } from '../stores/browser.js'
@@ -132,13 +139,22 @@ const RECENT_KEY = 'eztag-recent-folders'
 const showWorkspacePicker = ref(false)
 const showLibraryPicker = ref(false)
 
-const recentFolders = computed(() => {
+const recentFolders = ref([])
+
+function loadRecent() {
   try {
-    return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]')
+    recentFolders.value = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]')
   } catch {
-    return []
+    recentFolders.value = []
   }
-})
+}
+
+function clearRecent() {
+  localStorage.removeItem(RECENT_KEY)
+  recentFolders.value = []
+}
+
+onMounted(loadRecent)
 
 function openFolder(item) {
   browserStore.selectFolder({ name: item.name, path: item.path }, [{ name: item.name, path: item.path }], item.area || null)

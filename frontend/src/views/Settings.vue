@@ -38,10 +38,10 @@
           <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm mb-4">
             <div class="space-y-4">
               <ConfigRow :label="$t('settings.siteName')" :desc="$t('settings.siteNameDesc')">
-                <input v-model="form.site_name" type="text" class="field w-48" placeholder="eztag" @blur="saveGeneralConfig" @keydown.enter="saveGeneralConfig" />
+                <input v-model="form.site_name" type="text" class="field w-full sm:w-48" placeholder="eztag" @blur="saveGeneralConfig" @keydown.enter="saveGeneralConfig" />
               </ConfigRow>
               <ConfigRow :label="$t('settings.browserTitle')" :desc="$t('settings.browserTitleDesc')">
-                <input v-model="form.browser_title" type="text" class="field w-48" placeholder="eztag" @blur="saveGeneralConfig" @keydown.enter="saveGeneralConfig" />
+                <input v-model="form.browser_title" type="text" class="field w-full sm:w-48" placeholder="eztag" @blur="saveGeneralConfig" @keydown.enter="saveGeneralConfig" />
               </ConfigRow>
             </div>
           </section>
@@ -49,18 +49,58 @@
           <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm mb-4">
             <div class="space-y-4">
               <ConfigRow :label="$t('settings.appLanguage')" :desc="$t('settings.appLanguageDesc')">
-                <select v-model="form.app_language" class="field w-36" @change="onLanguageChange">
+                <select v-model="form.app_language" class="field w-full sm:w-36" @change="onLanguageChange">
                   <option value="ko">한국어</option>
                   <option value="en">English</option>
                 </select>
               </ConfigRow>
               <ConfigRow :label="$t('settings.startupFolder')" :desc="$t('settings.startupFolderDesc')">
-                <select v-model="form.startup_folder" class="field w-44">
-                  <option value="workspace">Workspace</option>
-                  <option value="library">Library</option>
+                <select v-model="form.startup_folder" class="field w-full sm:w-44">
+                  <option value="workspace">{{ $t('settings.startupFolderWorkspace') }}</option>
+                  <option value="library">{{ $t('settings.startupFolderLibrary') }}</option>
                   <option value="none">{{ $t('settings.startupFolderNone') }}</option>
                 </select>
               </ConfigRow>
+              <ConfigRow :label="$t('settings.workspacePath')" :desc="$t('settings.workspacePathDesc')">
+                <input
+                  v-model="form.workspace_path"
+                  type="text"
+                  class="field w-full sm:w-72"
+                  @blur="saveField('workspace_path', form.workspace_path)"
+                />
+              </ConfigRow>
+              <!-- 작업공간 마운트 안내 -->
+              <div class="mx-1 px-3 py-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800 rounded-lg text-xs text-gray-600 dark:text-gray-400 space-y-2">
+                <p class="font-semibold text-orange-700 dark:text-orange-400">{{ $t('settings.workspaceMountGuideTitle') }}</p>
+                <div>
+                  <p class="text-gray-500 dark:text-gray-500 mb-1">{{ $t('settings.libraryMountGuideDocker') }}</p>
+                  <code class="block bg-white dark:bg-gray-800 border border-orange-100 dark:border-orange-800 rounded px-2 py-1.5 font-mono text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap">-v /path/to/your/folder:/workspace/MyFolder</code>
+                </div>
+                <div>
+                  <p class="text-gray-500 dark:text-gray-500 mb-1">{{ $t('settings.libraryMountGuideSymlink') }}</p>
+                  <code class="block bg-white dark:bg-gray-800 border border-orange-100 dark:border-orange-800 rounded px-2 py-1.5 font-mono text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap">ln -s /path/to/your/folder /workspace/MyFolder</code>
+                </div>
+              </div>
+              <ConfigRow :label="$t('settings.libraryPath')" :desc="$t('settings.libraryPathDesc')">
+                <input
+                  v-model="form.library_path"
+                  type="text"
+                  class="field w-full sm:w-72"
+                  @blur="saveField('library_path', form.library_path)"
+                />
+              </ConfigRow>
+              <!-- 라이브러리 마운트 안내 -->
+              <div class="mx-1 px-3 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg text-xs text-gray-600 dark:text-gray-400 space-y-2">
+                <p class="font-semibold text-blue-700 dark:text-blue-400">{{ $t('settings.libraryMountGuideTitle') }}</p>
+                <div>
+                  <p class="text-gray-500 dark:text-gray-500 mb-1">{{ $t('settings.libraryMountGuideDocker') }}</p>
+                  <code class="block bg-white dark:bg-gray-800 border border-blue-100 dark:border-blue-800 rounded px-2 py-1.5 font-mono text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap">-v /path/to/your/music:/music/MyFolder</code>
+                </div>
+                <div>
+                  <p class="text-gray-500 dark:text-gray-500 mb-1">{{ $t('settings.libraryMountGuideSymlink') }}</p>
+                  <code class="block bg-white dark:bg-gray-800 border border-blue-100 dark:border-blue-800 rounded px-2 py-1.5 font-mono text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap">ln -s /path/to/your/music /music/MyFolder</code>
+                </div>
+              </div>
               <ConfigRow :label="$t('settings.theme')" :desc="$t('settings.themeDesc')">
                 <div class="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700 text-sm">
                   <button
@@ -629,6 +669,8 @@ const form = reactive({
   browser_title: 'eztag',
   app_language: 'ko',
   startup_folder: 'workspace',
+  workspace_path: '../data/workspace',
+  library_path: '../data/library',
   spotify_client_id: '',
   spotify_client_secret: '',
   spotify_enabled: true,
@@ -713,6 +755,14 @@ async function saveGeneralConfig() {
   }
 }
 
+async function saveField(key, value) {
+  try {
+    await configApi.update({ [key]: value })
+  } catch (e) {
+    toastStore.error(t('settings.toast.saveFailed', { error: e.response?.data?.detail || e.message }))
+  }
+}
+
 async function loadConfig() {
   try {
     const { data } = await configApi.get()
@@ -721,6 +771,8 @@ async function loadConfig() {
     form.browser_title = c.browser_title?.value ?? 'eztag'
     form.app_language = c.app_language?.value ?? 'ko'
     form.startup_folder = c.startup_folder?.value ?? 'workspace'
+    form.workspace_path = c.workspace_path?.value ?? '../data/workspace'
+    form.library_path = c.library_path?.value ?? '../data/library'
     locale.value = form.app_language
     localStorage.setItem('eztag-lang', form.app_language)
     form.spotify_client_id = c.spotify_client_id?.value ?? ''

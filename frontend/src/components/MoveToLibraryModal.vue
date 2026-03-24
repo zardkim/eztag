@@ -4,7 +4,14 @@
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       @click.self="$emit('close')"
     >
-      <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg mx-4 flex flex-col max-h-[85vh]">
+      <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg mx-4 flex flex-col max-h-[85vh] relative">
+
+        <!-- 이동 중 오버레이 -->
+        <div v-if="moving" class="absolute inset-0 bg-white/90 dark:bg-gray-900/90 rounded-2xl flex flex-col items-center justify-center z-20 gap-3">
+          <div class="w-10 h-10 border-2 border-blue-200 dark:border-blue-800 border-t-blue-500 rounded-full animate-spin"></div>
+          <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ t('browser.moveToLibrary.moving') }}</p>
+          <p class="text-xs text-gray-400 font-mono truncate max-w-[260px]">{{ sourceFolderName }}</p>
+        </div>
 
         <!-- Header -->
         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
@@ -59,22 +66,18 @@
             >
               <span class="text-base shrink-0">📂</span>
               <span class="flex-1 text-sm truncate font-medium">[{{ t('browser.moveToLibrary.currentFolder') }}]</span>
-              <span class="text-xs font-mono text-gray-400 truncate max-w-[200px]">{{ currentPath }}</span>
+              <span class="text-xs font-mono text-gray-400 truncate max-w-[200px]">{{ relativeCurrentPath }}</span>
             </div>
             <div v-if="breadcrumb.length > 0" class="border-t border-gray-100 dark:border-gray-800 my-1"></div>
             <div
               v-for="folder in folders"
               :key="folder.path"
-              class="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 group transition-colors"
+              class="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               <button class="flex-1 flex items-center gap-2 text-left min-w-0" @click="enterFolder(folder)">
                 <span class="text-base shrink-0">{{ folder.has_children ? '📂' : '📁' }}</span>
                 <span class="text-sm text-gray-700 dark:text-gray-300 truncate">{{ folder.name }}</span>
               </button>
-              <button
-                class="shrink-0 text-xs px-2 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors opacity-0 group-hover:opacity-100"
-                @click.stop="selectPath(folder.path)"
-              >{{ t('picker.open') }}</button>
             </div>
           </div>
         </div>
@@ -83,7 +86,7 @@
         <div v-if="selectedPath" class="px-5 py-2 shrink-0 border-t border-gray-100 dark:border-gray-800">
           <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-3 py-2">
             <p class="text-xs text-green-500 dark:text-green-400 font-medium mb-0.5">{{ t('browser.moveFolder.selectedDest') }}</p>
-            <p class="text-sm text-green-900 dark:text-green-200 font-mono truncate">{{ selectedPath }}/{{ sourceFolderName }}</p>
+            <p class="text-sm text-green-900 dark:text-green-200 font-mono truncate">{{ relativeSelectedPath }}</p>
           </div>
         </div>
 
@@ -142,6 +145,23 @@ const moveError = ref('')
 
 const currentPath = computed(() =>
   breadcrumb.value.length > 0 ? breadcrumb.value[breadcrumb.value.length - 1].path : ''
+)
+
+const libraryRoot = computed(() => breadcrumb.value[0] ?? null)
+
+function toRelativePath(absPath) {
+  if (!libraryRoot.value) return absPath
+  const root = libraryRoot.value
+  const rootPath = root.path.endsWith('/') ? root.path : root.path + '/'
+  if (absPath === root.path || absPath + '/' === rootPath) return root.name
+  const rel = absPath.startsWith(rootPath) ? absPath.slice(rootPath.length) : absPath
+  return root.name + (rel ? '/' + rel : '')
+}
+
+const relativeCurrentPath = computed(() => toRelativePath(currentPath.value))
+
+const relativeSelectedPath = computed(() =>
+  selectedPath.value ? toRelativePath(selectedPath.value) + '/' + sourceFolderName.value : ''
 )
 
 async function loadChildren(path) {

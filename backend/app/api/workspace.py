@@ -27,6 +27,7 @@ from app.api.auth import get_current_user
 from app.models.workspace import WorkspaceSession, WorkspaceItem, WorkspaceHistoryOp
 from app.core.tag_reader import read_tags
 from app.core.tag_writer import write_tags
+from app.core.config_store import get_workspace_path, get_library_path
 
 _log = logging.getLogger(__name__)
 
@@ -86,14 +87,11 @@ def _session_to_dict(session: WorkspaceSession, include_items: bool = False) -> 
 
 
 def _validate_library_path(path: str, db: Session) -> Path:
-    """라이브러리 마운트 경로 검증 (MUSIC_BASE_PATH 하위 또는 scan_folder)."""
+    """라이브러리 마운트 경로 검증 (library_path 하위 또는 scan_folder)."""
     from app.models.scan_folder import ScanFolder
     p = Path(path).resolve()
-    # scan_folder 에 등록된 경로 하위인지 확인
     roots = [Path(f.path).resolve() for f in db.query(ScanFolder).all()]
-    # 환경변수 MUSIC_BASE_PATH 도 허용
-    music_base = Path(os.getenv("MUSIC_BASE_PATH", "/music")).resolve()
-    roots.append(music_base)
+    roots.append(get_library_path(db))
     for root in roots:
         try:
             p.relative_to(root)
@@ -103,9 +101,9 @@ def _validate_library_path(path: str, db: Session) -> Path:
     raise HTTPException(status_code=403, detail=f"허용되지 않는 경로입니다: {path}")
 
 
-def _validate_workspace_path(path: str) -> Path:
-    """워크스페이스 경로 검증 (WORKSPACE_PATH 하위인지 확인)."""
-    workspace_base = Path(os.getenv("WORKSPACE_PATH", "/workspace")).resolve()
+def _validate_workspace_path(path: str, db: Session) -> Path:
+    """워크스페이스 경로 검증 (workspace_path 하위인지 확인)."""
+    workspace_base = get_workspace_path(db)
     p = Path(path).resolve()
     try:
         p.relative_to(workspace_base)
@@ -199,7 +197,7 @@ def load_folder(
     try:
         p = _validate_library_path(req.folder_path, db)
     except HTTPException:
-        p = _validate_workspace_path(req.folder_path)
+        p = _validate_workspace_path(req.folder_path, db)
     if not p.is_dir():
         raise HTTPException(status_code=404, detail="폴더를 찾을 수 없습니다")
 
@@ -269,7 +267,7 @@ def load_files(
             try:
                 p = _validate_library_path(path_str, db)
             except HTTPException:
-                p = _validate_workspace_path(path_str)
+                p = _validate_workspace_path(path_str, db)
             if not p.is_file():
                 errors.append({"path": path_str, "error": "파일이 아닙니다"})
                 continue
@@ -772,11 +770,11 @@ def delete_history(
 
 @router.get("/workspace/roots")
 def workspace_roots(
+    db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
     """워크스페이스 루트 폴더 (피커용)."""
-    workspace_base = os.getenv("WORKSPACE_PATH", "/workspace")
-    p = Path(workspace_base)
+    p = get_workspace_path(db)
     if not p.is_dir():
         return {"roots": [], "configured": False}
     return {
@@ -792,11 +790,12 @@ def workspace_roots(
 @router.get("/workspace/children")
 def workspace_children(
     path: str = Query(...),
+    db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
     """워크스페이스 폴더의 하위 목록 (폴더 + 오디오 파일)."""
     AUDIO_EXTS_LOCAL = {".mp3", ".flac", ".m4a", ".aac", ".ogg", ".wav", ".wma"}
-    p = _validate_workspace_path(path)
+    p = _validate_workspace_path(path, db)
     if not p.is_dir():
         raise HTTPException(status_code=404, detail="폴더를 찾을 수 없습니다")
 
@@ -842,13 +841,11 @@ def library_roots(
     """라이브러리 루트 폴더 목록 (피커용)."""
     from app.models.scan_folder import ScanFolder
     folders = db.query(ScanFolder).all()
-    music_base = os.getenv("MUSIC_BASE_PATH", "/music")
-
     roots = []
     seen = set()
 
-    # MUSIC_BASE_PATH 우선
-    p = Path(music_base)
+    # library_path (DB 설정 > 환경변수) 우선
+    p = get_library_path(db)
     if p.is_dir() and str(p) not in seen:
         seen.add(str(p))
         roots.append({

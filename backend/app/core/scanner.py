@@ -11,6 +11,37 @@ from sqlalchemy.orm import Session
 from app.models import Artist, Album, Track
 from app.models.scan_folder import ScanFolder
 from app.core.tag_reader import read_tags
+from app.core.tag_writer import write_cover
+
+_LOCAL_COVER_NAMES = ["cover", "folder", "front", "back"]
+_LOCAL_COVER_EXTS  = {".jpg", ".jpeg", ".png", ".webp"}
+_COVER_MIME = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+
+
+def _find_and_embed_local_cover(file_path: str) -> bool:
+    """폴더 내 커버 이미지 파일(대소문자 무시)을 찾아 오디오 파일에 임베드. 성공 시 True."""
+    from pathlib import Path as _P
+    folder = _P(file_path).parent
+    try:
+        file_map = {f.stem.lower(): f for f in folder.iterdir() if f.suffix.lower() in _LOCAL_COVER_EXTS}
+    except Exception:
+        return False
+    for name in _LOCAL_COVER_NAMES:
+        candidate = file_map.get(name)
+        if candidate is None:
+            continue
+        try:
+            data = candidate.read_bytes()
+        except Exception:
+            continue
+        if not data:
+            continue
+        mime = _COVER_MIME.get(candidate.suffix.lower(), "image/jpeg")
+        try:
+            return write_cover(file_path, data, mime)
+        except Exception:
+            return False
+    return False
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +117,10 @@ class MusicScanner:
         artist = self._get_or_create_artist(tags.get("album_artist") or tags.get("artist"))
         album = self._get_or_create_album(tags, artist)
 
+        has_cover = tags.get("has_cover", False)
+        if not has_cover:
+            has_cover = _find_and_embed_local_cover(file_path)
+
         track = Track(
             file_path=file_path,
             title=tags.get("title") or Path(file_path).stem,
@@ -108,7 +143,7 @@ class MusicScanner:
             file_format=tags.get("file_format"),
             file_size=tags.get("file_size"),
             modified_time=mtime,
-            has_cover=tags.get("has_cover", False),
+            has_cover=has_cover,
             has_lyrics=tags.get("has_lyrics", False),
             lyrics=tags.get("lyrics"),
             album_id=album.id if album else None,
@@ -140,7 +175,10 @@ class MusicScanner:
         track.comment = tags.get("comment")
         track.file_size = tags.get("file_size")
         track.modified_time = mtime
-        track.has_cover = tags.get("has_cover", False)
+        has_cover = tags.get("has_cover", False)
+        if not has_cover:
+            has_cover = _find_and_embed_local_cover(track.file_path)
+        track.has_cover = has_cover
         track.has_lyrics = tags.get("has_lyrics", False)
         if tags.get("lyrics"):
             track.lyrics = tags.get("lyrics")

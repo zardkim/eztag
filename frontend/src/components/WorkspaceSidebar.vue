@@ -55,7 +55,7 @@
             <span class="ml-1">↗</span>
           </p>
           <button
-            class="text-[10px] text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 opacity-0 group-hover:opacity-100 transition-all px-1"
+            class="text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 opacity-0 group-hover:opacity-100 transition-all px-1"
             :title="$t('sidebar.renameFolder')"
             @click.stop="showRenameFolderModal = true"
           >✎</button>

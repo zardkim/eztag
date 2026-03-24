@@ -96,10 +96,18 @@
     ══════════════════════════════════════════════ -->
     <Teleport to="body">
       <LibraryPickerModal
-        v-if="mobileShowFolderPicker"
+        v-if="mobileShowWorkspacePicker"
         :folder-mode="true"
-        @close="mobileShowFolderPicker = false"
-        @select-folder="onMobileSelectFolder"
+        area="workspace"
+        @close="mobileShowWorkspacePicker = false"
+        @select-folder="onMobileSelectWorkspaceFolder"
+      />
+      <LibraryPickerModal
+        v-if="mobileShowLibraryPicker"
+        :folder-mode="true"
+        area="library"
+        @close="mobileShowLibraryPicker = false"
+        @select-folder="onMobileSelectLibraryFolder"
       />
     </Teleport>
 
@@ -241,7 +249,7 @@
          메인 콘텐츠
     ══════════════════════════════════════════════ -->
     <main
-      class="flex-1 overflow-hidden flex flex-col min-w-0 lg:pt-0 lg:pb-0"
+      class="flex-1 overflow-hidden flex flex-col min-w-0 lg:pt-0 lg:!pb-0"
       :class="route.path === '/browser' ? 'pt-20' : 'pt-11'"
       style="padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));"
     >
@@ -281,16 +289,38 @@
       </RouterLink>
 
       <!-- + 폴더 열기 -->
-      <button
-        class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors text-gray-500 dark:text-gray-400"
-        @click="mobileUserOpen = false; mobileShowFolderPicker = true"
-      >
-        <div class="w-9 h-9 rounded-2xl flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 transition-all">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-          </svg>
-        </div>
-      </button>
+      <div class="flex-1 flex flex-col items-center justify-center relative">
+        <button
+          class="flex flex-col items-center justify-center gap-0.5 transition-colors text-gray-500 dark:text-gray-400"
+          @click.stop="mobileUserOpen = false; mobileFolderMenuOpen = !mobileFolderMenuOpen"
+        >
+          <div class="w-9 h-9 rounded-2xl flex items-center justify-center transition-all"
+            :class="mobileFolderMenuOpen ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+            </svg>
+          </div>
+        </button>
+        <!-- 팝업 메뉴 -->
+        <Transition enter-from-class="opacity-0 scale-95" leave-to-class="opacity-0 scale-95" enter-active-class="transition duration-150 origin-bottom" leave-active-class="transition duration-100 origin-bottom">
+          <div
+            v-if="mobileFolderMenuOpen"
+            class="absolute bottom-12 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden w-44 z-50"
+            @click.stop
+          >
+            <button
+              class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors text-left"
+              @click="mobileFolderMenuOpen = false; mobileShowWorkspacePicker = true"
+            ><span class="text-base">📂</span>{{ $t('sidebar.openWorkspace') }}</button>
+            <div class="h-px bg-gray-100 dark:bg-gray-700"></div>
+            <button
+              class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-left"
+              @click="mobileFolderMenuOpen = false; mobileShowLibraryPicker = true"
+            ><span class="text-base">📚</span>{{ $t('sidebar.openLibrary') }}</button>
+          </div>
+        </Transition>
+      </div>
 
       <!-- 설정 -->
       <button
@@ -392,12 +422,38 @@ const workspaceSidebarRef = ref(null)
 // 모바일 시트 상태
 const mobileUserOpen = ref(false)
 const mobileShowFolderPicker = ref(false)
+const mobileFolderMenuOpen = ref(false)
+const mobileShowWorkspacePicker = ref(false)
+const mobileShowLibraryPicker = ref(false)
 
 function onMobileSelectFolder(folder) {
   mobileShowFolderPicker.value = false
   browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }])
   router.push('/browser')
 }
+
+function onMobileSelectWorkspaceFolder(folder) {
+  mobileShowWorkspacePicker.value = false
+  browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'workspace')
+  router.push('/browser')
+}
+
+function onMobileSelectLibraryFolder(folder) {
+  mobileShowLibraryPicker.value = false
+  browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'library')
+  router.push('/browser')
+}
+
+function closeMobileFolderMenu() {
+  mobileFolderMenuOpen.value = false
+}
+
+onMounted(() => {
+  document.addEventListener('click', closeMobileFolderMenu)
+})
+onUnmounted(() => {
+  document.removeEventListener('click', closeMobileFolderMenu)
+})
 
 // 최근 폴더 저장
 const RECENT_FOLDERS_KEY = 'eztag-recent-folders'

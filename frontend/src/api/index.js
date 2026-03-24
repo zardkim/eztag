@@ -80,7 +80,7 @@ export const browseApi = {
     client.post('/browse/cover-from-folder', { image_path, audio_paths, cover_type }),
   removeCover: (paths) => client.post('/browse/cover-remove', { paths }),
   extractCovers: (path, overwrite = false) => client.post('/browse/extract-covers', { path, overwrite }),
-  fetchLyrics: (paths, source = 'bugs') => client.post('/browse/fetch-lyrics', { paths, source }, { timeout: 60000 }),
+  fetchLyrics: (files, source = 'bugs') => client.post('/browse/fetch-lyrics', { files, source }, { timeout: 60000 }),
   libraryAudioFiles: (folder, recursive = true) => client.get('/browse/library-audio-files', { params: { folder, recursive } }),
   libraryFetchLyrics: (paths, source = 'bugs') => client.post('/browse/library-fetch-lyrics', { paths, source }, { timeout: 60000 }),
   lrcSubfolders: () => client.get('/browse/lrc-subfolders'),

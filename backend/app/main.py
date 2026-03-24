@@ -21,6 +21,23 @@ from app.api import workspace as workspace_api
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from pathlib import Path
+    import logging
+    _log = logging.getLogger(__name__)
+
+    # ── 데이터 폴더 생성 ────────────────────────────────────────
+    data_dirs = {
+        "library":   os.getenv("LIBRARY_PATH",   "../data/library"),
+        "workspace": os.getenv("WORKSPACE_PATH", "../data/workspace"),
+        "covers":    os.getenv("COVERS_PATH",    "../data/covers"),
+        "logs":      os.getenv("LOG_DIR",        "../data/logs"),
+        "backup":    os.getenv("BACKUP_DIR",     "../data/backup"),
+    }
+    for name, raw_path in data_dirs.items():
+        p = Path(raw_path).resolve()
+        p.mkdir(parents=True, exist_ok=True)
+        _log.info(f"[startup] {name} dir: {p}")
+
     # 앱 시작 시: DB 마이그레이션
     from alembic.config import Config
     from alembic import command
@@ -29,11 +46,9 @@ async def lifespan(app: FastAPI):
 
     from app.database import SessionLocal
     from app.models.scan_folder import ScanFolder
-    from pathlib import Path
 
     # data/library 기본 폴더 자동 등록 (browse 경로 검증에 필요)
     library_path = str(Path(os.getenv("LIBRARY_PATH", "../data/library")).resolve())
-    Path(library_path).mkdir(parents=True, exist_ok=True)
     db_lib = SessionLocal()
     try:
         if not db_lib.query(ScanFolder).filter(ScanFolder.path == library_path).first():

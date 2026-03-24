@@ -51,9 +51,8 @@ def _validate_path(path: str, db: Session, allow_destinations: bool = False, all
         if lrc_base:
             roots.append(Path(lrc_base).resolve())
     if allow_workspace:
-        workspace = _os.getenv("WORKSPACE_PATH", "/workspace")
-        if workspace:
-            roots.append(Path(workspace).resolve())
+        from app.core.config_store import get_workspace_path
+        roots.append(get_workspace_path(db))
     for root in roots:
         try:
             p.relative_to(root)
@@ -132,7 +131,7 @@ def get_children(
     _=Depends(get_current_user),
 ):
     """지정 경로의 하위 디렉터리 목록."""
-    p = _validate_path(path, db)
+    p = _validate_path(path, db, allow_workspace=True)
     if not p.is_dir():
         raise HTTPException(status_code=400, detail="Not a directory")
 
@@ -241,7 +240,7 @@ def get_files(
     - DB에 없는 파일은 기본 파일 정보만 즉시 반환 (파일 열기 없음)
     - 미스캔 파일은 백그라운드에서 read_tags() 후 DB 등록
     """
-    p = _validate_path(path, db)
+    p = _validate_path(path, db, allow_workspace=True)
     if not p.is_dir():
         raise HTTPException(status_code=400, detail="Not a directory")
 
@@ -409,6 +408,17 @@ def get_files(
             break
 
     has_eztag_report = any(f.get("is_eztag") for f in extra_files)
+
+    # eztag HTML 파일에서 YouTube URL 보완 (youtube_url이 없는 파일 대상)
+    eztag_html = next((f for f in extra_files if f.get("is_eztag")), None)
+    if eztag_html:
+        from app.core.html_exporter import parse_youtube_urls_from_html
+        yt_map = parse_youtube_urls_from_html(eztag_html["path"])
+        if yt_map:
+            for file_entry in files:
+                if not file_entry.get("youtube_url") and file_entry.get("filename") in yt_map:
+                    file_entry["youtube_url"] = yt_map[file_entry["filename"]]
+
     result = {"files": files, "extra_files": extra_files, "warning": warning, "album_description": album_description, "has_eztag_report": has_eztag_report}
     if not warning:
         _cache.set_files(str(p), result)
@@ -445,7 +455,7 @@ def write_tags_endpoint(
     current_user=Depends(get_current_user),
 ):
     """파일에 태그를 직접 쓰고, DB에 있으면 DB도 업데이트."""
-    p = _validate_path(req.path, db)
+    p = _validate_path(req.path, db, allow_workspace=True)
     if not p.is_file():
         raise HTTPException(status_code=400, detail="Not a file")
 
@@ -593,7 +603,7 @@ def rename_file(
     current_user=Depends(get_current_user),
 ):
     """파일명 변경 (디스크 + DB)."""
-    p = _validate_path(req.path, db)
+    p = _validate_path(req.path, db, allow_workspace=True)
     if not p.is_file():
         raise HTTPException(status_code=400, detail="Not a file")
 
@@ -642,7 +652,7 @@ def get_covers(
     _=Depends(get_current_user),
 ):
     """오디오 파일에 내장된 모든 커버아트 목록 반환."""
-    p = _validate_path(path, db)
+    p = _validate_path(path, db, allow_workspace=True)
     if not p.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -667,7 +677,7 @@ def get_file_cover(
     db: Session = Depends(get_db),
 ):
     """오디오 파일의 내장 커버아트를 이미지로 반환."""
-    p = _validate_path(path, db)
+    p = _validate_path(path, db, allow_workspace=True)
     if not p.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -703,7 +713,7 @@ def get_extra_file(
     db: Session = Depends(get_db),
 ):
     """이미지·HTML 등 폴더 내 기타 파일을 서빙."""
-    p = _validate_path(path, db)
+    p = _validate_path(path, db, allow_workspace=True)
     if not p.is_file():
         raise HTTPException(status_code=404, detail="File not found")
     suffix = p.suffix.lower()
@@ -729,7 +739,7 @@ async def upload_cover(
     _=Depends(get_current_user),
 ):
     """이미지 파일을 오디오 파일에 커버아트로 임베드. cover_type: APIC 타입 (기본 3=Front Cover)."""
-    p = _validate_path(path, db)
+    p = _validate_path(path, db, allow_workspace=True)
     if not p.is_file():
         raise HTTPException(status_code=400, detail="Not a file")
 
@@ -781,7 +791,7 @@ def get_folder_images(
 ):
     """폴더 내 이미지 파일 목록 반환."""
     from urllib.parse import quote as urlquote
-    p = _validate_path(path, db)
+    p = _validate_path(path, db, allow_workspace=True)
     # 파일이면 부모 폴더로
     folder = p.parent if p.is_file() else p
     if not folder.is_dir():
@@ -808,7 +818,7 @@ def serve_folder_image(
     db: Session = Depends(get_db),
 ):
     """폴더 내 이미지 파일을 직접 서빙."""
-    p = _validate_path(path, db)
+    p = _validate_path(path, db, allow_workspace=True)
     if not p.is_file():
         raise HTTPException(status_code=404, detail="Image not found")
     ext = p.suffix.lower()
@@ -830,7 +840,7 @@ def open_file(
     db: Session = Depends(get_db),
 ):
     """폴더 내 HTML 파일을 브라우저에서 직접 열기 (인증 불필요 — 경로는 등록 폴더 하위로 제한)."""
-    p = _validate_path(path, db)
+    p = _validate_path(path, db, allow_workspace=True)
     if not p.is_file():
         raise HTTPException(status_code=404, detail="File not found")
     if p.suffix.lower() != ".html":
@@ -851,7 +861,7 @@ def apply_cover_from_folder(
     _=Depends(get_current_user),
 ):
     """폴더 내 이미지 파일을 오디오 파일들에 커버아트로 임베드. cover_type: APIC 타입 (기본 3=Front Cover)."""
-    img_p = _validate_path(body.image_path, db)
+    img_p = _validate_path(body.image_path, db, allow_workspace=True)
     if not img_p.is_file() or img_p.suffix.lower() not in IMAGE_EXTS:
         raise HTTPException(status_code=400, detail="Invalid image path")
 
@@ -864,7 +874,7 @@ def apply_cover_from_folder(
     results = []
     for audio_path in body.audio_paths:
         try:
-            ap = _validate_path(audio_path, db)
+            ap = _validate_path(audio_path, db, allow_workspace=True)
             # 같은 타입의 커버만 교체 (write_cover 내부에서 처리)
             ok = write_cover(str(ap), image_bytes, content_type, body.cover_type)
             if ok:
@@ -907,7 +917,7 @@ def extract_covers_to_folder(
         "image/bmp": ".bmp", "image/tiff": ".tiff",
     }
 
-    p = _validate_path(body.path, db)
+    p = _validate_path(body.path, db, allow_workspace=True)
     if not p.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -959,7 +969,7 @@ def remove_cover_endpoint(
     results = []
     for path in body.paths:
         try:
-            p = _validate_path(path, db)
+            p = _validate_path(path, db, allow_workspace=True)
             ok = remove_cover(str(p))
             if not ok:
                 _log.error(f"[cover-remove] remove_cover returned False for {str(p)}")
@@ -1004,7 +1014,7 @@ def stream_audio(
     db: Session = Depends(get_db),
 ):
     """오디오 파일을 스트리밍으로 제공 (인증 불필요)."""
-    p = _validate_path(path, db)
+    p = _validate_path(path, db, allow_workspace=True)
     if not p.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -1023,7 +1033,7 @@ def get_lrc_content(
     db: Session = Depends(get_db),
 ):
     """.lrc 사이드카 파일 또는 내장 가사를 텍스트로 반환."""
-    p = _validate_path(path, db)
+    p = _validate_path(path, db, allow_workspace=True)
     if not p.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -1050,10 +1060,18 @@ def get_lrc_content(
 
 
 # ── LRC 가사 가져오기 ───────────────────────────────────────
+class LrcFileInfo(BaseModel):
+    path: str
+    title: str = ""
+    artist: str = ""
+    album: str = ""
+
+
 class FetchLyricsRequest(BaseModel):
-    paths: list[str]
-    source: str = "bugs"          # "bugs" | "lrclib" | "auto"
-    fallback_source: str = "none" # "bugs" | "lrclib" | "none"
+    paths: list[str] = []              # 하위 호환용 (태그 없이 경로만)
+    files: list[LrcFileInfo] = []      # 태그 포함 파일 목록
+    source: str = "bugs"              # "bugs" | "lrclib" | "auto"
+    fallback_source: str = "none"     # "bugs" | "lrclib" | "none"
 
 
 def _do_fetch_lrc(source: str, file_path, artist: str, title: str, album: str) -> dict:
@@ -1088,9 +1106,15 @@ def fetch_lyrics_endpoint(
     SUPPORTED = {".mp3", ".flac", ".m4a", ".aac", ".ogg"}
     results = []
 
-    for path_str in req.paths:
+    # files 우선; 없으면 paths로 폴백 (태그 없는 하위 호환)
+    file_list: list[LrcFileInfo] = list(req.files)
+    if not file_list:
+        file_list = [LrcFileInfo(path=p) for p in req.paths]
+
+    for file_info in file_list:
+        path_str = file_info.path
         try:
-            p = _validate_path(path_str, db)
+            p = _validate_path(path_str, db, allow_workspace=True)
             if not p.is_file():
                 results.append({"path": path_str, "status": "error", "message": "파일이 아닙니다"})
                 continue
@@ -1098,13 +1122,19 @@ def fetch_lyrics_endpoint(
                 results.append({"path": path_str, "status": "error", "message": "지원하지 않는 형식입니다"})
                 continue
 
-            tags = read_tags(str(p))
-            artist = (tags.get("artist") or tags.get("album_artist") or "").strip()
-            title = (tags.get("title") or p.stem).strip()
-            album = (tags.get("album") or "").strip()
+            # 프론트엔드에서 태그 정보를 전달한 경우 우선 사용
+            if file_info.title:
+                artist = file_info.artist.strip()
+                title = file_info.title.strip()
+                album = file_info.album.strip()
+            else:
+                tags = read_tags(str(p))
+                artist = (tags.get("artist") or tags.get("album_artist") or "").strip()
+                title = (tags.get("title") or p.stem).strip()
+                album = (tags.get("album") or "").strip()
 
-            if not artist or not title:
-                results.append({"path": path_str, "status": "error", "message": "아티스트 또는 제목 태그가 없습니다"})
+            if not title:
+                results.append({"path": path_str, "status": "error", "message": "제목 태그가 없습니다"})
                 continue
 
             # 기본 소스로 검색
@@ -1331,7 +1361,7 @@ def rename_by_tags_preview(
     results = []
     for path_str in req.paths:
         try:
-            p = _validate_path(path_str, db)
+            p = _validate_path(path_str, db, allow_workspace=True)
             if not p.is_file():
                 results.append({"path": path_str, "old_name": p.name, "new_name": None, "conflict": False, "error": "파일이 아닙니다"})
                 continue
@@ -1371,7 +1401,7 @@ def rename_by_tags(
 
     for path_str in req.paths:
         try:
-            p = _validate_path(path_str, db)
+            p = _validate_path(path_str, db, allow_workspace=True)
             if not p.is_file():
                 results.append({"path": path_str, "new_path": None, "ok": False, "error": "파일이 아닙니다"})
                 failed += 1
@@ -1633,9 +1663,9 @@ def move_to_library(
     _=Depends(get_current_user),
 ):
     """워크스페이스 폴더를 라이브러리로 이동."""
-    import os as _os
-    workspace_base = Path(_os.getenv("WORKSPACE_PATH", "/workspace")).resolve()
-    music_base = Path(_os.getenv("MUSIC_BASE_PATH", "/music")).resolve()
+    from app.core.config_store import get_workspace_path, get_library_path
+    workspace_base = get_workspace_path(db)
+    music_base = get_library_path(db)
 
     source = Path(body.source_path).resolve()
     dest_parent = Path(body.dest_path).resolve()
@@ -1746,7 +1776,7 @@ def export_folder_html_save(
 
     path = data.get("path", "")
     lang = data.get("lang", "ko")
-    p = _validate_path(path, db)
+    p = _validate_path(path, db, allow_workspace=True)
     if not p.is_dir():
         raise HTTPException(status_code=400, detail="Not a directory")
 
@@ -1861,7 +1891,7 @@ def rename_folder(
     if not new_name or "/" in new_name or "\\" in new_name:
         raise HTTPException(status_code=422, detail="유효하지 않은 폴더명")
 
-    p = _validate_path(path, db)
+    p = _validate_path(path, db, allow_workspace=True)
     if not p.is_dir():
         raise HTTPException(status_code=400, detail="Not a directory")
 
@@ -1897,7 +1927,7 @@ def delete_extra_file(
 ):
     """이미지·HTML 등 기타 파일 삭제."""
     path = data.get("path", "")
-    p = _validate_path(path, db)
+    p = _validate_path(path, db, allow_workspace=True)
     if not p.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 

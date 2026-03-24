@@ -131,7 +131,42 @@
           <!-- 앨범 공통 태그 변경사항 -->
           <div class="px-5 py-3 border-b border-gray-200 dark:border-gray-700">
             <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{{ $t('tagSearch.albumCommonTags') }}</p>
-            <div class="space-y-1.5">
+
+            <!-- PC: 좌/우 비교 테이블 -->
+            <table class="hidden sm:table w-full text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-gray-100 dark:border-gray-800">
+                  <th class="text-left pb-2 pr-3 w-28 text-gray-400 font-medium">{{ $t('tagSearch.colField') }}</th>
+                  <th class="text-left pb-2 px-3 text-gray-400 font-medium w-1/2">{{ $t('tagSearch.colBefore') }}</th>
+                  <th class="text-left pb-2 pl-3 text-gray-400 font-medium w-1/2">{{ $t('tagSearch.colAfter') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="row in albumRows"
+                  :key="row.key"
+                  class="border-b border-gray-50 dark:border-gray-800/50 last:border-0"
+                  :class="row.changed ? 'bg-green-50 dark:bg-green-900/10' : ''"
+                >
+                  <td class="py-1.5 pr-3 text-gray-500 dark:text-gray-400 whitespace-nowrap align-top">{{ row.label }}</td>
+                  <td class="py-1.5 px-3 align-top max-w-0">
+                    <div class="truncate" :class="row.changed ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-600 dark:text-gray-300'">
+                      <span v-if="row.current != null && row.current !== ''">{{ row.current }}</span>
+                      <span v-else class="italic text-gray-300 dark:text-gray-600">—</span>
+                    </div>
+                  </td>
+                  <td class="py-1.5 pl-3 align-top max-w-0">
+                    <div class="truncate" :class="row.changed ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-700 dark:text-gray-300'">
+                      <span v-if="row.new != null && row.new !== ''">{{ row.new }}</span>
+                      <span v-else class="italic text-gray-300 dark:text-gray-600">—</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <!-- 모바일: 카드 스타일 -->
+            <div class="sm:hidden space-y-1.5">
               <div
                 v-for="row in albumRows"
                 :key="row.key"
@@ -159,7 +194,48 @@
               <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ $t('tagSearch.trackTags') }}</p>
               <span class="text-xs text-gray-400">{{ $t('tagSearch.matchCount', { matched: matchedCount, total: trackMatches.length }) }}</span>
             </div>
-            <div class="space-y-0.5">
+
+            <!-- PC: 좌/우 비교 테이블 -->
+            <table class="hidden sm:table w-full text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-gray-100 dark:border-gray-800">
+                  <th class="text-right pb-2 pr-3 w-8 text-gray-400 font-medium">#</th>
+                  <th class="text-left pb-2 px-3 text-gray-400 font-medium w-1/2">{{ $t('tagSearch.colBefore') }}</th>
+                  <th class="text-left pb-2 pl-3 text-gray-400 font-medium w-1/2">{{ $t('tagSearch.colAfter') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(match, i) in trackMatches"
+                  :key="i"
+                  class="border-b border-gray-50 dark:border-gray-800/50 last:border-0"
+                  :class="!match.local || !match.remote ? 'opacity-40' : ''"
+                >
+                  <td class="py-1.5 pr-3 text-gray-400 text-right whitespace-nowrap align-top">
+                    <span v-if="match.remote?.disc_no > 1" class="text-gray-300 dark:text-gray-600">{{ match.remote.disc_no }}-</span>{{ match.remote?.track_no || (i + 1) }}.
+                  </td>
+                  <td class="py-1.5 px-3 text-gray-600 dark:text-gray-300 align-top max-w-0">
+                    <div class="truncate">
+                      <span v-if="match.local">{{ match.local.title || match.local.filename }}</span>
+                      <span v-else class="italic text-gray-300 dark:text-gray-600">{{ $t('tagSearch.noMatch') }}</span>
+                    </div>
+                  </td>
+                  <td class="py-1.5 pl-3 align-top max-w-0"
+                    :class="match.local && match.remote && match.local.title !== match.remote.title
+                      ? 'text-green-600 dark:text-green-400 font-medium'
+                      : 'text-gray-700 dark:text-gray-300'"
+                  >
+                    <div class="truncate">
+                      <span v-if="match.remote">{{ match.remote.title }}</span>
+                      <span v-else class="italic text-gray-300 dark:text-gray-600">—</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <!-- 모바일: 리스트 스타일 -->
+            <div class="sm:hidden space-y-0.5">
               <div
                 v-for="(match, i) in trackMatches"
                 :key="i"
