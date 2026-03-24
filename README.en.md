@@ -23,13 +23,11 @@ A web application for managing music library metadata and editing audio tags.
 - **File Browser** — Browse music folders, view audio file list and tags
 - **Tag Editor** — Individual and batch tag editing, including Description (Comment)
 - **Auto Metadata Search** — Spotify, Bugs, Melon, Apple Music integration
-- **Cover Art Management** — Auto extract, upload, Google Image search
-- **File Mover** — Register destination folders and move music files
+- **Cover Art Management** — Auto extract, upload
 - **Rename by Tags** — Batch file rename using pattern strings
 - **HTML Export** — Generate HTML with track list, title tracks, and YouTube MV embeds
 - **Title Track / YouTube MV** — Mark title tracks and link YouTube URLs (auto search via YouTube Data API v3)
 - **Get LRC Lyrics** — Auto-download LRC lyric files from Bugs / LRCLIB
-- **Auto Scan Scheduler** — Automatically scan music folders on a set interval
 - **Backup / Restore** — DB + cover art tar.gz backup
 - **PWA Support** — Install on mobile home screen, offline static asset cache
 - **Mobile Optimized** — Responsive layout, home screen (recent folders), bottom tab navigation
@@ -170,18 +168,17 @@ docker compose pull && docker compose up -d
 |------|-------------|
 | Spotify API | Enter Client ID / Client Secret |
 | YouTube Data API v3 | API key for auto MV search |
-| Auto Scan Interval | In minutes (0 = disabled) |
-| Destination Folders | Target folders for file move |
 | Get LRC Folder | Default folder for LRC lyrics search |
 
 ## Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **v0.6.0** | 2026-03-23 | YouTube MV panel, folder rename, full i18n expansion, UI improvements |
+| **v0.7.0** | 2026-03-23 | PWA support, security improvements |
+| v0.6.0 | 2026-03-23 | YouTube MV panel, folder rename, full i18n expansion, UI improvements |
 | v0.5.0 | 2026-03-22 | Title track / YouTube MV, mobile layout overhaul, login language toggle |
-| v0.4.0 | — | Workspace-based tag editing, file mover, mobile toolbar |
-| v0.3.0 | — | LRC lyrics, HTML export, auto scan scheduler |
+| v0.4.0 | — | Workspace-based tag editing, mobile toolbar |
+| v0.3.0 | — | LRC lyrics, HTML export |
 
 ---
 
