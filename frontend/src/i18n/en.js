@@ -319,6 +319,16 @@ export default {
   settings: {
     title: 'Settings',
     general: 'General',
+    excludedFolders: {
+      tabLabel: 'Excluded Folders',
+      title: 'Excluded Folders',
+      desc: 'Register folder names to hide from the file browser. Useful for hiding system folders like @eaDir or .dav on Synology.',
+      add: 'Add',
+      placeholder: 'e.g. @eaDir',
+      delete: 'Delete',
+      empty: 'No excluded folders registered.',
+      hint: 'Enter folder names only (not full paths). Case-sensitive. Changes take effect immediately.',
+    },
     destinations: {
       title: 'Move Destination Folders',
       desc: 'Register external folders to move files to after tagging.',

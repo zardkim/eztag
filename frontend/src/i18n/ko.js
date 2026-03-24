@@ -319,6 +319,16 @@ export default {
   settings: {
     title: '설정',
     general: '일반',
+    excludedFolders: {
+      tabLabel: '제외 폴더',
+      title: '제외 폴더 설정',
+      desc: '파일 목록에 표시하지 않을 폴더명을 등록합니다. 시놀로지의 @eaDir, .dav 등 시스템 폴더를 숨길 수 있습니다.',
+      add: '추가',
+      placeholder: '예: @eaDir',
+      delete: '삭제',
+      empty: '등록된 제외 폴더가 없습니다.',
+      hint: '폴더명만 입력합니다 (경로 아님). 대소문자를 구분하며, 설정 저장 시 즉시 적용됩니다.',
+    },
     destinations: {
       title: '이동 대상 폴더',
       desc: '작업 완료 후 파일을 이동할 외부 폴더를 등록합니다.',

@@ -18,7 +18,7 @@ from app.models.scan_folder import ScanFolder
 from app.models.track import Track
 from app.core.tag_writer import write_tags, write_cover, remove_cover
 from app.core.tag_reader import read_tags, extract_cover, extract_cover_at, list_covers
-from app.core.config_store import get_destination_folders
+from app.core.config_store import get_destination_folders, get_excluded_folders
 import app.core.cache as _cache
 
 router = APIRouter(prefix="/api/browse", tags=["browse"])
@@ -82,6 +82,11 @@ def get_roots(
         if cached and cached.get("key") == cache_key:
             return cached["data"]
 
+    excluded = get_excluded_folders(db)
+
+    def _skip(name: str) -> bool:
+        return name.startswith(".") or name in excluded
+
     folders = db.query(ScanFolder).all()
     result = []
     for f in folders:
@@ -91,16 +96,16 @@ def get_roots(
         if p.exists():
             try:
                 sub_items = sorted(p.iterdir())
-                has_children = any(x.is_dir() and not x.name.startswith(".") for x in sub_items)
+                has_children = any(x.is_dir() and not _skip(x.name) for x in sub_items)
                 if with_children:
                     for item in sub_items:
-                        if not item.is_dir() or item.name.startswith("."):
+                        if not item.is_dir() or _skip(item.name):
                             continue
                         item_has_children = False
                         item_has_audio = False
                         try:
                             sub = list(item.iterdir())
-                            item_has_children = any(x.is_dir() and not x.name.startswith(".") for x in sub)
+                            item_has_children = any(x.is_dir() and not _skip(x.name) for x in sub)
                             item_has_audio = any(x.is_file() and x.suffix.lower() in AUDIO_EXTS for x in sub)
                         except PermissionError:
                             pass
@@ -145,16 +150,21 @@ def get_children(
         if cached is not None:
             return cached
 
+    excluded = get_excluded_folders(db)
+
+    def _skip_c(name: str) -> bool:
+        return name.startswith(".") or name in excluded
+
     children = []
     try:
         for item in sorted(p.iterdir()):
-            if not item.is_dir() or item.name.startswith("."):
+            if not item.is_dir() or _skip_c(item.name):
                 continue
             has_children = False
             has_audio = False
             try:
                 sub_items = list(item.iterdir())
-                has_children = any(x.is_dir() and not x.name.startswith(".") for x in sub_items)
+                has_children = any(x.is_dir() and not _skip_c(x.name) for x in sub_items)
                 has_audio = any(x.is_file() and x.suffix.lower() in AUDIO_EXTS for x in sub_items)
             except PermissionError:
                 pass

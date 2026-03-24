@@ -124,6 +124,50 @@
 
         </template>
 
+        <!-- ── 제외 폴더 ── -->
+        <template v-else-if="activeTab === 'folders'">
+          <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-5">{{ $t('settings.excludedFolders.title') }}</h2>
+          <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm mb-4">
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ $t('settings.excludedFolders.desc') }}</p>
+
+            <!-- 추가 입력 -->
+            <div class="flex gap-2 mb-4">
+              <input
+                v-model="newExcludedFolder"
+                type="text"
+                class="field flex-1"
+                :placeholder="$t('settings.excludedFolders.placeholder')"
+                @keydown.enter="addExcludedFolder"
+              />
+              <button
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors shrink-0"
+                @click="addExcludedFolder"
+              >{{ $t('settings.excludedFolders.add') }}</button>
+            </div>
+
+            <!-- 목록 -->
+            <div v-if="excludedFolders.length" class="space-y-1.5">
+              <div
+                v-for="name in excludedFolders"
+                :key="name"
+                class="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2"
+              >
+                <span class="text-sm font-mono text-gray-800 dark:text-gray-200">{{ name }}</span>
+                <button
+                  class="text-xs text-red-500 hover:text-red-400 transition-colors"
+                  @click="removeExcludedFolder(name)"
+                >{{ $t('settings.excludedFolders.delete') }}</button>
+              </div>
+            </div>
+            <p v-else class="text-sm text-gray-400 dark:text-gray-600">{{ $t('settings.excludedFolders.empty') }}</p>
+
+            <!-- 안내 -->
+            <div class="mt-4 px-3 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg text-xs text-gray-500 dark:text-gray-400">
+              {{ $t('settings.excludedFolders.hint') }}
+            </div>
+          </section>
+        </template>
+
         <!-- ── 메타데이터 소스 ── -->
         <template v-else-if="activeTab === 'metadata'">
           <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-5">{{ $t('settings.metadata.title') }}</h2>
@@ -652,6 +696,7 @@ const activeTab = ref(route.query.tab || 'general')
 
 const tabs = computed(() => [
   { key: 'general',     icon: '⚙️',  label: t('settings.general') },
+  { key: 'folders',     icon: '📁',  label: t('settings.excludedFolders.tabLabel') },
   { key: 'metadata',    icon: '🏷',  label: t('settings.metadata.title') },
   { key: 'data',        icon: '💾',  label: t('settings.backup.title') },
   { key: 'logs',        icon: '📋',  label: t('settings.activityLog.title') },
@@ -688,6 +733,11 @@ const form = reactive({
   // ai_cover_gemini_api_key: '',
   // ai_cover_default_model: 'gemini-2.5-flash-image',
 })
+// 제외 폴더
+const excludedFolders = ref([])
+const newExcludedFolder = ref('')
+const savingExcluded = ref(false)
+
 const savingMeta = ref(false)
 const lrcSourceSaving = ref(false)
 const showSpotifyId     = ref(false)
@@ -788,6 +838,8 @@ async function loadConfig() {
     form.youtube_api_key = c.youtube_api_key?.value ?? ''
     form.lrc_primary_source = c.lrc_primary_source?.value ?? 'bugs'
     form.lrc_fallback_source = c.lrc_fallback_source?.value ?? 'lrclib'
+    const exRaw = c.excluded_folders?.value ?? '@eaDir,.dav,@Recycle,#recycle,.Spotlight-V100,.Trashes'
+    excludedFolders.value = exRaw.split(',').map(s => s.trim()).filter(Boolean)
     // AI 커버아트 (개발 중단)
     // form.ai_cover_enabled = c.ai_cover_enabled?.value === 'true'
     // form.ai_cover_gemini_api_key = c.ai_cover_gemini_api_key?.value ?? ''
@@ -797,6 +849,31 @@ async function loadConfig() {
   } catch (e) {
     console.error('Config load failed', e)
   }
+}
+
+async function saveExcludedFolders() {
+  savingExcluded.value = true
+  try {
+    await configApi.update({ excluded_folders: excludedFolders.value.join(',') })
+    toastStore.success(t('settings.toast.saved'))
+  } catch (e) {
+    toastStore.error(t('settings.toast.saveFailed', { error: e.response?.data?.detail || e.message }))
+  } finally {
+    savingExcluded.value = false
+  }
+}
+
+function addExcludedFolder() {
+  const name = newExcludedFolder.value.trim()
+  if (!name || excludedFolders.value.includes(name)) return
+  excludedFolders.value.push(name)
+  newExcludedFolder.value = ''
+  saveExcludedFolders()
+}
+
+function removeExcludedFolder(name) {
+  excludedFolders.value = excludedFolders.value.filter(f => f !== name)
+  saveExcludedFolders()
 }
 
 async function saveMetaConfig() {

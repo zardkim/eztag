@@ -22,6 +22,7 @@ DEFAULTS: dict[str, tuple] = {
     "workspace_path": ("../data/workspace", "워크스페이스 폴더 경로 (환경변수 WORKSPACE_PATH 설정 시 무시됨)"),
     "library_path": ("../data/library", "라이브러리 폴더 경로 (환경변수 MUSIC_BASE_PATH 설정 시 무시됨)"),
     "lrc_base_folder": ("", "Get LRC 기본 폴더 경로"),
+    "excluded_folders": ("@eaDir,.dav,@Recycle,#recycle,.Spotlight-V100,.Trashes", "파일 목록에서 제외할 폴더명 목록 (콤마 구분)"),
     "lrc_primary_source": ("bugs", "LRC 기본 소스 (bugs/lrclib)"),
     "lrc_fallback_source": ("lrclib", "LRC 보조 소스 (bugs/lrclib/none)"),
     # Spotify (필수)
@@ -118,6 +119,12 @@ def get_workspace_path(db: Session) -> Path:
     if db_val:
         return Path(db_val).resolve()
     return Path("/workspace").resolve()
+
+
+def get_excluded_folders(db: Session) -> set[str]:
+    """제외 폴더명 집합 반환."""
+    raw = get_config(db, "excluded_folders") or ""
+    return {name.strip() for name in raw.split(",") if name.strip()}
 
 
 def get_library_path(db: Session) -> Path:
