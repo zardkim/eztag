@@ -125,7 +125,7 @@
         </template>
 
         <!-- ── 제외 폴더 ── -->
-        <template v-else-if="activeTab === 'folders'">
+        <template v-if="activeTab === 'folders'">
           <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-5">{{ $t('settings.excludedFolders.title') }}</h2>
           <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm mb-4">
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ $t('settings.excludedFolders.desc') }}</p>
@@ -169,7 +169,7 @@
         </template>
 
         <!-- ── 메타데이터 소스 ── -->
-        <template v-else-if="activeTab === 'metadata'">
+        <template v-if="activeTab === 'metadata'">
           <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-5">{{ $t('settings.metadata.title') }}</h2>
           <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm">
             <!-- Spotify -->
@@ -407,7 +407,7 @@
         </template>
 
         <!-- ── 데이터 관리 ── -->
-        <template v-else-if="activeTab === 'data'">
+        <template v-if="activeTab === 'data'">
           <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-5">{{ $t('settings.backup.title') }}</h2>
           <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm">
             <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">{{ $t('settings.backup.title') }}</h3>
@@ -451,7 +451,7 @@
         </template>
 
         <!-- ── 활동 로그 ── -->
-        <template v-else-if="activeTab === 'logs'">
+        <template v-if="activeTab === 'logs'">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <h2 class="text-lg font-bold text-gray-900 dark:text-white">{{ $t('settings.activityLog.title') }}</h2>
             <button
@@ -515,7 +515,7 @@
         </template>
 
         <!-- ── 시스템 정보 ── -->
-        <template v-else-if="activeTab === 'system'">
+        <template v-if="activeTab === 'system'">
           <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-5">{{ $t('settings.version.title') }}</h2>
           <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm">
             <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">{{ $t('settings.version.title') }}</h3>
@@ -556,7 +556,7 @@
         </template>
 
         <!-- ── 사용 설명서 ── -->
-        <template v-else-if="activeTab === 'help'">
+        <template v-if="activeTab === 'help'">
           <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-5">{{ $t('settings.help.title') }}</h2>
 
           <!-- 태그 변수 -->

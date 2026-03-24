@@ -195,8 +195,9 @@ function extBadge(ext) {
 
 onMounted(async () => {
   await loadRoots()
-  // Library가 단일 루트면 자동으로 진입
-  if (folders.value.length === 1) {
+  // Library 모드: 항상 첫 번째 루트(library_path)로 자동 진입
+  // Workspace 모드: 단일 루트일 때만 자동 진입
+  if (folders.value.length >= 1 && (props.area === 'library' || folders.value.length === 1)) {
     enterFolder(folders.value[0])
   }
 })
