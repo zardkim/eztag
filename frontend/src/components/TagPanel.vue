@@ -55,11 +55,6 @@
       </div>
 
       <div>
-        <label class="text-xs text-gray-500 block mb-1">{{ $t('trackEdit.fields.comment') }}</label>
-        <textarea v-model="form.comment" rows="2" class="field w-full text-sm resize-none"></textarea>
-      </div>
-
-      <div>
         <label class="text-xs text-gray-500 block mb-1">{{ $t('trackEdit.fields.lyrics') }}</label>
         <textarea v-model="form.lyrics" rows="4" class="field w-full text-xs font-mono resize-none"></textarea>
       </div>
@@ -221,7 +216,6 @@ function initForm() {
     disc_no: props.file.disc_no || null,
     year: props.file.year || null,
     lyrics: props.file.lyrics || '',
-    comment: props.file.comment || '',
   })
   isTitleTrack.value = !!props.file.is_title_track
   youtubeUrl.value = props.file.youtube_url || ''

@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.8.0-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.8.1-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)

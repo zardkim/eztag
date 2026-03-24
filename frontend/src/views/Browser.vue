@@ -543,7 +543,7 @@
               :class="ef.file_type === 'html'
                 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
                 : 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-400'"
-              @click="browserStore.selectExtraFile(ef); $router.push('/browser')"
+              @click="ef.file_type === 'image' ? (mobileImageFile = ef, showMobileImageModal = true) : (browserStore.selectExtraFile(ef), $router.push('/browser'))"
             >
               <span class="font-mono text-[10px] uppercase">{{ ef.filename.split('.').pop() }}</span>
               <span class="truncate max-w-[120px]">{{ ef.filename }}</span>
@@ -733,6 +733,21 @@
       </div>
     </div>
 
+    <!-- 모바일 이미지 뷰어 -->
+    <Teleport v-if="showMobileImageModal && mobileImageFile" to="body">
+      <div class="fixed inset-0 bg-black/85 z-[400] flex items-center justify-center p-4" @click.self="showMobileImageModal = false">
+        <div class="relative max-w-full max-h-[90vh] flex flex-col items-center">
+          <button class="absolute -top-8 right-0 text-white/70 hover:text-white text-sm" @click="showMobileImageModal = false">✕ {{ $t('common.close') }}</button>
+          <img
+            :src="`/api/browse/extra-file?path=${encodeURIComponent(mobileImageFile.path)}`"
+            :alt="mobileImageFile.filename"
+            class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+          />
+          <p class="mt-2 text-white/60 text-xs">{{ mobileImageFile.filename }}</p>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- YouTube 플레이어 다이얼로그 -->
     <Teleport v-if="ytDialogUrl" to="body">
       <div class="fixed inset-0 z-[300] flex items-center justify-center bg-black/70" @click.self="ytDialogUrl = null">
@@ -787,6 +802,9 @@ const showPanel = ref(null)
 const showSpotifyDialog = ref(false)
 const currentPlay = ref(null)
 const exportingHtml = ref(false)
+// ── 모바일 이미지 뷰어 ────────────────────────────────────────
+const showMobileImageModal = ref(false)
+const mobileImageFile = ref(null)
 // ── YouTube 다이얼로그 ────────────────────────────────────────
 const ytDialogUrl = ref(null)
 
@@ -1227,7 +1245,7 @@ const isLibrarySubfolder = computed(() => {
 
 async function onMoved(result) {
   showMoveModal.value = false
-  showLrcToast(t('browser.moveFolder.success', { path: result.dest }))
+  toastStore.success(t('browser.moveFolder.success', { path: result.dest }))
   // 라이브러리 루트로 돌아가기
   const roots = browserStore.breadcrumb
   if (roots.length > 0) {
@@ -1238,7 +1256,7 @@ async function onMoved(result) {
 
 async function onMovedToLibrary(result) {
   showMoveToLibraryModal.value = false
-  showLrcToast(t('browser.moveToLibrary.success', { path: result.dest }))
+  toastStore.success(t('browser.moveToLibrary.success', { path: result.dest }))
   // 이동 후 작업공간 루트로 돌아가 새로고침
   try {
     const { data } = await workspaceApi.workspaceRoots()
@@ -1300,7 +1318,7 @@ async function onRenamed(result) {
   showRenameModal.value = false
   const ok = result?.success ?? 0
   const fail = result?.failed ?? 0
-  showLrcToast(fail ? t('browser.renameWithFail', { ok, fail }) : t('browser.renameSuccess', { ok }))
+  fail ? toastStore.info(t('browser.renameWithFail', { ok, fail })) : toastStore.success(t('browser.renameSuccess', { ok }))
   // 폴더 캐시 무효화 후 새로고침 (사이드바 파일목록 포함)
   const path = browserStore.selectedFolder?.path
   if (path) {
