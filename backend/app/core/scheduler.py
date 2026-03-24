@@ -58,13 +58,14 @@ def _run_scan():
         db.close()
 
 
-def _run_preview_cleanup():
-    """1시간 이상 지난 AI 커버아트 미리보기 파일 정리."""
-    import os
-    from app.core.ai_cover_generator import AICoverGenerator
-    covers_path = os.getenv("COVERS_PATH", "/app/data/covers")
-    gen = AICoverGenerator(api_key="", covers_path=covers_path)
-    gen.cleanup_expired(max_age_seconds=3600)
+# AI 커버아트 미리보기 정리 (개발 중단)
+# def _run_preview_cleanup():
+#     """1시간 이상 지난 AI 커버아트 미리보기 파일 정리."""
+#     import os
+#     from app.core.ai_cover_generator import AICoverGenerator
+#     covers_path = os.getenv("COVERS_PATH", "/app/data/covers")
+#     gen = AICoverGenerator(api_key="", covers_path=covers_path)
+#     gen.cleanup_expired(max_age_seconds=3600)
 
 
 def start_scheduler(interval_minutes: int = 0):
@@ -73,15 +74,15 @@ def start_scheduler(interval_minutes: int = 0):
         _scheduler.start()
         logger.info("[scheduler] Scheduler started")
 
-    # AI 커버아트 미리보기 정리 (매 시간)
-    if not _scheduler.get_job(_PREVIEW_CLEANUP_JOB_ID):
-        _scheduler.add_job(
-            _run_preview_cleanup,
-            trigger=IntervalTrigger(hours=1),
-            id=_PREVIEW_CLEANUP_JOB_ID,
-            replace_existing=True,
-        )
-        logger.info("[scheduler] AI preview cleanup scheduled every 1 hour")
+    # AI 커버아트 미리보기 정리 (개발 중단)
+    # if not _scheduler.get_job(_PREVIEW_CLEANUP_JOB_ID):
+    #     _scheduler.add_job(
+    #         _run_preview_cleanup,
+    #         trigger=IntervalTrigger(hours=1),
+    #         id=_PREVIEW_CLEANUP_JOB_ID,
+    #         replace_existing=True,
+    #     )
+    #     logger.info("[scheduler] AI preview cleanup scheduled every 1 hour")
 
     reschedule(interval_minutes)
 

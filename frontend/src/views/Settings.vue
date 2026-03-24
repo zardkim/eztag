@@ -240,12 +240,11 @@
 
           </section>
 
-          <!-- AI 커버아트 -->
+          <!-- AI 커버아트 (개발 중단 - 추후 재개발 예정)
           <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm mt-4">
             <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">🎨 {{ $t('aiCover.settings.title') }}</h3>
             <p class="text-xs text-gray-500 mb-4">{{ $t('aiCover.settings.desc') }}</p>
             <div class="space-y-4">
-              <!-- 활성화 토글 -->
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-700 dark:text-gray-300">{{ $t('aiCover.settings.enable') }}</span>
                 <button class="flex items-center gap-2 cursor-pointer" @click="form.ai_cover_enabled = !form.ai_cover_enabled; saveAICoverConfig()">
@@ -255,7 +254,6 @@
                   </span>
                 </button>
               </div>
-              <!-- API 키 -->
               <div>
                 <label class="text-xs text-gray-500 block mb-1">{{ $t('aiCover.settings.apiKeyLabel') }}</label>
                 <div class="relative">
@@ -270,15 +268,30 @@
                   — {{ $t('aiCover.settings.apiKeyHint') }}
                 </p>
               </div>
-              <!-- 기본 분위기 -->
+              <div class="flex items-center gap-3">
+                <label class="text-xs text-gray-500 w-20 shrink-0">{{ $t('aiCover.settings.aiTypeLabel') }}</label>
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Gemini</span>
+              </div>
               <div>
-                <label class="text-xs text-gray-500 block mb-1">{{ $t('aiCover.settings.defaultMood') }}</label>
-                <select v-model="form.ai_cover_default_mood" class="field w-48" @change="saveAICoverConfig">
-                  <option v-for="m in aiCoverMoods" :key="m" :value="m">{{ $t(`aiCover.moods.${m}`) }}</option>
+                <label class="text-xs text-gray-500 block mb-1">{{ $t('aiCover.settings.modelLabel') }}</label>
+                <select v-model="form.ai_cover_default_model" class="field w-72" @change="saveAICoverConfig">
+                  <optgroup label="무료">
+                    <option value="gemini-2.5-flash-preview-image-generation">Gemini 2.5 Flash Preview</option>
+                    <option value="gemini-2.0-flash-preview-image-generation">Gemini 2.0 Flash Preview</option>
+                    <option value="gemini-2.0-flash-exp-image-generation">Gemini 2.0 Flash Exp</option>
+                  </optgroup>
+                  <optgroup label="유료">
+                    <option value="gemini-2.5-flash-image">Nano Banana (gemini-2.5-flash-image)</option>
+                    <option value="gemini-3.1-flash-image-preview">Nano Banana 2 (gemini-3.1-flash-image-preview)</option>
+                    <option value="gemini-3-pro-image-preview">Nano Banana Pro (gemini-3-pro-image-preview)</option>
+                    <option value="imagen-4.0-generate-001">Imagen 4</option>
+                    <option value="imagen-3.0-generate-001">Imagen 3</option>
+                  </optgroup>
                 </select>
               </div>
             </div>
           </section>
+          -->
 
           <!-- LRC 소스 우선순위 -->
           <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm mt-4">
@@ -621,17 +634,16 @@ const form = reactive({
   youtube_api_key: '',
   lrc_primary_source: 'bugs',
   lrc_fallback_source: 'lrclib',
-  ai_cover_enabled: false,
-  ai_cover_gemini_api_key: '',
-  ai_cover_default_mood: 'energetic',
+  // ai_cover_enabled: false,           // AI 커버아트 (개발 중단)
+  // ai_cover_gemini_api_key: '',
+  // ai_cover_default_model: 'gemini-2.5-flash-image',
 })
 const savingMeta = ref(false)
 const lrcSourceSaving = ref(false)
 const showSpotifyId     = ref(false)
 const showSpotifySecret = ref(false)
 const showYoutubeKey    = ref(false)
-const showAICoverKey    = ref(false)
-const aiCoverMoods = ['energetic', 'emotional', 'retro', 'kpop', 'jazz', 'hiphop', 'drive', 'healing', 'dark']
+// const showAICoverKey    = ref(false) // AI 커버아트 (개발 중단)
 
 async function saveLrcSources() {
   lrcSourceSaving.value = true
@@ -707,9 +719,12 @@ async function loadConfig() {
     form.youtube_api_key = c.youtube_api_key?.value ?? ''
     form.lrc_primary_source = c.lrc_primary_source?.value ?? 'bugs'
     form.lrc_fallback_source = c.lrc_fallback_source?.value ?? 'lrclib'
-    form.ai_cover_enabled = c.ai_cover_enabled?.value === 'true'
-    form.ai_cover_gemini_api_key = c.ai_cover_gemini_api_key?.value ?? ''
-    form.ai_cover_default_mood = c.ai_cover_default_mood?.value ?? 'energetic'
+    // AI 커버아트 (개발 중단)
+    // form.ai_cover_enabled = c.ai_cover_enabled?.value === 'true'
+    // form.ai_cover_gemini_api_key = c.ai_cover_gemini_api_key?.value ?? ''
+    // const validModels = ['gemini-2.5-flash-preview-image-generation', 'gemini-2.0-flash-preview-image-generation', 'gemini-2.0-flash-exp-image-generation', 'gemini-2.5-flash-image', 'gemini-3.1-flash-image-preview', 'gemini-3-pro-image-preview', 'imagen-4.0-generate-001', 'imagen-3.0-generate-001']
+    // const savedModel = c.ai_cover_default_model?.value ?? ''
+    // form.ai_cover_default_model = validModels.includes(savedModel) ? savedModel : 'gemini-2.5-flash-image'
   } catch (e) {
     console.error('Config load failed', e)
   }
@@ -739,18 +754,19 @@ async function saveMetaConfig() {
   }
 }
 
-async function saveAICoverConfig() {
-  try {
-    await configApi.update({
-      ai_cover_enabled: String(form.ai_cover_enabled),
-      ai_cover_gemini_api_key: form.ai_cover_gemini_api_key,
-      ai_cover_default_mood: form.ai_cover_default_mood,
-    })
-    toastStore.success(t('aiCover.settings.saved'))
-  } catch (e) {
-    toastStore.error(t('settings.toast.saveFailed', { error: e.response?.data?.detail || e.message }))
-  }
-}
+// AI 커버아트 설정 저장 (개발 중단)
+// async function saveAICoverConfig() {
+//   try {
+//     await configApi.update({
+//       ai_cover_enabled: String(form.ai_cover_enabled),
+//       ai_cover_gemini_api_key: form.ai_cover_gemini_api_key,
+//       ai_cover_default_model: form.ai_cover_default_model,
+//     })
+//     toastStore.success(t('aiCover.settings.saved'))
+//   } catch (e) {
+//     toastStore.error(t('settings.toast.saveFailed', { error: e.response?.data?.detail || e.message }))
+//   }
+// }
 
 async function loadBackups() {
   try {

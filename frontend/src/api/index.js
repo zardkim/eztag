@@ -119,53 +119,21 @@ export const tracksApi = {
   batchUpdate: (data) => client.post('/tracks/batch-update', data),
 }
 
-// Workspace
+// 라이브러리 피커 (폴더 선택용)
 export const workspaceApi = {
-  // 세션
-  getCurrentSession: () => client.get('/workspace/current-session'),
-  newSession: () => client.post('/workspace/session/new'),
-  updateSession: (id, data) => client.patch(`/workspace/session/${id}`, data),
-  discardSession: (id) => client.post(`/workspace/session/${id}/discard`),
-  applySession: (id) => client.post(`/workspace/session/${id}/apply`, {}, { timeout: 120000 }),
-
-  // 불러오기
-  loadFolder: (folder_path, recursive = false) =>
-    client.post('/workspace/load-folder', { folder_path, recursive }),
-  loadFiles: (file_paths) =>
-    client.post('/workspace/load-files', { file_paths }),
-
-  // 아이템
-  getItems: () => client.get('/workspace/items'),
-  removeItem: (id) => client.delete(`/workspace/items/${id}`),
-  clearItems: () => client.delete('/workspace/items'),
-  applyItem: (id) => client.post(`/workspace/items/${id}/apply`, {}, { timeout: 30000 }),
-
-  // 스테이징
-  stageTags: (id, tags) => client.put(`/workspace/items/${id}/stage-tags`, { tags }),
-  batchStageTags: (updates) => client.put('/workspace/items/batch-stage-tags', { updates }),
-  stageRename: (id, new_name) => client.put(`/workspace/items/${id}/stage-rename`, { new_name }),
-  unstageTags: (id) => client.delete(`/workspace/items/${id}/stage-tags`),
-  getDiff: (id) => client.get(`/workspace/items/${id}/diff`),
-
-  // 히스토리
-  getHistory: (params) => client.get('/workspace/history', { params }),
-  getHistoryDetail: (id) => client.get(`/workspace/history/${id}`),
-  deleteHistory: (id) => client.delete(`/workspace/history/${id}`),
-
-  // 라이브러리 피커
   libraryRoots: () => client.get('/workspace/library/roots'),
   libraryChildren: (path) => client.get('/workspace/library/children', { params: { path } }),
 }
 
-// AI Cover Art
-export const aiCoverApi = {
-  generate: (data) => client.post('/ai-cover/generate', data, { timeout: 90000 }),
-  apply: (path, generation_id) => client.post('/ai-cover/apply', { path, generation_id }),
-  applyFolder: (folder_path, generation_id) =>
-    client.post('/ai-cover/apply-folder', { folder_path, generation_id }),
-  deletePreview: (generation_id) => client.delete(`/ai-cover/preview/${generation_id}`),
-  getMoods: () => client.get('/ai-cover/moods'),
-}
+// AI Cover Art (개발 중단)
+// export const aiCoverApi = {
+//   generate: (data) => client.post('/ai-cover/generate', data, { timeout: 90000 }),
+//   apply: (path, generation_id) => client.post('/ai-cover/apply', { path, generation_id }),
+//   applyFolder: (folder_path, generation_id) =>
+//     client.post('/ai-cover/apply-folder', { folder_path, generation_id }),
+//   deletePreview: (generation_id) => client.delete(`/ai-cover/preview/${generation_id}`),
+//   getMoods: () => client.get('/ai-cover/moods'),
+// }
 
 // Covers
 export const coversApi = {

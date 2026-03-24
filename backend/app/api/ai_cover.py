@@ -82,9 +82,11 @@ def generate_cover(
 
     # 프롬프트 생성 → 이미지 생성
     prompt = gen.build_prompt(track_info, req.mood, hint_en)
+    model = get_config(db, "ai_cover_default_model") or req.model
     try:
-        image_bytes = gen.generate(prompt, model=req.model)
+        image_bytes = gen.generate(prompt, model=model)
     except RuntimeError as e:
+        logger.error(f"[ai_cover] generate failed (model={model}): {e}")
         raise HTTPException(status_code=502, detail=str(e))
 
     gen_id = gen.save_preview(image_bytes)
@@ -211,4 +213,4 @@ def delete_preview(
 
 @router.get("/moods")
 def get_moods(_=Depends(get_current_user)):
-    return {"moods": list(MOOD_PRESETS.keys())}
+    return {"moods": ["auto"] + list(MOOD_PRESETS.keys())}

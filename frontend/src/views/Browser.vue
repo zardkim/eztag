@@ -109,11 +109,13 @@
             :disabled="exportingHtml"
             @click="exportFolderHtml"
           >📄 {{ exportingHtml ? '...' : t('browser.exportHtml') }}</button>
+          <!-- AI 커버아트 버튼 (개발 중단)
           <button
             v-if="browserStore.files.length > 0"
             class="btn-toolbar !bg-pink-100 !text-pink-700 hover:!bg-pink-200 dark:!bg-pink-900/30 dark:!text-pink-400 shrink-0"
             @click="showAICoverModal = true"
           >🎨 {{ t('aiCover.btn') }}</button>
+          -->
           <button class="btn-toolbar shrink-0" @click="forceReload" :title="t('browser.reload')">🔄</button>
         </template>
         <template v-else>
@@ -278,11 +280,12 @@
                     @click="exportFolderHtml(); showMobileMenu = false"
                   ><span class="text-xl">📄</span>{{ exportingHtml ? '...' : t('browser.exportHtml') }}</button>
 
-                  <!-- AI 커버아트 -->
+                  <!-- AI 커버아트 (개발 중단)
                   <button
                     class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-pink-700 dark:text-pink-400 bg-pink-50 dark:bg-pink-900/20 hover:bg-pink-100 dark:hover:bg-pink-900/30 transition-colors text-left"
                     @click="showAICoverModal = true; showMobileMenu = false"
                   ><span class="text-xl">🎨</span>{{ t('aiCover.btn') }}</button>
+                  -->
                 </template>
 
               </div>
@@ -428,13 +431,14 @@
       @moved="onMoved"
     />
 
-    <!-- AI 커버아트 생성 모달 -->
+    <!-- AI 커버아트 생성 모달 (개발 중단)
     <AICoverModal
       v-if="showAICoverModal"
       :folder-path="browserStore.selectedFolder?.path || ''"
       @close="showAICoverModal = false"
       @applied="onAICoverApplied"
     />
+    -->
 
     <!-- ── Content area ── -->
     <div class="relative flex-1 flex overflow-hidden min-h-0">
@@ -458,7 +462,7 @@
       <div
         v-else
         ref="tableContainerRef"
-        class="flex-1 overflow-y-auto overflow-x-hidden relative select-none min-h-0 flex flex-col"
+        class="flex-1 overflow-y-auto overflow-x-auto relative select-none min-h-0 flex flex-col"
         :class="showPanel ? 'hidden sm:flex sm:flex-col' : ''"
         @mousedown="onTableMouseDown"
       >
@@ -561,28 +565,28 @@
           </div>
 
           <!-- ── 데스크톱 테이블 뷰 (md 이상) ── -->
-          <div v-if="browserStore.displayFiles.length > 0" class="hidden md:flex md:flex-col md:flex-1 overflow-x-auto">
+          <div v-if="browserStore.displayFiles.length > 0" class="hidden md:flex md:flex-col md:flex-1 min-w-max">
           <table class="w-full min-w-[1400px] text-sm">
-              <thead class="sticky top-0 bg-indigo-50 dark:bg-slate-800 border-b border-indigo-100 dark:border-slate-700 z-10">
-                <tr class="text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap select-none">
-                  <th class="text-center px-2 py-2 font-semibold w-12 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('disc_no')">{{ t('browser.colDisc') }}<span class="ml-0.5 opacity-60">{{ sortIcon('disc_no') }}</span></th>
-                  <th class="text-center px-2 py-2 font-semibold w-12 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('track_no')">{{ t('browser.colTrack') }}<span class="ml-0.5 opacity-60">{{ sortIcon('track_no') }}</span></th>
+              <thead class="sticky top-0 bg-sky-500 dark:bg-sky-900 border-b border-sky-600 dark:border-sky-800 z-10">
+                <tr class="text-xs text-white dark:text-sky-100 whitespace-nowrap select-none">
+                  <th class="text-center px-2 py-2 font-semibold w-12 cursor-pointer hover:bg-sky-400 dark:hover:bg-sky-800 transition-colors" @click="sortByCol('disc_no')">{{ t('browser.colDisc') }}<span class="ml-0.5 opacity-70">{{ sortIcon('disc_no') }}</span></th>
+                  <th class="text-center px-2 py-2 font-semibold w-12 cursor-pointer hover:bg-sky-400 dark:hover:bg-sky-800 transition-colors" @click="sortByCol('track_no')">{{ t('browser.colTrack') }}<span class="ml-0.5 opacity-70">{{ sortIcon('track_no') }}</span></th>
                   <th class="w-9 shrink-0"></th>
-                  <th class="text-left px-2 py-2 font-semibold min-w-[160px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('title')">{{ $t('common.title') }}<span class="ml-0.5 opacity-60">{{ sortIcon('title') }}</span></th>
-                  <th class="text-left px-3 py-2 font-semibold min-w-[110px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('artist')">{{ $t('common.artist') }}<span class="ml-0.5 opacity-60">{{ sortIcon('artist') }}</span></th>
-                  <th class="text-left px-3 py-2 font-semibold min-w-[110px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('album_artist')">{{ t('browser.colAlbumArtist') }}<span class="ml-0.5 opacity-60">{{ sortIcon('album_artist') }}</span></th>
-                  <th class="text-left px-3 py-2 font-semibold min-w-[110px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('album_title')">{{ $t('common.album') }}<span class="ml-0.5 opacity-60">{{ sortIcon('album_title') }}</span></th>
-                  <th class="text-left px-3 py-2 font-semibold min-w-[80px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('genre')">{{ t('browser.colGenre') }}<span class="ml-0.5 opacity-60">{{ sortIcon('genre') }}</span></th>
-                  <th class="text-center px-2 py-2 font-semibold w-14 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('year')">{{ t('browser.colYear') }}<span class="ml-0.5 opacity-60">{{ sortIcon('year') }}</span></th>
+                  <th class="text-left px-2 py-2 font-semibold min-w-[160px] cursor-pointer hover:bg-sky-400 dark:hover:bg-sky-800 transition-colors" @click="sortByCol('title')">{{ $t('common.title') }}<span class="ml-0.5 opacity-70">{{ sortIcon('title') }}</span></th>
+                  <th class="text-left px-3 py-2 font-semibold min-w-[110px] cursor-pointer hover:bg-sky-400 dark:hover:bg-sky-800 transition-colors" @click="sortByCol('artist')">{{ $t('common.artist') }}<span class="ml-0.5 opacity-70">{{ sortIcon('artist') }}</span></th>
+                  <th class="text-left px-3 py-2 font-semibold min-w-[110px] cursor-pointer hover:bg-sky-400 dark:hover:bg-sky-800 transition-colors" @click="sortByCol('album_artist')">{{ t('browser.colAlbumArtist') }}<span class="ml-0.5 opacity-70">{{ sortIcon('album_artist') }}</span></th>
+                  <th class="text-left px-3 py-2 font-semibold min-w-[110px] cursor-pointer hover:bg-sky-400 dark:hover:bg-sky-800 transition-colors" @click="sortByCol('album_title')">{{ $t('common.album') }}<span class="ml-0.5 opacity-70">{{ sortIcon('album_title') }}</span></th>
+                  <th class="text-left px-3 py-2 font-semibold min-w-[80px] cursor-pointer hover:bg-sky-400 dark:hover:bg-sky-800 transition-colors" @click="sortByCol('genre')">{{ t('browser.colGenre') }}<span class="ml-0.5 opacity-70">{{ sortIcon('genre') }}</span></th>
+                  <th class="text-center px-2 py-2 font-semibold w-14 cursor-pointer hover:bg-sky-400 dark:hover:bg-sky-800 transition-colors" @click="sortByCol('year')">{{ t('browser.colYear') }}<span class="ml-0.5 opacity-70">{{ sortIcon('year') }}</span></th>
                   <th class="text-left px-3 py-2 font-semibold min-w-[100px]">{{ t('browser.colComment') }}</th>
-                  <th class="text-center px-2 py-2 font-semibold w-16 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('file_format')">{{ t('browser.colCodec') }}<span class="ml-0.5 opacity-60">{{ sortIcon('file_format') }}</span></th>
+                  <th class="text-center px-2 py-2 font-semibold w-16 cursor-pointer hover:bg-sky-400 dark:hover:bg-sky-800 transition-colors" @click="sortByCol('file_format')">{{ t('browser.colCodec') }}<span class="ml-0.5 opacity-70">{{ sortIcon('file_format') }}</span></th>
                   <th class="text-center px-2 py-2 font-semibold w-12">LRC</th>
                   <th class="text-center px-2 py-2 font-semibold w-10">YT</th>
                   <th class="text-center px-2 py-2 font-semibold w-16">{{ t('browser.colTagVersion') }}</th>
-                  <th class="text-center px-2 py-2 font-semibold w-20 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('bitrate')">{{ t('browser.colBitrate') }}<span class="ml-0.5 opacity-60">{{ sortIcon('bitrate') }}</span></th>
-                  <th class="text-center px-2 py-2 font-semibold w-20 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('sample_rate')">{{ t('browser.colFrequency') }}<span class="ml-0.5 opacity-60">{{ sortIcon('sample_rate') }}</span></th>
-                  <th class="text-center px-2 py-2 font-semibold w-16 cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('duration')">{{ t('browser.colDuration') }}<span class="ml-0.5 opacity-60">{{ sortIcon('duration') }}</span></th>
-                  <th class="text-left px-3 py-2 font-semibold min-w-[130px] cursor-pointer hover:bg-indigo-100 dark:hover:bg-slate-700 transition-colors" @click="sortByCol('modified_time')">{{ t('browser.colModified') }}<span class="ml-0.5 opacity-60">{{ sortIcon('modified_time') }}</span></th>
+                  <th class="text-center px-2 py-2 font-semibold w-20 cursor-pointer hover:bg-sky-400 dark:hover:bg-sky-800 transition-colors" @click="sortByCol('bitrate')">{{ t('browser.colBitrate') }}<span class="ml-0.5 opacity-70">{{ sortIcon('bitrate') }}</span></th>
+                  <th class="text-center px-2 py-2 font-semibold w-20 cursor-pointer hover:bg-sky-400 dark:hover:bg-sky-800 transition-colors" @click="sortByCol('sample_rate')">{{ t('browser.colFrequency') }}<span class="ml-0.5 opacity-70">{{ sortIcon('sample_rate') }}</span></th>
+                  <th class="text-center px-2 py-2 font-semibold w-16 cursor-pointer hover:bg-sky-400 dark:hover:bg-sky-800 transition-colors" @click="sortByCol('duration')">{{ t('browser.colDuration') }}<span class="ml-0.5 opacity-70">{{ sortIcon('duration') }}</span></th>
+                  <th class="text-left px-3 py-2 font-semibold min-w-[130px] cursor-pointer hover:bg-sky-400 dark:hover:bg-sky-800 transition-colors" @click="sortByCol('modified_time')">{{ t('browser.colModified') }}<span class="ml-0.5 opacity-70">{{ sortIcon('modified_time') }}</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -591,10 +595,10 @@
                   :key="file.path"
                   class="group border-t border-gray-100 dark:border-gray-800 cursor-pointer transition-colors"
                   :class="browserStore.selectedFile?.path === file.path
-                    ? 'bg-blue-50 dark:bg-blue-900/20 border-l-2 border-blue-400 dark:border-blue-500'
+                    ? 'bg-blue-200 dark:bg-blue-800/60 border-l-2 border-blue-500 dark:border-blue-400'
                     : browserStore.checkedPaths.has(file.path)
-                    ? 'bg-blue-50/60 dark:bg-blue-900/15 border-l-2 border-blue-300 dark:border-blue-600'
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-800/50 border-l-2 border-transparent'"
+                    ? 'bg-blue-100 dark:bg-blue-900/40 border-l-2 border-blue-400 dark:border-blue-500'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-700/60 border-l-2 border-transparent'"
                   @click="onRowClick(file, $event)"
                 >
                   <td class="px-2 py-2 text-center text-gray-400 text-xs">{{ file.disc_no ?? '' }}</td>
@@ -710,10 +714,9 @@ import BatchTagPanel from '../components/BatchTagPanel.vue'
 import SpotifySearchDialog from '../components/SpotifySearchDialog.vue'
 import RenameByTagsModal from '../components/RenameByTagsModal.vue'
 import MoveToDestinationModal from '../components/MoveToDestinationModal.vue'
-import AICoverModal from '../components/AICoverModal.vue'
+// import AICoverModal from '../components/AICoverModal.vue' // AI 커버아트 (개발 중단)
 import MiniPlayer from '../components/MiniPlayer.vue'
 import { useBrowserStore } from '../stores/browser.js'
-import { useWorkspaceStore } from '../stores/workspace.js'
 import { useToastStore } from '../stores/toast.js'
 import { useHistoryStore } from '../stores/history.js'
 import { configApi } from '../api/config.js'
@@ -722,7 +725,6 @@ import { downloadBlob } from '../utils/download.js'
 
 const { t, locale } = useI18n()
 const browserStore = useBrowserStore()
-const workspaceStore = useWorkspaceStore()
 const historyStore = useHistoryStore()
 const toastStore = useToastStore()
 const showPanel = ref(null)
@@ -1138,16 +1140,16 @@ async function onMoved(result) {
   }
 }
 
-// ── AI 커버아트 생성 ──────────────────────────────────────
-const showAICoverModal = ref(false)
-
-function onAICoverApplied() {
-  const path = browserStore.selectedFolder?.path
-  if (path) {
-    browserStore.invalidateFilesCache(path)
-    browserStore.loadFiles(path, true)
-  }
-}
+// ── AI 커버아트 생성 (개발 중단) ─────────────────────────
+// const showAICoverModal = ref(false)
+//
+// function onAICoverApplied() {
+//   const path = browserStore.selectedFolder?.path
+//   if (path) {
+//     browserStore.invalidateFilesCache(path)
+//     browserStore.loadFiles(path, true)
+//   }
+// }
 
 // ── 태그 기반 파일명 변경 ─────────────────────────────────
 const showRenameModal = ref(false)
@@ -1191,8 +1193,6 @@ async function onRenamed(result) {
     browserStore.invalidateFilesCache(path)
     await browserStore.loadFiles(path, true)
   }
-  // 워크스페이스 아이템 경로도 갱신
-  await workspaceStore.loadCurrentSession()
 }
 
 async function startFetchLyrics(source) {

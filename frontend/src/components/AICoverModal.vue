@@ -114,8 +114,8 @@ const props = defineProps({
 const emit = defineEmits(['close', 'applied'])
 const { t } = useI18n()
 
-const moods = ['energetic', 'emotional', 'retro', 'kpop', 'jazz', 'hiphop', 'drive', 'healing', 'dark']
-const selectedMood = ref('energetic')
+const moods = ['auto', 'energetic', 'emotional', 'retro', 'kpop', 'jazz', 'hiphop', 'drive', 'healing', 'dark']
+const selectedMood = ref('auto')
 const hint = ref('')
 const generating = ref(false)
 const applying = ref(false)
@@ -157,6 +157,8 @@ async function generate() {
       errorMsg.value = t('aiCover.notConfigured')
     } else if (detail === 'ai_cover_disabled') {
       errorMsg.value = t('aiCover.disabled')
+    } else if (detail) {
+      errorMsg.value = detail
     } else {
       errorMsg.value = t('aiCover.generateFailed')
     }

@@ -7,7 +7,6 @@ const routes = [
   { path: '/login',    component: () => import('../views/Login.vue'),   meta: { title: '로그인', public: true } },
   { path: '/',         redirect: '/home' },
   { path: '/home',     component: () => import('../views/Home.vue'),      meta: { title: '홈' } },
-  { path: '/workspace', component: () => import('../views/Workspace.vue'), meta: { title: '워크스페이스' } },
   { path: '/browser',  component: () => import('../views/Browser.vue'), meta: { title: '파일 브라우저' } },
   { path: '/settings', component: () => import('../views/Settings.vue'),meta: { title: '설정' } },
   { path: '/get-lrc',  component: () => import('../views/GetLrc.vue'),  meta: { title: 'Get LRC' } },

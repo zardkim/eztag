@@ -399,7 +399,6 @@ import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { browseApi } from '../api/index.js'
 import { useBrowserStore } from '../stores/browser.js'
-import { useWorkspaceStore } from '../stores/workspace.js'
 import { useHistoryStore } from '../stores/history.js'
 import { GENRES } from '../constants/genres.js'
 import { useToastStore } from '../stores/toast.js'
@@ -410,6 +409,26 @@ function detectCoverTypeFromName(filename) {
   if (['back', 'back cover', 'backcover', 'rear'].includes(name)) return 4
   if (['front', 'front cover', 'frontcover', 'cover', 'folder', 'albumart', 'album art'].includes(name)) return 3
   return 3
+}
+
+// cover / front / front cover 등 같은 의미의 파일명을 하나의 캐노니컬 키로 반환.
+// null 반환 시 캐노니컬 중복 대상이 아님 (일반 파일명은 항상 표시).
+function getCanonicalStem(filename) {
+  const name = filename.toLowerCase().replace(/\.[^.]+$/, '').trim()
+  if (['front', 'front cover', 'frontcover', 'cover', 'folder', 'albumart', 'album art'].includes(name)) return 'front_cover'
+  if (['back', 'back cover', 'backcover', 'rear'].includes(name)) return 'back_cover'
+  return null
+}
+
+function deduplicateImages(images) {
+  const seen = new Set()
+  return images.filter(img => {
+    const stem = getCanonicalStem(img.name)
+    if (!stem) return true
+    if (seen.has(stem)) return false
+    seen.add(stem)
+    return true
+  })
 }
 
 // ── 커버 관련 ──────────────────────────────────────────────
@@ -457,7 +476,7 @@ async function openFolderImagePicker() {
   folderImagesFolder.value = folder
   try {
     const { data } = await browseApi.getFolderImages(folder)
-    folderImages.value = Array.isArray(data) ? data : []
+    folderImages.value = Array.isArray(data) ? deduplicateImages(data) : []
   } catch {
     folderImages.value = []
   } finally {
@@ -536,13 +555,9 @@ const COVER_TYPES = computed(() => [
   { id: 18, label: t('batchPanel.coverTypeBandLogo') },
   { id: 19, label: t('batchPanel.coverTypePublisherLogo') },
 ])
-const props = defineProps({
-  workspaceMode: { type: Boolean, default: false },
-  checkedWorkspaceIds: { type: Array, default: () => [] },
-})
+const props = defineProps({})
 const emit = defineEmits(['close', 'saved'])
 const browserStore = useBrowserStore()
-const workspaceStore = useWorkspaceStore()
 const toastStore = useToastStore()
 const historyStore = useHistoryStore()
 const saving = ref(false)
@@ -557,14 +572,6 @@ const files = computed(() => browserStore.files)
 
 // 표시 순서(정렬 적용) 기준의 대상 파일 목록
 const targetFiles = computed(() => {
-  if (props.workspaceMode) {
-    const wsFiles = workspaceStore.files
-    if (props.checkedWorkspaceIds.length > 0) {
-      const idSet = new Set(props.checkedWorkspaceIds)
-      return wsFiles.filter(f => idSet.has(f._workspace_item_id))
-    }
-    return wsFiles
-  }
   const displayed = browserStore.displayFiles
   if (browserStore.selectedFile) return [browserStore.selectedFile]
   if (browserStore.checkedPaths.size > 0)
@@ -718,7 +725,7 @@ watch(targetFiles, async (fileList) => {
       : []
 
     const folderImgs = (folderRes.status === 'fulfilled' && Array.isArray(folderRes.value.data))
-      ? folderRes.value.data.map(img => {
+      ? deduplicateImages(folderRes.value.data).map(img => {
           const type = detectCoverTypeFromName(img.name)
           return {
             source: 'folder',
@@ -817,19 +824,6 @@ async function save() {
   saving.value = true
   try {
     const paths = targetPaths.value
-
-    if (props.workspaceMode) {
-      // Workspace staging mode: 단일 요청으로 일괄 스테이징
-      const idSet = new Set(props.checkedWorkspaceIds)
-      const wsItems = workspaceStore.items.filter(i =>
-        props.checkedWorkspaceIds.length > 0 ? idSet.has(i.id) : true
-      )
-      await workspaceStore.batchStageTags(wsItems.map(i => ({ item_id: i.id, tags: updates })))
-      fieldMode.value = {}
-      emit('saved')
-      showToast('스테이징 완료')
-      return
-    }
 
     // 1단계: 텍스트 태그 먼저 저장 (커버보다 먼저 — 커버가 마지막 기록이 되어야 함)
     if (Object.keys(updates).length || clear_fields.length) {

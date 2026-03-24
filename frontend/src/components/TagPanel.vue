@@ -23,7 +23,7 @@
         class="flex-1 py-2 text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white rounded-lg transition-colors"
         :disabled="saving"
         @click="save"
-      >{{ saving ? $t('common.saving') : (workspaceItem ? $t('tagPanel.stageSave') : $t('common.save')) }}</button>
+      >{{ saving ? $t('common.saving') : $t('common.save') }}</button>
       <button
         class="px-3 py-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 rounded-lg transition-colors"
         @click="reset"
@@ -64,8 +64,8 @@
         <textarea v-model="form.lyrics" rows="4" class="field w-full text-xs font-mono resize-none"></textarea>
       </div>
 
-      <!-- 타이틀곡 / YouTube (DB 전용, workspace 모드에서 숨김) -->
-      <div v-if="!workspaceItem" class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-1">
+      <!-- 타이틀곡 / YouTube (DB 전용) -->
+      <div class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-1">
         <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-2">{{ $t('tagPanel.sectionMv') }}</span>
 
         <!-- 타이틀곡 토글 -->
@@ -165,7 +165,6 @@ import { ref, reactive, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { browseApi, metadataApi } from '../api/index.js'
 import { useBrowserStore } from '../stores/browser.js'
-import { useWorkspaceStore } from '../stores/workspace.js'
 import { useHistoryStore } from '../stores/history.js'
 import SpotifyResultCard from './SpotifyResultCard.vue'
 import { GENRES } from '../constants/genres.js'
@@ -176,13 +175,11 @@ const toastStore = useToastStore()
 const props = defineProps({
   file: Object,
   focusSpotify: { type: Boolean, default: false },
-  workspaceItem: { type: Object, default: null },
 })
 const emit = defineEmits(['close', 'saved'])
 const spotifySection = ref(null)
 
 const browserStore = useBrowserStore()
-const workspaceStore = useWorkspaceStore()
 const historyStore = useHistoryStore()
 const saving = ref(false)
 const spotifyLoading = ref(false)
@@ -237,7 +234,6 @@ function initForm() {
 }
 
 async function saveTrackInfo() {
-  if (props.workspaceItem) return  // workspace 모드에서는 지원 안함
   trackInfoSaving.value = true
   try {
     const { data } = await browseApi.setTrackInfo({
@@ -344,45 +340,34 @@ function fillFromSpotify(result) {
 async function save() {
   saving.value = true
   try {
-    if (props.workspaceItem) {
-      // Workspace staging mode: stage tags without writing to file
-      const tags = {}
-      for (const [k, v] of Object.entries(form)) {
-        if (v !== '' && v !== null && v !== undefined) tags[k] = v
-      }
-      await workspaceStore.stageTags(props.workspaceItem.id, tags)
-      emit('saved')
-    } else {
-      // Normal browser mode: write directly to file
-      // 변경 전 스냅샷 (히스토리용)
-      const tagFields = Object.keys(form)
-      const before = Object.fromEntries(tagFields.map(k => [k, props.file[k] ?? null]))
+    // 변경 전 스냅샷 (히스토리용)
+    const tagFields = Object.keys(form)
+    const before = Object.fromEntries(tagFields.map(k => [k, props.file[k] ?? null]))
 
-      const payload = { path: props.file.path }
-      for (const [k, v] of Object.entries(form)) {
-        if (v !== '' && v !== null && v !== undefined) payload[k] = v
-      }
-      const hadPendingCover = !!pendingCoverUrl.value
-      if (pendingCoverUrl.value) {
-        payload.cover_url = pendingCoverUrl.value
-        await metadataApi.applyByPath(payload)
-        pendingCoverUrl.value = null
-      } else {
-        await browseApi.writeTags(payload)
-      }
-      const fileUpdate = { path: props.file.path, ...form }
-      if (hadPendingCover) fileUpdate.has_cover = true
-      browserStore.updateFile(fileUpdate)
-
-      // 전역 히스토리 등록
-      const after = Object.fromEntries(tagFields.map(k => [k, form[k] ?? null]))
-      historyStore.push({
-        label: t('tagPanel.historyLabel', { filename: props.file.filename }),
-        ops: [{ path: props.file.path, before, after }],
-      })
-
-      emit('saved')
+    const payload = { path: props.file.path }
+    for (const [k, v] of Object.entries(form)) {
+      if (v !== '' && v !== null && v !== undefined) payload[k] = v
     }
+    const hadPendingCover = !!pendingCoverUrl.value
+    if (pendingCoverUrl.value) {
+      payload.cover_url = pendingCoverUrl.value
+      await metadataApi.applyByPath(payload)
+      pendingCoverUrl.value = null
+    } else {
+      await browseApi.writeTags(payload)
+    }
+    const fileUpdate = { path: props.file.path, ...form }
+    if (hadPendingCover) fileUpdate.has_cover = true
+    browserStore.updateFile(fileUpdate)
+
+    // 전역 히스토리 등록
+    const after = Object.fromEntries(tagFields.map(k => [k, form[k] ?? null]))
+    historyStore.push({
+      label: t('tagPanel.historyLabel', { filename: props.file.filename }),
+      ops: [{ path: props.file.path, before, after }],
+    })
+
+    emit('saved')
   } catch (e) {
     toastStore.error(e.response?.data?.detail || t('common.error'))
   } finally {

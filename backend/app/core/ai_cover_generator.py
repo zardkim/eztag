@@ -50,6 +50,54 @@ class AICoverGenerator:
         self.preview_dir = Path(covers_path) / "ai_preview"
         self.preview_dir.mkdir(parents=True, exist_ok=True)
 
+    # ── 분위기 자동 선택 ────────────────────────────────────────
+    def auto_select_mood(self, track_info: dict, hint: str = "") -> str:
+        """트랙 정보(폴더명, 앨범명, 아티스트, 장르, 힌트)를 분석해 MOOD_PRESETS 중 가장 적합한 키 반환."""
+        mood_list = ", ".join(MOOD_PRESETS.keys())
+        context_parts = []
+        if track_info.get("folder_name"):
+            context_parts.append(f"Folder: {track_info['folder_name']}")
+        if track_info.get("album_title"):
+            context_parts.append(f"Album: {track_info['album_title']}")
+        if track_info.get("artist"):
+            context_parts.append(f"Artist: {track_info['artist']}")
+        if track_info.get("genre"):
+            context_parts.append(f"Genre: {track_info['genre']}")
+        if hint:
+            context_parts.append(f"Keywords: {hint}")
+        context = "; ".join(context_parts) or "unknown"
+
+        url = f"{GEMINI_API_BASE}/models/gemini-2.0-flash:generateContent"
+        payload = {
+            "contents": [{
+                "parts": [{"text": (
+                    f"You are selecting a visual mood for an album cover art.\n"
+                    f"Music info: {context}\n"
+                    f"Choose exactly ONE mood from this list that best fits the music: {mood_list}\n"
+                    f"Reply with only the single mood word, nothing else."
+                )}]
+            }]
+        }
+        try:
+            resp = requests.post(
+                url,
+                json=payload,
+                headers={"x-goog-api-key": self.api_key},
+                timeout=15,
+            )
+            resp.raise_for_status()
+            selected = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip().lower()
+            # 반환값이 유효한 preset 키인지 확인
+            if selected in MOOD_PRESETS:
+                return selected
+            # 부분 매치 시도
+            for key in MOOD_PRESETS:
+                if key in selected:
+                    return key
+        except Exception as e:
+            logger.warning(f"[ai_cover] auto_select_mood failed: {e}")
+        return "energetic"  # 실패 시 기본값
+
     # ── 한국어 힌트 번역 ────────────────────────────────────────
     def translate_hint(self, hint_ko: str) -> str:
         """한국어 힌트 → 영문 이미지 프롬프트 키워드 (Gemini Flash)"""
@@ -105,6 +153,10 @@ class AICoverGenerator:
         if genre:  parts.append(f"Genre: {genre}.")
         if year:   parts.append(f"Year: {year}.")
 
+        # auto: Gemini가 트랙 정보 기반으로 분위기 자동 선택
+        if mood == "auto":
+            mood = self.auto_select_mood(track_info, hint_en)
+
         mood_kw = MOOD_PRESETS.get(mood, "")
         if mood_kw:
             parts.append(f"Mood: {mood_kw}.")
@@ -122,13 +174,59 @@ class AICoverGenerator:
         )
         return " ".join(parts)
 
-    # ── Imagen 4 이미지 생성 ───────────────────────────────────
-    def generate(
-        self,
-        prompt: str,
-        model: str = "imagen-4.0-generate-001",
-    ) -> bytes:
-        """Imagen 4 API 호출 → 500×500 JPEG bytes 반환"""
+    # ── 이미지 생성 (모델에 따라 자동 분기) ──────────────────────
+    def generate(self, prompt: str, model: str = "gemini-2.5-flash-image") -> bytes:
+        if model.startswith("gemini-"):
+            return self._generate_gemini(prompt, model)
+        else:
+            return self._generate_imagen(prompt, model)
+
+    # ── Gemini generateContent 방식 ────────────────────────────
+    def _generate_gemini(self, prompt: str, model: str) -> bytes:
+        """Gemini API(generateContent) → 500×500 JPEG bytes 반환"""
+        url = f"{GEMINI_API_BASE}/models/{model}:generateContent"
+        full_prompt = (
+            f"{prompt} "
+            f"Avoid: {NEGATIVE_PROMPT}."
+        )
+        payload = {
+            "contents": [{"parts": [{"text": full_prompt}]}],
+            "generationConfig": {"responseModalities": ["IMAGE", "TEXT"]},
+        }
+        resp = requests.post(
+            url,
+            json=payload,
+            headers={"x-goog-api-key": self.api_key},
+            timeout=60,
+        )
+        if resp.status_code != 200:
+            detail = resp.text
+            try:
+                detail = resp.json().get("error", {}).get("message", resp.text)
+            except Exception:
+                pass
+            raise RuntimeError(f"Gemini API error {resp.status_code}: {detail}")
+
+        candidates = resp.json().get("candidates", [])
+        if not candidates:
+            raise RuntimeError("Gemini API returned no candidates")
+
+        for part in candidates[0].get("content", {}).get("parts", []):
+            if "inlineData" in part:
+                b64 = part["inlineData"].get("data", "")
+                if b64:
+                    raw = base64.b64decode(b64)
+                    img = Image.open(io.BytesIO(raw)).convert("RGB")
+                    img = img.resize((OUTPUT_SIZE, OUTPUT_SIZE), Image.LANCZOS)
+                    buf = io.BytesIO()
+                    img.save(buf, format="JPEG", quality=92)
+                    return buf.getvalue()
+
+        raise RuntimeError("Gemini API returned no image data")
+
+    # ── Imagen predict 방식 ────────────────────────────────────
+    def _generate_imagen(self, prompt: str, model: str) -> bytes:
+        """Imagen API(:predict) → 500×500 JPEG bytes 반환"""
         url = f"{GEMINI_API_BASE}/models/{model}:predict"
         payload = {
             "instances": [{"prompt": prompt}],
@@ -160,7 +258,6 @@ class AICoverGenerator:
         if not b64:
             raise RuntimeError("Imagen API returned empty image data")
 
-        # PIL로 500×500 리사이즈
         raw = base64.b64decode(b64)
         img = Image.open(io.BytesIO(raw)).convert("RGB")
         img = img.resize((OUTPUT_SIZE, OUTPUT_SIZE), Image.LANCZOS)

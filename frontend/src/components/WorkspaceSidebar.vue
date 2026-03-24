@@ -1,41 +1,31 @@
 <template>
   <div class="flex flex-col h-full min-h-0 select-none">
 
-    <!-- 헤더 -->
-    <div class="px-3 pt-3 pb-2 shrink-0">
-      <div class="flex items-center justify-between mb-2">
-        <span class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">{{ $t('sidebar.title') }}</span>
-        <div class="flex gap-1">
-          <!-- 새 세션 -->
-          <button
-            class="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-xs"
-            :title="$t('sidebar.newSession')"
-            @click="confirmNewSession"
-          >↺</button>
-        </div>
-      </div>
-
-      <!-- 세션 상태 배지 -->
-      <div class="flex items-center gap-1.5 flex-wrap">
-        <span class="text-[10px] text-gray-400">{{ $t('sidebar.fileCount', { n: workspaceStore.items.length }) }}</span>
-      </div>
+    <!-- 홈 메뉴 -->
+    <div class="px-2 pt-2 pb-1 shrink-0">
+      <RouterLink
+        to="/home"
+        class="flex items-center gap-2 px-2 py-2 rounded-lg text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        active-class="bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white"
+      >
+        <span class="text-base shrink-0">🏠</span>
+        <span class="font-medium">{{ $t('nav.home') }}</span>
+      </RouterLink>
     </div>
 
-    <!-- 폴더/파일 열기 버튼 -->
-    <div class="px-3 pb-2 shrink-0 flex gap-1.5">
+    <!-- 헤더 -->
+    <div class="px-3 pt-1 pb-2 shrink-0">
+      <span class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">{{ $t('sidebar.title') }}</span>
+    </div>
+
+    <!-- 폴더 열기 버튼 -->
+    <div class="px-3 pb-2 shrink-0">
       <button
-        class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-dashed border-blue-300 dark:border-blue-700 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+        class="w-full flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-dashed border-blue-300 dark:border-blue-700 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
         @click="showFolderPicker = true"
       >
         <span>📂</span>
         <span>{{ $t('sidebar.openFolder') }}</span>
-      </button>
-      <button
-        class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-        @click="showPicker = true"
-      >
-        <span>📄</span>
-        <span>{{ $t('sidebar.openFile') }}</span>
       </button>
     </div>
 
@@ -116,35 +106,6 @@
       </div>
     </div>
 
-    <!-- 아이템 목록 (워크스페이스 모드) -->
-    <div v-else class="flex-1 overflow-y-auto min-h-0 px-2">
-      <!-- 빈 상태 -->
-      <div v-if="workspaceStore.items.length === 0" class="flex flex-col items-center justify-center py-8 text-center px-2">
-        <p class="text-2xl mb-2">📭</p>
-        <p class="text-[11px] text-gray-400 leading-relaxed">{{ $t('sidebar.emptyHint') }}</p>
-      </div>
-
-      <!-- 워크스페이스 파일 목록 -->
-      <div v-else class="space-y-0.5 pb-2">
-        <div
-          v-for="item in workspaceStore.items"
-          :key="item.id"
-          class="flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer transition-colors text-left group"
-          :class="workspaceStore.selectedItemId === item.id
-            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100'
-            : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'"
-          :title="item.filename"
-          @click="onSelectItem(item.id)"
-        >
-          <span class="w-1.5 h-1.5 rounded-full shrink-0 mt-0.5 bg-gray-300 dark:bg-gray-600"></span>
-          <span class="flex-1 text-[11px] truncate">{{ item.filename }}</span>
-          <button
-            class="shrink-0 w-4 h-4 flex items-center justify-center text-gray-300 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 text-xs"
-            @click.stop="workspaceStore.removeItem(item.id)"
-          >✕</button>
-        </div>
-      </div>
-    </div><!-- /워크스페이스 모드 -->
 
     <!-- 폴더 열기 (folderMode) -->
     <Teleport to="body">
@@ -153,15 +114,6 @@
         :folder-mode="true"
         @close="showFolderPicker = false"
         @select-folder="onSelectFolder"
-      />
-    </Teleport>
-
-    <!-- 파일 열기 -->
-    <Teleport to="body">
-      <LibraryPickerModal
-        v-if="showPicker"
-        @close="showPicker = false"
-        @added="onFilesAdded"
       />
     </Teleport>
 
@@ -193,9 +145,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { workspaceApi } from '../api/index.js'
 import { browseApi } from '../api/index.js'
-import { useWorkspaceStore } from '../stores/workspace.js'
 import { useBrowserStore } from '../stores/browser.js'
 import { useToastStore } from '../stores/toast.js'
 import LibraryPickerModal from './LibraryPickerModal.vue'
@@ -203,11 +153,9 @@ import RenameFolderModal from './RenameFolderModal.vue'
 
 const { t } = useI18n()
 const router = useRouter()
-const workspaceStore = useWorkspaceStore()
 const browserStore = useBrowserStore()
 const toastStore = useToastStore()
 
-const showPicker = ref(false)
 const showFolderPicker = ref(false)
 const showImageModal = ref(false)
 const selectedImage = ref(null)
@@ -296,41 +244,13 @@ const relativeFolderPath = computed(() => {
   return rel || folder.name
 })
 
-function onFilesAdded() {
-  showPicker.value = false
-  router.push('/workspace')
-}
-
-function onSelectItem(id) {
-  workspaceStore.selectItem(id)
-  router.push('/workspace')
-}
-
 function onSelectFolder(folder) {
   showFolderPicker.value = false
   browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }])
   router.push('/browser')
 }
 
-async function confirmNewSession() {
-  if (workspaceStore.pendingCount > 0) {
-    if (!confirm(t('sidebar.newSessionConfirm', { n: workspaceStore.pendingCount }))) return
-  }
-  await workspaceStore.newSession()
-  toastStore.success(t('sidebar.newSessionSuccess'))
-}
-
-
-
-function fmtDate(iso) {
-  if (!iso) return '-'
-  const d = new Date(iso)
-  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
-
-
 defineExpose({
   openFolderPicker: () => { showFolderPicker.value = true },
-  openFilePicker: () => { showPicker.value = true },
 })
 </script>

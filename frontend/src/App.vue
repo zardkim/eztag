@@ -28,9 +28,9 @@
           <span>{{ themeStore.theme === 'dark' ? '☀️' : '🌙' }}</span>
         </button>
       </div>
-      <!-- 2행: 툴바 슬롯 (Browser.vue / Workspace.vue 버튼 삽입 대상) -->
+      <!-- 2행: 툴바 슬롯 (Browser.vue 버튼 삽입 대상) -->
       <div
-        v-show="route.path === '/browser' || route.path === '/workspace'"
+        v-show="route.path === '/browser'"
         id="app-toolbar-slot-mobile"
         class="shrink-0 h-9 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center min-w-0 overflow-x-auto overflow-y-hidden scrollbar-none"
       >
@@ -242,12 +242,12 @@
     ══════════════════════════════════════════════ -->
     <main
       class="flex-1 overflow-hidden flex flex-col min-w-0 lg:pt-0 lg:pb-0"
-      :class="(route.path === '/browser' || route.path === '/workspace') ? 'pt-20' : 'pt-11'"
+      :class="route.path === '/browser' ? 'pt-20' : 'pt-11'"
       style="padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));"
     >
       <!-- 데스크톱 툴바 슬롯 -->
       <div id="app-toolbar-slot" class="shrink-0 h-10 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center min-w-0 hidden lg:flex">
-        <template v-if="route.path !== '/browser' && route.path !== '/workspace'">
+        <template v-if="route.path !== '/browser'">
           <RouterLink
             to="/browser"
             class="flex items-center gap-1.5 px-3 py-1.5 ml-1 rounded-lg text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
@@ -368,7 +368,6 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useThemeStore } from './stores/theme.js'
 import { useAuthStore } from './stores/auth.js'
-import { useWorkspaceStore } from './stores/workspace.js'
 import { useBrowserStore } from './stores/browser.js'
 import { useAppConfigStore } from './stores/appConfig.js'
 import { authApi } from './api/index.js'
@@ -384,7 +383,6 @@ const appConfigStore = useAppConfigStore()
 const { locale, t } = useI18n()
 const themeStore = useThemeStore()
 const authStore = useAuthStore()
-const workspaceStore = useWorkspaceStore()
 const browserStore = useBrowserStore()
 const route = useRoute()
 const router = useRouter()
@@ -508,7 +506,6 @@ onMounted(() => {
   themeStore.apply()
   document.addEventListener('click', onClickOutside, true)
   if (authStore.isLoggedIn) {
-    workspaceStore.loadCurrentSession()
     loadAppConfig()
   }
 })
@@ -519,7 +516,6 @@ onUnmounted(() => {
 const isPublicRoute = computed(() => ['/setup', '/login'].includes(route.path))
 
 const bottomNav = [
-  { to: '/home',     icon: '🏠', labelKey: 'nav.home' },
   { to: '/settings', icon: '⚙️', labelKey: 'nav.settings' },
 ]
 

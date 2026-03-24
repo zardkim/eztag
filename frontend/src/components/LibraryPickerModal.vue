@@ -113,7 +113,6 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { workspaceApi } from '../api/index.js'
-import { useWorkspaceStore } from '../stores/workspace.js'
 import { useToastStore } from '../stores/toast.js'
 
 const { t } = useI18n()
@@ -122,15 +121,12 @@ const props = defineProps({
   folderMode: { type: Boolean, default: false },
 })
 const emit = defineEmits(['close', 'added', 'select-folder'])
-const workspaceStore = useWorkspaceStore()
 const toastStore = useToastStore()
 
 const loading = ref(false)
-const adding = ref(false)
 const folders = ref([])
 const files = ref([])
 const breadcrumb = ref([])
-const lastAdded = ref('')
 
 async function loadChildren(path) {
   loading.value = true
@@ -182,28 +178,6 @@ function goUp() {
   }
 }
 
-async function addCurrentFolder() {
-  if (breadcrumb.value.length === 0) return
-  const current = breadcrumb.value[breadcrumb.value.length - 1]
-  await addFolder(current)
-}
-
-async function addFile(file) {
-  adding.value = true
-  try {
-    const result = await workspaceStore.loadFiles([file.path])
-    if (result.added > 0) {
-      lastAdded.value = t('picker.fileAdded', { name: file.name })
-      emit('added')
-    } else {
-      lastAdded.value = t('picker.alreadyAdded')
-    }
-  } catch (e) {
-    toastStore.error(e.response?.data?.detail || e.message)
-  } finally {
-    adding.value = false
-  }
-}
 
 function extBadge(ext) {
   const map = {
