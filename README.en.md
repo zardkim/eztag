@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.7.0-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.8.0-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -20,17 +20,17 @@ A web application for managing music library metadata and editing audio tags.
 
 ## Features
 
-- **File Browser** — Browse music folders, view audio file list and tags
+- **File Browser** — Browse music folders across two separate areas: Workspace and Library
 - **Tag Editor** — Individual and batch tag editing, including Description (Comment)
 - **Auto Metadata Search** — Spotify, Bugs, Melon, Apple Music integration
-- **Cover Art Management** — Auto extract, upload
+- **Cover Art Management** — Auto extract and embed covers (case-insensitive: cover/COVER/Cover), upload
 - **Rename by Tags** — Batch file rename using pattern strings
 - **HTML Export** — Generate HTML with track list, title tracks, and YouTube MV embeds
-- **Title Track / YouTube MV** — Mark title tracks and link YouTube URLs (auto search via YouTube Data API v3)
+- **Title Track / YouTube MV** — Mark title tracks and link YouTube URLs (auto search via YouTube Data API v3), in-app player
 - **Get LRC Lyrics** — Auto-download LRC lyric files from Bugs / LRCLIB
-- **Backup / Restore** — DB + cover art tar.gz backup
+- **Backup / Restore** — Full DB backup (settings, presets, metadata) as tar.gz
 - **PWA Support** — Install on mobile home screen, offline static asset cache
-- **Mobile Optimized** — Responsive layout, home screen (recent folders), bottom tab navigation
+- **Mobile Optimized** — Responsive layout, home screen (recent folders + clear list), bottom tab navigation
 - **Multilingual** — Korean / English (switch directly from login screen)
 - **Dark Mode** support
 
@@ -60,7 +60,7 @@ mkdir eztag && cd eztag
 curl -O https://raw.githubusercontent.com/zardkim/eztag/main/docker-compose.yml
 
 # Environment variable sample
-curl -O https://raw.githubusercontent.com/zardkim/eztag/main/env.sample
+curl -O https://raw.githubusercontent.com/zardkim/eztag/main/.env.example
 ```
 
 ### 2. docker-compose.yml
@@ -78,6 +78,11 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-eztag_password}
     volumes:
       - ./data/db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eztag"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - eztag-net
 
@@ -85,17 +90,21 @@ services:
     image: zardkim/eztag-backend:${VERSION:-latest}
     restart: unless-stopped
     ports:
-      - "0.0.0.0:${BACKEND_PORT:-18011}:18011"
+      - "18011:18011"
     environment:
       DATABASE_URL: postgresql://eztag:${DB_PASSWORD:-eztag_password}@postgres:5432/eztag
       MUSIC_BASE_PATH: /music
+      WORKSPACE_PATH: /workspace
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set in .env file}
     volumes:
-      - ${MUSIC_PATH:-./data/library}:/music:ro
+      - ./data/library:/music
+      - ./data/workspace:/workspace
       - ./data/covers:/app/data/covers
+      - ./data/logs:/app/data/logs
       - ./data/backup:/app/data/backup
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - eztag-net
 
@@ -103,7 +112,7 @@ services:
     image: zardkim/eztag-frontend:${VERSION:-latest}
     restart: unless-stopped
     ports:
-      - "0.0.0.0:${FRONTEND_PORT:-5850}:80"
+      - "5850:5850"
     depends_on:
       - backend
     networks:
@@ -117,7 +126,7 @@ networks:
 ### 3. Configure environment variables
 
 ```bash
-cp env.sample .env
+cp .env.example .env
 ```
 
 Edit `.env` and set the required values:
@@ -125,24 +134,39 @@ Edit `.env` and set the required values:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `SECRET_KEY` | **(required)** | JWT signing key — generate with `openssl rand -hex 32` |
-| `MUSIC_PATH` | `./data/library` | Path to your music folder (Synology: `/volume1/music`, etc.) |
 | `DB_PASSWORD` | `eztag_password` | PostgreSQL password |
-| `FRONTEND_PORT` | `5850` | Web UI port |
-| `BACKEND_PORT` | `18011` | Backend API port |
+| `LOG_LEVEL` | `INFO` | Log level (DEBUG / INFO / WARNING / ERROR) |
 | `VERSION` | `latest` | Docker image tag |
 
 `.env` example:
 
 ```env
 SECRET_KEY=your-random-secret-key-32chars
-MUSIC_PATH=/volume1/music
 DB_PASSWORD=mypassword
-FRONTEND_PORT=5850
-BACKEND_PORT=18011
+LOG_LEVEL=INFO
 VERSION=latest
 ```
 
-### 4. Start
+### 4. Connect your music folders
+
+Mount your actual music folders under the library (`./data/library`) and workspace (`./data/workspace`) directories.
+
+**Add Docker volumes** (append to the `volumes` section in `docker-compose.yml`):
+```yaml
+volumes:
+  - ./data/library:/music
+  - ./data/workspace:/workspace
+  - /path/to/your/music:/music/MyAlbums     # add library folder
+  - /path/to/your/work:/workspace/MyWork    # add workspace folder
+```
+
+**Symlinks** (from outside the container):
+```bash
+ln -s /path/to/your/music ./data/library/MyAlbums
+ln -s /path/to/your/work  ./data/workspace/MyWork
+```
+
+### 5. Start
 
 ```bash
 docker compose up -d
@@ -150,7 +174,7 @@ docker compose up -d
 
 Open `http://localhost:5850` in your browser → create an admin account → start using eztag.
 
-### 5. Update
+### 6. Update
 
 ```bash
 docker compose pull && docker compose up -d
@@ -158,9 +182,10 @@ docker compose pull && docker compose up -d
 
 ## Synology NAS Installation
 
-1. Download `docker-compose.yml` and `env.sample` to your PC
-2. Rename `env.sample` to `.env` and set the required values (`SECRET_KEY` required, update `MUSIC_PATH` to your actual path)
+1. Download `docker-compose.yml` and `.env.example` to your PC
+2. Rename `.env.example` to `.env` and set the required values (`SECRET_KEY` is mandatory)
 3. Container Manager → Project → Upload `docker-compose.yml` and `.env`, then start
+4. Add your music folders via additional volume mounts in Container Manager
 
 ## Settings
 
@@ -174,7 +199,8 @@ docker compose pull && docker compose up -d
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **v0.7.0** | 2026-03-23 | PWA support, security improvements |
+| **v0.8.0** | 2026-03-24 | Workspace/Library dual areas, YouTube in-app player, auto cover embed, backup stability, various bug fixes |
+| v0.7.0 | 2026-03-23 | PWA support, AI cover art generation, security improvements |
 | v0.6.0 | 2026-03-23 | YouTube MV panel, folder rename, full i18n expansion, UI improvements |
 | v0.5.0 | 2026-03-22 | Title track / YouTube MV, mobile layout overhaul, login language toggle |
 | v0.4.0 | — | Workspace-based tag editing, mobile toolbar |
