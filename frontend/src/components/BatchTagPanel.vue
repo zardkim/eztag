@@ -801,11 +801,25 @@ async function save() {
   if (form.comment)      updates.comment      = form.comment
 
   // clear_fields: 다중 값 필드 중 '제거' 모드로 설정된 것 (직접 입력값이 없는 경우만)
-  const clear_fields = multiMode.value
+  const modeClearFields = multiMode.value
     ? Object.entries(fieldMode.value)
         .filter(([field, mode]) => mode === 'clear' && !updates[field])
         .map(([field]) => field)
     : []
+  // 단일 파일 모드: 기존에 값이 있었는데 폼에서 지워진 필드도 clear_fields에 포함
+  const singleClearFields = !multiMode.value
+    ? (() => {
+        const file = targetFiles.value[0]
+        if (!file) return []
+        const textFields = ['title', 'artist', 'album_artist', 'album_title', 'genre', 'release_date', 'label', 'lyrics', 'comment']
+        const numFields = ['year', 'track_no', 'total_tracks', 'disc_no']
+        return [
+          ...textFields.filter(f => (file[f] || '') !== '' && (form[f] || '') === '' && !updates[f]),
+          ...numFields.filter(f => file[f] != null && form[f] == null && !updates[f]),
+        ]
+      })()
+    : []
+  const clear_fields = [...modeClearFields, ...singleClearFields]
 
   if (!Object.keys(updates).length && !clear_fields.length && !pendingCovers.value.length) return
 

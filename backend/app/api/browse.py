@@ -563,6 +563,14 @@ def batch_write_tags_endpoint(
         raise HTTPException(status_code=422, detail="No fields to update")
 
     roots = [Path(f.path).resolve() for f in db.query(ScanFolder).all()]
+    # _validate_path 와 동일하게 라이브러리 경로 + 워크스페이스 경로도 허용
+    from app.core.config_store import get_library_path, get_workspace_path
+    lib_root = get_library_path(db)
+    if lib_root and lib_root.is_dir():
+        roots.append(lib_root)
+    ws_root = get_workspace_path(db)
+    if ws_root:
+        roots.append(ws_root)
 
     # 유효 경로 검증
     valid_paths = []

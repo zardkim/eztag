@@ -270,12 +270,13 @@ def _parse_track_list(soup: BeautifulSoup, album_info: dict) -> list[dict]:
             title = re.sub(r'\s*\([^)]*삽입곡[^)]*\)', '', title).strip()
             t["title"] = title
 
-        # 트랙 번호
+        # 트랙 번호 + 타이틀곡 여부
         em = el.select_one("p.trackIndex em")
         if em:
             txt = em.get_text(strip=True)
             if txt.isdigit():
                 t["track_no"] = int(txt)
+        t["is_title_track"] = bool(el.select_one("span.albumTitle"))
 
         # 아티스트
         artist_p = el.select_one("p.artist")

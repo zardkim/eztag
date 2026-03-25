@@ -13,7 +13,7 @@
     <!-- ══════════════════════════════════════════════
          MOBILE: 상단 바 (로고 + 툴바 슬롯)
     ══════════════════════════════════════════════ -->
-    <header class="lg:hidden fixed top-0 inset-x-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex flex-col">
+    <header class="lg:hidden fixed top-0 inset-x-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex flex-col" style="padding-top: env(safe-area-inset-top, 0px);">
       <!-- 1행: 로고 + 테마 -->
       <div class="flex items-center justify-between px-4 h-11 shrink-0">
         <img
@@ -32,7 +32,7 @@
       <div
         v-show="route.path === '/browser'"
         id="app-toolbar-slot-mobile"
-        class="shrink-0 h-9 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center min-w-0 overflow-x-auto overflow-y-hidden scrollbar-none"
+        class="shrink-0 h-11 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex items-center min-w-0 overflow-x-auto overflow-y-hidden scrollbar-none"
       >
         <!-- Browser.vue가 Teleport로 이 슬롯에 버튼을 주입 -->
       </div>
@@ -249,9 +249,10 @@
          메인 콘텐츠
     ══════════════════════════════════════════════ -->
     <main
-      class="flex-1 overflow-hidden flex flex-col min-w-0 lg:pt-0 lg:!pb-0"
-      :class="route.path === '/browser' ? 'pt-20' : 'pt-11'"
-      style="padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));"
+      class="flex-1 overflow-hidden flex flex-col min-w-0 lg:!pt-0 lg:!pb-0"
+      :style="route.path === '/browser'
+        ? 'padding-top: calc(5.5rem + env(safe-area-inset-top, 0px)); padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));'
+        : 'padding-top: calc(2.75rem + env(safe-area-inset-top, 0px)); padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));'"
     >
       <!-- 데스크톱 툴바 슬롯 -->
       <div id="app-toolbar-slot" class="shrink-0 h-10 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center min-w-0 hidden lg:flex">

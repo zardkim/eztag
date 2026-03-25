@@ -1146,11 +1146,17 @@ function toggleSelectAll() {
   }
 }
 
-function onSaved() {
+async function onSaved() {
   const path = browserStore.selectedFolder?.path
   if (!path) return
+  const prevSelectedPath = browserStore.selectedFile?.path
   browserStore.invalidateFilesCache(path)
-  browserStore.loadFiles(path, true)
+  await browserStore.loadFiles(path, true)
+  // 저장 후 선택 파일 복원 — loadFiles가 selectedFile을 null로 초기화하기 때문
+  if (prevSelectedPath) {
+    const file = browserStore.files.find(f => f.path === prevSelectedPath)
+    if (file) browserStore.selectFile(file)
+  }
 }
 
 function enterSubfolder(folder) {

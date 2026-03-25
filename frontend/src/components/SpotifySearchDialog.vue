@@ -234,30 +234,57 @@
               </tbody>
             </table>
 
-            <!-- 모바일: 리스트 스타일 -->
-            <div class="sm:hidden space-y-0.5">
+            <!-- 모바일: 수정전/수정후 2줄 카드 스타일 -->
+            <div class="sm:hidden space-y-1.5">
               <div
                 v-for="(match, i) in trackMatches"
                 :key="i"
-                class="flex items-start gap-2 py-2 px-2 rounded-lg text-xs"
-                :class="!match.local || !match.remote ? 'opacity-50' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'"
+                class="rounded-lg px-3 py-2 text-xs"
+                :class="!match.local || !match.remote
+                  ? 'opacity-50 bg-gray-50 dark:bg-gray-800/40'
+                  : (match.local.title !== match.remote.title
+                      ? 'bg-green-50 dark:bg-green-900/10'
+                      : 'bg-gray-50 dark:bg-gray-800/40')"
               >
-                <span class="text-gray-400 shrink-0 w-6 text-right pt-0.5">
-                  <span v-if="match.remote?.disc_no > 1" class="text-gray-300 dark:text-gray-600">{{ match.remote.disc_no }}-</span>{{ match.remote?.track_no || (i + 1) }}.
-                </span>
-                <div class="flex-1 min-w-0">
-                  <div class="text-gray-700 dark:text-gray-300 truncate">
-                    <span v-if="match.local">{{ match.local.title || match.local.filename }}</span>
-                    <span v-else class="italic text-gray-300 dark:text-gray-600">{{ $t('tagSearch.noMatch') }}</span>
-                  </div>
-                  <div v-if="match.remote" class="text-gray-400 truncate mt-0.5">
-                    → {{ match.remote.title }}
+                <div class="flex items-start gap-2">
+                  <!-- 트랙 번호 -->
+                  <span class="text-gray-400 shrink-0 w-6 text-right pt-0.5 leading-tight">
+                    <span v-if="match.remote?.disc_no > 1" class="text-gray-300 dark:text-gray-600">{{ match.remote.disc_no }}-</span>{{ match.remote?.track_no || (i + 1) }}.
+                  </span>
+                  <!-- 수정전 / 수정후 2줄 -->
+                  <div class="flex-1 min-w-0 space-y-0.5">
+                    <!-- 수정전 -->
+                    <div class="flex items-baseline gap-1.5">
+                      <span class="text-[10px] text-gray-400 shrink-0 w-10">{{ $t('tagSearch.colBefore') }}</span>
+                      <span
+                        class="flex-1 truncate"
+                        :class="match.local && match.remote && match.local.title !== match.remote.title
+                          ? 'line-through text-gray-400 dark:text-gray-500'
+                          : 'text-gray-600 dark:text-gray-300'"
+                      >
+                        <template v-if="match.local">{{ match.local.title || match.local.filename }}</template>
+                        <span v-else class="italic text-gray-300 dark:text-gray-600">{{ $t('tagSearch.noMatch') }}</span>
+                      </span>
+                    </div>
+                    <!-- 수정후 -->
+                    <div class="flex items-baseline gap-1.5">
+                      <span class="text-[10px] text-gray-400 shrink-0 w-10">{{ $t('tagSearch.colAfter') }}</span>
+                      <span
+                        class="flex-1 truncate"
+                        :class="match.local && match.remote && match.local.title !== match.remote.title
+                          ? 'text-green-600 dark:text-green-400 font-medium'
+                          : 'text-gray-700 dark:text-gray-300'"
+                      >
+                        <template v-if="match.remote">{{ match.remote.title }}</template>
+                        <span v-else class="italic text-gray-300 dark:text-gray-600">—</span>
+                      </span>
+                      <span
+                        v-if="match.local && match.remote && match.local.title !== match.remote.title"
+                        class="text-[10px] bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded shrink-0"
+                      >{{ $t('tagSearch.changed') }}</span>
+                    </div>
                   </div>
                 </div>
-                <span
-                  v-if="match.local && match.remote && match.local.title !== match.remote.title"
-                  class="text-[10px] bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded shrink-0"
-                >{{ $t('tagSearch.changed') }}</span>
               </div>
             </div>
           </div>
@@ -623,6 +650,16 @@ async function applyAll() {
       })
       .filter(Boolean)
     if (trackWriteJobs.length) await Promise.allSettled(trackWriteJobs)
+
+    // is_title_track 저장 (DB 전용 필드, Melon에서만 제공)
+    const titleTrackJobs = trackMatches.value
+      .filter(m => m.local && m.remote && m.remote.is_title_track !== undefined)
+      .map(m =>
+        browseApi.setTrackInfo({ path: m.local.path, is_title_track: !!m.remote.is_title_track })
+          .then(() => browserStore.updateFile({ path: m.local.path, is_title_track: !!m.remote.is_title_track }))
+          .catch(e => console.warn('is_title_track 저장 실패:', m.local.path, e))
+      )
+    if (titleTrackJobs.length) await Promise.allSettled(titleTrackJobs)
 
     // 앨범 소개 DB 저장 (파일 태그 미기록)
     if (s.description) {
