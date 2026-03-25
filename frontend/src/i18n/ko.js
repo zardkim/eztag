@@ -322,9 +322,9 @@ export default {
     excludedFolders: {
       tabLabel: '제외 폴더',
       title: '제외 폴더 설정',
-      desc: '파일 목록에 표시하지 않을 폴더명을 등록합니다. 시놀로지의 @eaDir, .dav 등 시스템 폴더를 숨길 수 있습니다.',
+      desc: "파일 목록에 표시하지 않을 폴더명을 등록합니다. 시놀로지의 {'@'}eaDir, .dav 등 시스템 폴더를 숨길 수 있습니다.",
       add: '추가',
-      placeholder: '예: @eaDir',
+      placeholder: "예: {'@'}eaDir",
       delete: '삭제',
       empty: '등록된 제외 폴더가 없습니다.',
       hint: '폴더명만 입력합니다 (경로 아님). 대소문자를 구분하며, 설정 저장 시 즉시 적용됩니다.',
@@ -516,7 +516,7 @@ export default {
       deleteBackup: "'{filename}' 백업을 삭제하시겠습니까?",
     },
     help: {
-      title: '사용 설명서',
+      title: '안내문',
       tagVars: {
         title: '태그 변수',
         desc: '파일명 변경 패턴 입력 시 사용할 수 있는 변수 목록입니다.',
@@ -749,6 +749,7 @@ export default {
     fileHint: '폴더나 파일을 선택하세요.',
     fileAdded: '"{name}" 추가됨',
     alreadyAdded: '이미 추가된 파일입니다.',
+    searchPlaceholder: '폴더 검색...',
   },
   sidebar: {
     title: '작업공간',

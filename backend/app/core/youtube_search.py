@@ -120,14 +120,16 @@ def search_music_video(artist: str, title: str, api_key: str, max_results: int =
             _log.debug(f"제목 불일치 제외: '{video_title}' (검색: '{artist} {title}')")
             continue
 
+        is_official = _is_official_mv(video_title, channel)
         entry = {
             "video_id": vid,
             "title": video_title,
             "url": f"https://www.youtube.com/watch?v={vid}",
             "thumbnail": snip.get("thumbnails", {}).get("medium", {}).get("url", ""),
             "channel": channel,
+            "is_official": is_official,
         }
-        if _is_official_mv(video_title, channel):
+        if is_official:
             official.append(entry)
         else:
             others.append(entry)

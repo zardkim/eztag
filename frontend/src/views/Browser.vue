@@ -159,6 +159,12 @@
           @click="forceReload()"
         >🔄</button>
         <div class="flex-1"></div>
+        <!-- 라이브러리로 버튼 (워크스페이스 전용) -->
+        <button
+          v-if="browserStore.currentArea === 'workspace'"
+          class="btn-toolbar shrink-0 text-xs !bg-orange-100 !text-orange-700 dark:!bg-orange-900/30 dark:!text-orange-400"
+          @click="showMoveToLibraryModal = true"
+        >{{ t('browser.moveToLibrary.button') }}</button>
         <!-- 더보기 버튼 -->
         <button
           v-if="browserStore.selectedFolder && !browserStore.loading"
@@ -399,7 +405,7 @@
             <span class="shrink-0">{{ r.found ? '✅' : '❌' }}</span>
             <span class="flex-1 truncate text-gray-700 dark:text-gray-300">{{ r.title }}</span>
             <a
-              v-if="r.url"
+              v-if="r.url && r.is_official"
               :href="r.url"
               target="_blank"
               class="shrink-0 text-red-500 hover:text-red-600 flex items-center"

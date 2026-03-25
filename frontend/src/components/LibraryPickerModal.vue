@@ -28,6 +28,16 @@
         <span v-if="breadcrumb.length === 0" class="text-gray-400 italic">{{ $t('picker.libraryRoot') }}</span>
       </div>
 
+      <!-- 검색 -->
+      <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-800 shrink-0">
+        <input
+          v-model="searchQuery"
+          type="text"
+          :placeholder="$t('picker.searchPlaceholder')"
+          class="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+        />
+      </div>
+
       <!-- 로딩 -->
       <div v-if="loading" class="flex-1 flex items-center justify-center py-10">
         <p class="text-sm text-gray-400">{{ $t('common.loading') }}</p>
@@ -36,11 +46,11 @@
       <!-- 목록 -->
       <div v-else class="flex-1 overflow-y-auto min-h-0">
         <!-- 폴더 -->
-        <div v-if="folders.length > 0" class="px-4 pt-3 pb-1">
+        <div v-if="filteredFolders.length > 0" class="px-4 pt-3 pb-1">
           <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">{{ $t('picker.folderSection') }}</p>
           <div class="space-y-0.5">
             <div
-              v-for="folder in folders"
+              v-for="folder in filteredFolders"
               :key="folder.path"
               class="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 group transition-colors"
             >
@@ -87,7 +97,7 @@
         </div>
 
         <!-- 빈 폴더 -->
-        <div v-if="!loading && folders.length === 0 && files.length === 0" class="flex flex-col items-center justify-center py-12 text-center px-6">
+        <div v-if="!loading && filteredFolders.length === 0 && files.length === 0" class="flex flex-col items-center justify-center py-12 text-center px-6">
           <p class="text-3xl mb-2">📭</p>
           <p class="text-sm text-gray-400">{{ $t('picker.noFiles') }}</p>
         </div>
@@ -110,7 +120,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { workspaceApi } from '../api/index.js'
 import { useToastStore } from '../stores/toast.js'
@@ -128,6 +138,13 @@ const loading = ref(false)
 const folders = ref([])
 const files = ref([])
 const breadcrumb = ref([])
+const searchQuery = ref('')
+
+const filteredFolders = computed(() => {
+  if (!searchQuery.value.trim()) return folders.value
+  const q = searchQuery.value.trim().toLowerCase()
+  return folders.value.filter(f => f.name.toLowerCase().includes(q))
+})
 
 async function loadChildren(path) {
   loading.value = true
@@ -160,6 +177,7 @@ async function loadRoots() {
 
 function enterFolder(folder) {
   breadcrumb.value.push({ name: folder.name, path: folder.path })
+  searchQuery.value = ''
   loadChildren(folder.path)
 }
 

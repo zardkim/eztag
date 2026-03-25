@@ -464,6 +464,8 @@ function saveRecentFolder(folder, area) {
     const filtered = list.filter(f => f.path !== folder.path)
     const updated = [{ name: folder.name, path: folder.path, area: area || null, timestamp: Date.now() }, ...filtered].slice(0, 15)
     localStorage.setItem(RECENT_FOLDERS_KEY, JSON.stringify(updated))
+    // 서버에도 저장 (기기 간 동기화)
+    configApi.update({ recent_folders: JSON.stringify(updated) }).catch(() => {})
   } catch { /* ignore */ }
 }
 

@@ -322,9 +322,9 @@ export default {
     excludedFolders: {
       tabLabel: 'Excluded Folders',
       title: 'Excluded Folders',
-      desc: 'Register folder names to hide from the file browser. Useful for hiding system folders like @eaDir or .dav on Synology.',
+      desc: "Register folder names to hide from the file browser. Useful for hiding system folders like {'@'}eaDir or .dav on Synology.",
       add: 'Add',
-      placeholder: 'e.g. @eaDir',
+      placeholder: "e.g. {'@'}eaDir",
       delete: 'Delete',
       empty: 'No excluded folders registered.',
       hint: 'Enter folder names only (not full paths). Case-sensitive. Changes take effect immediately.',
@@ -750,6 +750,7 @@ export default {
     fileHint: 'Select a folder or file.',
     fileAdded: '"{name}" added',
     alreadyAdded: 'Already added.',
+    searchPlaceholder: 'Search folders...',
   },
   sidebar: {
     title: 'Workspace',

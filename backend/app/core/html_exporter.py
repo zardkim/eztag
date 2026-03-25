@@ -102,7 +102,7 @@ _CSS = """
   --text3: #99999e;
   --accent: #ff4757;
   --row-hover: #f7f7fb;
-  --hero-overlay: rgba(10,10,20,0.60);
+  --hero-overlay: rgba(10,10,20,0.42);
   --hero-cover-size: 240px;
   --badge-mp3: #fff0eb; --badge-mp3-t: #c2410c;
   --badge-flac: #eff6ff; --badge-flac-t: #1d4ed8;
@@ -121,7 +121,7 @@ _CSS = """
     --text3: #55556a;
     --accent: #ff4757;
     --row-hover: #1e1e28;
-    --hero-overlay: rgba(0,0,0,0.74);
+    --hero-overlay: rgba(0,0,0,0.52);
     --badge-mp3: #431407; --badge-mp3-t: #fed7aa;
     --badge-flac: #1e3a5f; --badge-flac-t: #bfdbfe;
     --badge-m4a: #3b0764; --badge-m4a-t: #e9d5ff;
@@ -150,7 +150,7 @@ body {
   inset: -20px;
   background-size: cover;
   background-position: center;
-  filter: blur(40px) brightness(0.38) saturate(1.3);
+  filter: blur(28px) brightness(0.5) saturate(2.2);
   z-index: 0;
 }
 .hero-bg-grad {
@@ -318,7 +318,6 @@ details.desc-details .desc-box {
   display: inline-flex; align-items: center; justify-content: center;
   width: 16px; height: 16px; border-radius: 50%;
   background: var(--accent); color: #fff;
-  font-size: 9px; font-weight: 900;
   vertical-align: middle; flex-shrink: 0; line-height: 1;
 }
 
@@ -456,6 +455,17 @@ details.tc-details[open] summary::before { transform: rotate(90deg); }
 }
 .eztag-badge-lg { padding: 6px 14px 6px 8px; font-size: 13px; gap: 8px; }
 
+/* ── Hero 내 eztag 배지: 배경이 어두우므로 밝은 색상 강제 ── */
+.hero .eztag-badge {
+  background: rgba(255,255,255,0.15);
+  border-color: rgba(255,255,255,0.3);
+  color: rgba(255,255,255,0.9);
+}
+.hero .eztag-badge:hover {
+  background: rgba(255,255,255,0.25);
+  color: #ffffff;
+}
+
 /* ── 푸터 ── */
 .footer {
   text-align: center; font-size: 11px; color: var(--text3);
@@ -574,7 +584,7 @@ _I18N: dict[str, dict[str, str]] = {
         "title_track":     "타이틀",
         "play_mv":         "뮤직비디오 재생",
         "close":           "닫기",
-        "more_info":       "상세 정보",
+        "more_info":       "태그 정보",
         "type_single":     "싱글",
         "type_ep":         "EP",
         "type_album":      "정규앨범",
@@ -766,11 +776,14 @@ def build_html(
         file_attr = Path(t.get("file_path", "")).name if t.get("file_path") else ""
 
         lyrics_badge = (
-            f'<span class="lyrics-badge" title="{i18n["has_lyrics"]}">L</span>'
+            f'<span class="lyrics-badge" title="{i18n["has_lyrics"]}">LRC</span>'
             if t.get("has_lyrics") else ""
         )
         title_badge = (
-            f'<span class="title-track-badge" title="{i18n["title_track"]}">T</span>'
+            f'<span class="title-track-badge" title="{i18n["title_track"]}">'
+            f'<svg viewBox="0 0 24 24" fill="currentColor" width="9" height="9">'
+            f'<path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .55-.45 1-1 1H6c-.55 0-1-.45-1-1v-1h14v1z"/>'
+            f'</svg></span>'
             if t.get("is_title_track") else ""
         )
 
@@ -993,24 +1006,11 @@ def build_html(
   </div>
 </div>
 
-<!-- YouTube MV 다이얼로그 -->
-<div id="ytOverlay" class="yt-overlay" onclick="if(event.target===this)closeYT()">
-  <div class="yt-dialog">
-    <button class="yt-close" onclick="closeYT()" title="{i18n["close"]}">&#x2715;</button>
-    <iframe id="ytFrame" src="" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture"></iframe>
-  </div>
-</div>
 
 <script>
 function openYT(id) {{
-  document.getElementById('ytFrame').src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1';
-  document.getElementById('ytOverlay').classList.add('open');
+  window.open('https://www.youtube.com/watch?v=' + id, '_blank', 'noopener,noreferrer');
 }}
-function closeYT() {{
-  document.getElementById('ytOverlay').classList.remove('open');
-  document.getElementById('ytFrame').src = '';
-}}
-document.addEventListener('keydown', function(e) {{ if (e.key === 'Escape') closeYT(); }});
 </script>
 </body>
 </html>"""

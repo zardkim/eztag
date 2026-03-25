@@ -1,8 +1,15 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
     <div class="w-full max-w-sm">
-      <!-- 언어 변경 버튼 -->
-      <div class="flex justify-end mb-3">
+      <!-- 언어 변경 / 테마 변경 버튼 -->
+      <div class="flex justify-end gap-1 mb-3">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:text-gray-900 hover:bg-white dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
+          @click="themeStore.toggle()"
+          :title="themeStore.theme === 'dark' ? '라이트 모드로 변경' : '다크 모드로 변경'"
+        >
+          <span>{{ themeStore.theme === 'dark' ? '☀️' : '🌙' }}</span>
+        </button>
         <button
           class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:text-gray-900 hover:bg-white dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
           @click="toggleLanguage"
@@ -71,8 +78,10 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { authApi } from '../api/index.js'
 import { useAuthStore } from '../stores/auth.js'
+import { useThemeStore } from '../stores/theme.js'
 
 const { t, locale } = useI18n()
+const themeStore = useThemeStore()
 
 function toggleLanguage() {
   const next = locale.value === 'ko' ? 'en' : 'ko'

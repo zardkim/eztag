@@ -140,8 +140,8 @@
                 <span class="text-lg leading-none">{{ isPlaying ? '⏸' : '▶' }}</span>
               </button>
 
-              <!-- 볼륨 -->
-              <div class="w-full flex items-center gap-1.5">
+              <!-- 볼륨 (모바일에서는 숨김 - 터치 환경에서 작동 안함) -->
+              <div class="hidden sm:flex w-full items-center gap-1.5">
                 <span class="text-[11px] text-gray-400 shrink-0">🔊</span>
                 <input
                   type="range" min="0" max="1" step="0.05" v-model.number="volume"

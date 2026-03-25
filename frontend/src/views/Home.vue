@@ -130,6 +130,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useBrowserStore } from '../stores/browser.js'
 import LibraryPickerModal from '../components/LibraryPickerModal.vue'
+import { configApi } from '../api/config.js'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -141,7 +142,20 @@ const showLibraryPicker = ref(false)
 
 const recentFolders = ref([])
 
-function loadRecent() {
+async function loadRecent() {
+  try {
+    // 서버에서 우선 로드 (기기 간 동기화)
+    const { data } = await configApi.get()
+    const serverRaw = data.recent_folders?.value
+    if (serverRaw) {
+      const serverList = JSON.parse(serverRaw)
+      recentFolders.value = serverList
+      // 로컬도 최신 상태로 갱신
+      localStorage.setItem(RECENT_KEY, serverRaw)
+      return
+    }
+  } catch { /* ignore */ }
+  // 서버에 없으면 로컬 fallback
   try {
     recentFolders.value = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]')
   } catch {
@@ -150,8 +164,9 @@ function loadRecent() {
 }
 
 function clearRecent() {
-  localStorage.removeItem(RECENT_KEY)
   recentFolders.value = []
+  localStorage.removeItem(RECENT_KEY)
+  configApi.update({ recent_folders: '[]' }).catch(() => {})
 }
 
 onMounted(loadRecent)
