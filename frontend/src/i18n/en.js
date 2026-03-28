@@ -125,9 +125,9 @@ export default {
     selectSource: 'Select Source',
     subfolders: 'Subfolders',
     audioLabel: 'Music',
-    exportHtml: 'Save HTML',
-    exportHtmlConfirm: 'Save the track list of the current folder as an HTML file.\nContinue?',
-    exportHtmlError: 'Failed to save HTML.',
+    exportHtml: 'Create Album Card',
+    exportHtmlConfirm: 'Create an album card for the current folder.\nContinue?',
+    exportHtmlError: 'Failed to create album card.',
     eztagOrganized: 'eztag organized',
     moveFolder: {
       title: 'Move Folder',
@@ -277,8 +277,8 @@ export default {
     coverChange: 'Change',
     hasLyrics: 'Has lyrics',
     tracks: '{n} tracks',
-    exportHtml: 'Export HTML',
-    exporting: 'Exporting...',
+    exportHtml: 'Create Album Card',
+    exporting: 'Creating...',
   },
   trackEdit: {
     title: 'Edit Track',
@@ -405,7 +405,7 @@ export default {
       storefront: 'Country Store',
       save: 'Save Metadata Settings',
       saving: 'Saving...',
-      youtubeHint: 'Enables automatic music video search and embeds YouTube URLs in HTML exports.',
+      youtubeHint: 'Enables automatic music video search and embeds YouTube URLs in album card exports.',
       youtubeApiHint: 'Enter the API key obtained after enabling YouTube Data API v3 in Google Cloud Console.',
     },
     logs: {

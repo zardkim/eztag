@@ -125,9 +125,9 @@ export default {
     selectSource: '소스 선택',
     subfolders: '하위 폴더',
     audioLabel: '음악',
-    exportHtml: 'HTML 생성',
-    exportHtmlConfirm: '현재 폴더의 트랙 목록을 HTML 파일로 저장합니다.\n계속하시겠습니까?',
-    exportHtmlError: 'HTML 생성에 실패했습니다.',
+    exportHtml: '앨범 카드 생성',
+    exportHtmlConfirm: '현재 폴더의 트랙 목록으로 앨범 카드를 생성합니다.\n계속하시겠습니까?',
+    exportHtmlError: '앨범 카드 생성에 실패했습니다.',
     eztagOrganized: 'eztag 정리됨',
     moveFolder: {
       title: '폴더 이동',
@@ -277,8 +277,8 @@ export default {
     coverChange: '변경',
     hasLyrics: '가사 있음',
     tracks: '{n}곡',
-    exportHtml: 'HTML 내보내기',
-    exporting: '내보내는 중...',
+    exportHtml: '앨범 카드 생성',
+    exporting: '생성 중...',
   },
   trackEdit: {
     title: '트랙 편집',
@@ -405,7 +405,7 @@ export default {
       storefront: '국가 스토어',
       save: '메타데이터 설정 저장',
       saving: '저장 중...',
-      youtubeHint: '뮤직비디오 자동 검색 및 HTML 내보내기에 YouTube URL을 임베드합니다.',
+      youtubeHint: '뮤직비디오 자동 검색 및 앨범 카드 생성에 YouTube URL을 임베드합니다.',
       youtubeApiHint: 'Google Cloud Console에서 YouTube Data API v3를 활성화한 후 발급받은 API 키를 입력하세요.',
     },
     logs: {

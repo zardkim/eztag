@@ -101,7 +101,7 @@
             class="btn-toolbar !bg-teal-100 !text-teal-700 hover:!bg-teal-200 dark:!bg-teal-900/30 dark:!text-teal-400 disabled:opacity-40 shrink-0"
             :disabled="exportingHtml"
             @click="exportFolderHtml"
-          >📄 {{ exportingHtml ? '...' : t('browser.exportHtml') }}</button>
+          >🎴 {{ exportingHtml ? '...' : t('browser.exportHtml') }}</button>
 
           <!-- 구분선 -->
           <div class="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0"></div>
@@ -271,7 +271,7 @@
                     class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-colors text-left disabled:opacity-50"
                     :disabled="exportingHtml"
                     @click="exportFolderHtml(); showMobileMenu = false"
-                  ><span class="text-xl">📄</span>{{ exportingHtml ? '...' : t('browser.exportHtml') }}</button>
+                  ><span class="text-xl">🎴</span>{{ exportingHtml ? '...' : t('browser.exportHtml') }}</button>
 
                   <!-- 이름 변경 -->
                   <button
@@ -754,24 +754,7 @@
       </div>
     </Teleport>
 
-    <!-- YouTube 플레이어 다이얼로그 -->
-    <Teleport v-if="ytDialogUrl" to="body">
-      <div class="fixed inset-0 z-[300] flex items-center justify-center bg-black/70" @click.self="ytDialogUrl = null">
-        <div class="relative w-full max-w-2xl mx-4 aspect-video bg-black rounded-xl overflow-hidden shadow-2xl">
-          <button
-            class="absolute top-2 right-2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors text-sm"
-            @click="ytDialogUrl = null"
-          >✕</button>
-          <iframe
-            v-if="ytVideoId(ytDialogUrl)"
-            :src="`https://www.youtube-nocookie.com/embed/${ytVideoId(ytDialogUrl)}?autoplay=1`"
-            class="w-full h-full"
-            allow="autoplay; encrypted-media"
-            allowfullscreen
-          ></iframe>
-        </div>
-      </div>
-    </Teleport>
+    <!-- YouTube: openYtDialog → window.open (iframe 제거됨) -->
 
     <!-- 자동 태그 검색 다이얼로그 -->
     <SpotifySearchDialog
@@ -821,7 +804,8 @@ function ytVideoId(url) {
 }
 
 function openYtDialog(url) {
-  ytDialogUrl.value = url || null
+  if (!url) return
+  window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 // ── YouTube MV 자동 검색 ────────────────────────────────────

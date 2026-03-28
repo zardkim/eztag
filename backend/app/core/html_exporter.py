@@ -147,15 +147,21 @@ body {
 }
 .hero-bg {
   position: absolute;
-  inset: -20px;
+  inset: -30px;
   background-size: cover;
   background-position: center;
-  filter: blur(28px) brightness(0.5) saturate(2.2);
+  filter: blur(32px) brightness(0.45) saturate(3.0);
   z-index: 0;
 }
 .hero-bg-grad {
   position: absolute;
   inset: 0;
+  z-index: 0;
+}
+.hero-bg-vignette {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.55) 100%);
   z-index: 0;
 }
 .hero-overlay {
@@ -316,7 +322,7 @@ details.desc-details .desc-box {
 /* ── 타이틀곡 뱃지 ── */
 .title-track-badge {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 16px; height: 16px; border-radius: 50%;
+  width: 18px; height: 18px; border-radius: 50%;
   background: var(--accent); color: #fff;
   vertical-align: middle; flex-shrink: 0; line-height: 1;
 }
@@ -615,7 +621,7 @@ _I18N: dict[str, dict[str, str]] = {
         "title_track":     "Title",
         "play_mv":         "Play Music Video",
         "close":           "Close",
-        "more_info":       "More Info",
+        "more_info":       "Tag Info",
         "type_single":     "Single",
         "type_ep":         "EP",
         "type_album":      "Album",
@@ -675,7 +681,10 @@ def build_html(
 
     # Hero 배경
     if cover_b64:
-        hero_bg_html = f'<div class="hero-bg" style="background-image: url({cover_b64});"></div>'
+        hero_bg_html = (
+            f'<div class="hero-bg" style="background-image: url({cover_b64});"></div>'
+            f'<div class="hero-bg-vignette"></div>'
+        )
     else:
         idx = (ord(album_title[0]) if album_title else 0) % len(_HERO_GRADIENTS)
         g = _HERO_GRADIENTS[idx]

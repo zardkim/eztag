@@ -35,7 +35,7 @@
             :disabled="exportingHtml"
             @click="exportHtml"
           >
-            <span>📄</span>
+            <span>🎴</span>
             <span>{{ exportingHtml ? $t('albumDetail.exporting') : $t('albumDetail.exportHtml') }}</span>
           </button>
         </div>
