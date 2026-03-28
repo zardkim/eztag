@@ -6,6 +6,9 @@ import { browseApi } from '../api/index.js'
 const _filesCache = new Map()   // path → { files, subfolders, warning, ts }
 const FILES_TTL_MS = 3 * 60 * 1000  // 3분
 
+// 백그라운드 스캔 완료 대기 타이머 (모듈 레벨 — store 인스턴스 외부)
+let _scanPollTimer = null
+
 export const useBrowserStore = defineStore('browser', () => {
   const selectedFolder = ref(null)
   const selectedFile = ref(null)
@@ -114,6 +117,21 @@ export const useBrowserStore = defineStore('browser', () => {
       if (!warning) {
         _filesCache.set(path, { files: fileList, extraFiles: extraList, albumDescription: desc, hasEztagReport: hasEztag, subfolders: subs, warning, ts: Date.now() })
       }
+
+      // 백그라운드 스캔 완료 대기: scanned=false 파일이 있으면 2.5초 후 재조회
+      if (_scanPollTimer) {
+        clearTimeout(_scanPollTimer)
+        _scanPollTimer = null
+      }
+      const hasUnscanned = fileList.some(f => f.scanned === false)
+      if (hasUnscanned) {
+        _scanPollTimer = setTimeout(() => {
+          _scanPollTimer = null
+          if (selectedFolder.value?.path === path) {
+            loadFiles(path, true)
+          }
+        }, 2500)
+      }
     } catch (e) {
       error.value = e.response?.data?.detail || '파일 목록을 불러올 수 없습니다.'
       files.value = []
@@ -132,6 +150,11 @@ export const useBrowserStore = defineStore('browser', () => {
   }
 
   function selectFolder(folder, crumb = null, area = null) {
+    // 폴더 변경 시 이전 폴더의 스캔 완료 대기 타이머 취소
+    if (_scanPollTimer) {
+      clearTimeout(_scanPollTimer)
+      _scanPollTimer = null
+    }
     selectedFolder.value = folder
     selectedFile.value = null
     selectedExtraFile.value = null
