@@ -2,7 +2,8 @@
 Bugs 뮤직 LRC 가사 가져오기.
 
 흐름:
-  1. m.bugs.co.kr 검색 API → track_id 획득 (기존 bugs.py와 동일한 엔드포인트)
+  1. music.bugs.co.kr/search/track?q= HTML 파싱 → track_id 획득
+     ※ m.bugs.co.kr/api/getSearchList JSON API는 403 차단됨 → HTML 파싱으로 대체
   2. api.bugs.co.kr/3/tracks/{track_id}/lyrics → 가사 JSON 다운로드
   3. Bugs 고유 포맷 → 표준 LRC 변환
   4. 오디오 파일과 같은 폴더에 {stem}.lrc 저장
@@ -15,12 +16,14 @@ import logging
 import re
 from pathlib import Path
 from typing import Optional
+from urllib.parse import quote
 
 import requests
+from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
-_SEARCH_API = "https://m.bugs.co.kr/api/getSearchList"
+_SEARCH_TRACK_URL = "https://music.bugs.co.kr/search/track?q={query}"
 # Bugs 앱 내장 고정 키 (외부 발급 없음 — Bugs 자체 앱 키)
 _LYRICS_API = "http://api.bugs.co.kr/3/tracks/{track_id}/lyrics?&api_key=b2de0fbe3380408bace96a5d1a76f800"
 
@@ -30,9 +33,26 @@ _HEADERS = {
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/120.0.0.0 Safari/537.36"
     ),
-    "Referer": "https://music.bugs.co.kr",
+    "Referer": "https://music.bugs.co.kr/",
     "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 }
+
+
+def _get_session() -> requests.Session:
+    """bugs.py 세션 재사용 (같은 프로세스 내 쿠키 공유)."""
+    try:
+        from app.core.metadata.bugs import _get_session as _bugs_session
+        return _bugs_session()
+    except Exception:
+        # fallback: 독립 세션
+        s = requests.Session()
+        s.headers.update(_HEADERS)
+        try:
+            s.get("https://music.bugs.co.kr/", timeout=8)
+        except Exception:
+            pass
+        return s
 
 
 def _normalize(s: str) -> str:
@@ -43,43 +63,59 @@ def _normalize(s: str) -> str:
 
 
 def _search_track_id(artist: str, title: str) -> Optional[str]:
-    """Bugs 검색 API로 track_id 획득. 아티스트+제목 일치 우선, 없으면 제목만 일치."""
-    query = f"{artist} {title}"
+    """Bugs 검색 페이지 HTML 파싱으로 track_id 획득."""
+    query = quote(f"{artist} {title}")
+    url = _SEARCH_TRACK_URL.format(query=query)
+    s = _get_session()
     try:
-        resp = requests.get(
-            _SEARCH_API,
-            params={"type": "track", "query": query, "page": 1, "size": 20},
-            headers=_HEADERS,
-            timeout=10,
-        )
+        resp = s.get(url, timeout=12)
         resp.raise_for_status()
-        items = resp.json().get("list", [])
+        soup = BeautifulSoup(resp.text, "lxml")
     except Exception as e:
         logger.warning(f"[bugs_lyrics] search error: {e}")
-        return None
-
-    if not items:
         return None
 
     t_norm = _normalize(title)
     a_norm = _normalize(artist)
 
-    # 1순위: 제목 + 아티스트 완전 일치
-    for item in items:
-        item_title = _normalize(item.get("title") or "")
-        item_artists = _normalize(
-            ", ".join(x.get("artist_nm", "") for x in item.get("artists", []))
-        )
-        if item_title == t_norm and (a_norm in item_artists or item_artists in a_norm):
-            return str(item["track_id"])
+    rows = soup.select("table.trackList tbody tr")
+    if not rows:
+        return None
+
+    def _row_track_id(tr) -> str:
+        tid = tr.get("trackid") or ""
+        if not tid:
+            cb = tr.select_one("input[type=checkbox]")
+            tid = cb.get("value", "") if cb else ""
+        return tid
+
+    def _row_title(tr) -> str:
+        a = tr.select_one("p.title a")
+        return _normalize(a.get_text(strip=True)) if a else ""
+
+    def _row_artist(tr) -> str:
+        a = tr.select_one("p.artist a")
+        return _normalize(a.get_text(strip=True)) if a else ""
+
+    # 1순위: 제목 + 아티스트 일치
+    for tr in rows:
+        if _row_title(tr) == t_norm:
+            row_artist = _row_artist(tr)
+            if a_norm in row_artist or row_artist in a_norm:
+                tid = _row_track_id(tr)
+                if tid:
+                    return tid
 
     # 2순위: 제목만 일치
-    for item in items:
-        if _normalize(item.get("title") or "") == t_norm:
-            return str(item["track_id"])
+    for tr in rows:
+        if _row_title(tr) == t_norm:
+            tid = _row_track_id(tr)
+            if tid:
+                return tid
 
-    # 3순위: 첫 번째 결과 (fallback)
-    return str(items[0]["track_id"]) if items[0].get("track_id") else None
+    # 3순위: 첫 번째 결과
+    tid = _row_track_id(rows[0])
+    return tid if tid else None
 
 
 def _fetch_raw_lyrics(track_id: str) -> Optional[str]:
@@ -105,7 +141,6 @@ def _convert_to_lrc(raw: str) -> Optional[str]:
     입력: "{초}|{텍스트}＃{초}|{텍스트}＃..."
     출력: "[MM:SS.xx]텍스트\\n..."
     """
-    # ＃(전각 #) 을 줄 구분자로 치환
     raw = raw.replace("＃", "\n").strip()
     lines = [l for l in raw.split("\n") if l.strip()]
 
@@ -124,7 +159,6 @@ def _convert_to_lrc(raw: str) -> Optional[str]:
         total_sec = int(t)
         mm = total_sec // 60
         ss = total_sec % 60
-        # 소수 2자리 (hundredths)
         frac = round(t - total_sec, 2)
         xx = f"{frac:.2f}"[1:]  # ".00" 형태
 
@@ -146,26 +180,21 @@ def fetch_lrc_for_file(file_path: str, artist: str, title: str) -> dict:
     p = Path(file_path)
     lrc_path = p.with_suffix(".lrc")
 
-    # track_id 검색
     track_id = _search_track_id(artist, title)
     if not track_id:
         return {"status": "not_found", "lrc_path": None, "message": "트랙을 찾을 수 없습니다"}
 
-    # 가사 원본 가져오기
     raw = _fetch_raw_lyrics(track_id)
     if not raw:
         return {"status": "not_found", "lrc_path": None, "message": "가사를 찾을 수 없습니다"}
 
-    # 싱크 가사 여부 확인
     if "|" not in raw:
         return {"status": "no_sync", "lrc_path": None, "message": "싱크 가사를 지원하지 않습니다"}
 
-    # LRC 변환
     lrc_content = _convert_to_lrc(raw)
     if not lrc_content:
         return {"status": "no_sync", "lrc_path": None, "message": "가사 변환 실패"}
 
-    # 파일 저장
     try:
         lrc_path.write_text(lrc_content, encoding="utf-8")
         logger.info(f"[bugs_lyrics] saved: {lrc_path}")
