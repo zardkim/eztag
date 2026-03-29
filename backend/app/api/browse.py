@@ -1897,13 +1897,16 @@ def export_folder_html_save(
     genre = first.get("genre")
     label = first.get("label")
 
-    # 앨범 description 조회 (DB)
+    # 앨범 description 조회 (DB) - 모든 트랙 순회하여 album_id 있는 것 기준
     album_description = None
-    first_track = tracks_map.get(str(audio_items[0])) if audio_items else None
-    if first_track and first_track.album_id:
-        from app.models.album import Album as AlbumModel
-        alb = db.query(AlbumModel).filter(AlbumModel.id == first_track.album_id).first()
-        album_description = alb.description if alb else None
+    for _p in [str(item) for item in audio_items]:
+        _t = tracks_map.get(_p)
+        if _t and _t.album_id:
+            from app.models.album import Album as AlbumModel
+            alb = db.query(AlbumModel).filter(AlbumModel.id == _t.album_id).first()
+            if alb:
+                album_description = alb.description
+            break
 
     # 커버아트
     cover_paths = [t["file_path"] for t in track_dicts if t.get("has_cover")]
@@ -1999,3 +2002,176 @@ def delete_extra_file(
     p.unlink()
     _cache.invalidate_files(str(p.parent))
     return {"deleted": str(p)}
+
+
+# ── 라이브러리 폴더 삭제 ─────────────────────────────────────
+@router.post("/delete-folder")
+def delete_folder(
+    data: dict,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """라이브러리/대상 폴더 삭제 (빈 폴더만 허용)."""
+    path = data.get("path", "")
+    destinations = get_destination_folders(db)
+    p = Path(path).resolve()
+
+    # 루트 대상 폴더 자체는 삭제 불가
+    if any(Path(d["path"]).resolve() == p for d in destinations):
+        raise HTTPException(status_code=403, detail="루트 라이브러리 폴더는 삭제할 수 없습니다")
+
+    # 등록된 대상 폴더 하위여야 함
+    if not _is_under_destination(p, destinations):
+        raise HTTPException(status_code=403, detail="폴더가 등록된 라이브러리 경로 외부에 있습니다")
+
+    if not p.is_dir():
+        raise HTTPException(status_code=404, detail="폴더가 존재하지 않습니다")
+
+    # 빈 폴더 검사
+    if any(p.iterdir()):
+        raise HTTPException(status_code=400, detail="빈 폴더만 삭제할 수 있습니다")
+
+    p.rmdir()
+
+    # ScanFolder에서도 제거
+    sf = db.query(ScanFolder).filter(ScanFolder.path == str(p)).first()
+    if sf:
+        db.delete(sf)
+        db.commit()
+
+    _cache.invalidate_files(str(p.parent))
+    return {"deleted": str(p)}
+
+
+# ── 재귀 파일 카운트 (폴더열기 확인 용) ───────────────────────
+@router.get("/recursive-count")
+def recursive_count(
+    path: str = Query(...),
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """폴더 + 하위 폴더의 오디오 파일/폴더 수를 반환 (확인 다이얼로그용)."""
+    p = _validate_path(path, db, allow_workspace=True)
+    if not p.is_dir():
+        raise HTTPException(status_code=400, detail="Not a directory")
+    excluded = get_excluded_folders(db)
+
+    folder_count = 0
+    file_count = 0
+    for root, dirs, files in os.walk(str(p)):
+        dirs[:] = sorted(d for d in dirs if not d.startswith(".") and d not in excluded)
+        folder_count += len(dirs)
+        file_count += sum(1 for f in files if Path(f).suffix.lower() in AUDIO_EXTS)
+
+    return {"folder_count": folder_count, "file_count": file_count}
+
+
+# ── 재귀 파일 목록 (폴더별 그룹) ────────────────────────────
+@router.post("/recursive-files")
+def recursive_files(
+    data: dict,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """폴더 + 하위 모든 폴더의 오디오 파일을 폴더별로 그룹화하여 반환."""
+    path = data.get("path", "")
+    p = _validate_path(path, db, allow_workspace=True)
+    if not p.is_dir():
+        raise HTTPException(status_code=400, detail="Not a directory")
+    excluded = get_excluded_folders(db)
+
+    # 1단계: 폴더별 오디오 파일 경로 수집
+    group_structure = []
+    for root, dirs, files in os.walk(str(p)):
+        dirs[:] = sorted(d for d in dirs if not d.startswith(".") and d not in excluded)
+        audio_files = sorted(f for f in files if Path(f).suffix.lower() in AUDIO_EXTS)
+        if audio_files:
+            rel = os.path.relpath(root, str(p))
+            group_structure.append({
+                "folder_path": root,
+                "folder_name": Path(root).name,
+                "relative_path": "" if rel == "." else rel,
+                "file_paths": [os.path.join(root, f) for f in audio_files],
+            })
+
+    all_paths = [fp for g in group_structure for fp in g["file_paths"]]
+    if not all_paths:
+        return {"groups": [], "total_files": 0, "total_folders": 0}
+
+    # 2단계: DB 한 번에 조회
+    tracks_map = {
+        t.file_path: t
+        for t in db.query(Track).filter(Track.file_path.in_(all_paths)).all()
+    }
+
+    # 3단계: 그룹별 파일 정보 구성 (get_files 엔드포인트와 동일한 형식)
+    groups = []
+    for g in group_structure:
+        folder_path = Path(g["folder_path"])
+        try:
+            lrc_set = {item.stem for item in folder_path.iterdir()
+                       if item.is_file() and item.suffix.lower() == ".lrc"}
+        except Exception:
+            lrc_set = set()
+
+        file_entries = []
+        for fp in g["file_paths"]:
+            item = Path(fp)
+            track = tracks_map.get(fp)
+            try:
+                stat = item.stat()
+            except OSError:
+                continue
+            has_lrc = item.stem in lrc_set
+            if track:
+                file_entries.append({
+                    "id": track.id, "album_id": track.album_id,
+                    "filename": item.name, "path": fp,
+                    "title": track.title or item.stem,
+                    "artist": track.artist, "album_artist": track.album_artist,
+                    "album_title": track.album_title,
+                    "track_no": track.track_no, "total_tracks": track.total_tracks,
+                    "disc_no": track.disc_no, "year": track.year,
+                    "release_date": track.release_date, "genre": track.genre,
+                    "label": track.label, "isrc": track.isrc,
+                    "duration": track.duration, "bitrate": track.bitrate,
+                    "sample_rate": track.sample_rate, "tag_version": track.tag_version,
+                    "comment": track.comment,
+                    "file_format": (track.file_format or "").upper(),
+                    "has_cover": track.has_cover, "has_lyrics": track.has_lyrics,
+                    "is_title_track": bool(track.is_title_track),
+                    "youtube_url": track.youtube_url, "has_lrc": has_lrc,
+                    "lyrics": track.lyrics,
+                    "file_size": stat.st_size, "modified_time": stat.st_mtime,
+                    "scanned": True,
+                })
+            else:
+                file_entries.append({
+                    "id": None, "album_id": None,
+                    "filename": item.name, "path": fp,
+                    "title": item.stem, "artist": None, "album_artist": None,
+                    "album_title": None, "track_no": None, "total_tracks": None,
+                    "disc_no": None, "year": None, "release_date": None,
+                    "genre": None, "label": None, "isrc": None,
+                    "duration": None, "bitrate": None, "sample_rate": None,
+                    "tag_version": None, "comment": None,
+                    "file_format": item.suffix.lstrip(".").upper(),
+                    "has_cover": False, "has_lyrics": False,
+                    "is_title_track": False, "youtube_url": None,
+                    "has_lrc": has_lrc, "lyrics": None,
+                    "file_size": stat.st_size, "modified_time": stat.st_mtime,
+                    "scanned": False,
+                })
+        if file_entries:
+            groups.append({
+                "folder_path": g["folder_path"],
+                "folder_name": g["folder_name"],
+                "relative_path": g["relative_path"],
+                "files": file_entries,
+            })
+
+    return {
+        "groups": groups,
+        "total_files": sum(len(g["files"]) for g in groups),
+        "total_folders": len(groups),
+    }

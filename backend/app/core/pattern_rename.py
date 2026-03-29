@@ -4,57 +4,82 @@ import re
 # 파일명에 사용 불가한 문자
 INVALID_CHARS = re.compile(r'[\\/:*?"<>|]')
 
+_FIELD_MAP = {
+    "title": "title",
+    "artist": "artist",
+    "albumartist": "album_artist",
+    "album": "album_title",
+    "totaltracks": "total_tracks",
+    "disc": "disc_no",
+    "year": "year",
+    "genre": "genre",
+    "publisher": "label",
+}
+
+
+def _resolve_var(var: str, fields: dict) -> str:
+    """단일 변수명(%없이)을 값으로 변환."""
+    var = var.lower()
+    if var in ("_filename", "_ext", "_bitrate", "_codec"):
+        return str(fields.get(var) or "")
+    if var == "track":
+        val = fields.get("track_no")
+        if val is None:
+            return ""
+        try:
+            return str(int(val))
+        except (ValueError, TypeError):
+            return str(val)
+    if var == "disc":
+        val = fields.get("disc_no")
+        if val is None or val == 0:
+            return ""
+        return str(val)
+    db_field = _FIELD_MAP.get(var)
+    if db_field:
+        val = fields.get(db_field)
+        return str(val) if val is not None else ""
+    return ""
+
 
 def render_pattern(pattern: str, fields: dict) -> str:
     """
-    %field% 변수를 실제 태그 값으로 치환.
+    패턴 변수를 실제 태그 값으로 치환.
 
     지원 변수:
       %title%, %artist%, %albumartist%, %album%, %track%, %totaltracks%,
       %disc%, %year%, %genre%, %publisher%,
       %_filename%, %_ext%, %_bitrate%, %_codec%
-    """
-    FIELD_MAP = {
-        "title": "title",
-        "artist": "artist",
-        "albumartist": "album_artist",
-        "album": "album_title",
-        "totaltracks": "total_tracks",
-        "disc": "disc_no",
-        "year": "year",
-        "genre": "genre",
-        "publisher": "label",
-    }
 
+    지원 함수:
+      $num(%field%,N) → 필드 값을 N자리 제로패딩 (예: $num(%track%,2), $num(%track%,3))
+    """
+    # 1단계: $num(%field%,N) 처리
+    def _num_replace(m):
+        inner_var = m.group(1)[1:-1]  # %track% → track
+        digits = int(m.group(2))
+        raw = _resolve_var(inner_var, fields)
+        try:
+            return str(int(raw)).zfill(digits)
+        except (ValueError, TypeError):
+            return raw
+
+    pattern = re.sub(r'\$num\((%[^%]+%)\s*,\s*(\d+)\)', _num_replace, pattern)
+
+    # 2단계: 나머지 %field% 처리 (%track%은 기본 2자리 패딩)
     def _replace(m):
         var = m.group(1).lower()
-        # 특수 파일 속성 변수
-        if var in ("_filename", "_ext", "_bitrate", "_codec"):
-            return str(fields.get(var) or "")
-        # track: 2자리 제로패딩
         if var == "track":
-            val = fields.get("track_no")
-            if val is None:
+            raw = _resolve_var(var, fields)
+            if not raw:
                 return ""
             try:
-                return str(int(val)).zfill(2)
+                return str(int(raw)).zfill(2)
             except (ValueError, TypeError):
-                return str(val)
-        # disc: 패딩 없음
-        if var == "disc":
-            val = fields.get("disc_no")
-            if val is None or val == 0:
-                return ""
-            return str(val)
-        # 일반 태그 변수
-        db_field = FIELD_MAP.get(var)
-        if db_field:
-            val = fields.get(db_field)
-            return str(val) if val is not None else ""
-        return m.group(0)  # 알 수 없는 변수는 그대로
+                return raw
+        return _resolve_var(var, fields) or m.group(0)
 
-    result = re.sub(r"%([^%]+)%", _replace, pattern)
-    return result
+    return re.sub(r"%([^%]+)%", _replace, pattern)
 
 
 def sanitize_filename(name: str) -> str:

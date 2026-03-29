@@ -96,7 +96,7 @@
                 {{ folderProgress[folder.path]?.current }}/{{ folderProgress[folder.path]?.total }}
                 · {{ folderProgress[folder.path]?.ok }}✅ {{ folderProgress[folder.path]?.notFound }}❌
               </span>
-              <button v-if="folderProgress[folder.path]?.done" class="text-purple-400 hover:text-purple-600 text-xs" @click="folderProgress[folder.path].done = false">✕</button>
+              <button v-if="folderProgress[folder.path]?.done" class="text-purple-400 hover:text-purple-600 text-xs" @click="jobStore.clearLrcJob(); delete folderProgress[folder.path]">✕</button>
             </div>
             <div class="h-1 bg-purple-200 dark:bg-purple-800 rounded-full overflow-hidden">
               <div
@@ -113,13 +113,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { configApi } from '../api/config.js'
 import { browseApi } from '../api/index.js'
 import { useToastStore } from '../stores/toast.js'
+import { useJobStore } from '../stores/job.js'
 
 const toastStore = useToastStore()
+const jobStore = useJobStore()
 
 const baseFolder = ref('')
 const subfolders = ref([])
@@ -127,8 +129,32 @@ const loadingFolders = ref(false)
 const folderStats = ref({})
 const scanningFolder = ref({})
 const folderProgress = ref({})
-const runningFolder = ref(null)  // 현재 실행 중인 폴더 경로
 const lrcSkipExisting = ref(true)
+
+// 현재 실행 중인 폴더 (jobStore에서 파생)
+const runningFolder = computed(() =>
+  jobStore.lrcJob?.running && jobStore.lrcJob?.routePath === '/get-lrc'
+    ? jobStore.lrcJob.folderPath : null
+)
+
+// jobStore.lrcJob 변화를 folderProgress에 실시간 반영
+watch(() => jobStore.lrcJob, (job) => {
+  if (job && job.routePath === '/get-lrc') {
+    folderProgress.value[job.folderPath] = { ...job }
+  }
+}, { deep: true, immediate: true })
+
+// 작업 완료 감지: 스캔 갱신 + 토스트
+watch(() => jobStore.lrcJob?.done, async (done) => {
+  if (!done) return
+  const job = jobStore.lrcJob
+  if (!job || job.routePath !== '/get-lrc') return
+  await scanFolder(job.folderPath)
+  const parts = []
+  if (job.ok) parts.push(`${job.ok}개 저장`)
+  if (job.notFound) parts.push(`${job.notFound}개 미발견`)
+  toastStore.success(parts.join(' · ') || '완료')
+})
 
 async function loadSubfolders() {
   loadingFolders.value = true
@@ -171,7 +197,7 @@ async function scanFolder(path) {
 }
 
 async function startFolderLrc(folderPath, source) {
-  if (runningFolder.value) return
+  if (jobStore.lrcJob?.running) return
   const stats = folderStats.value[folderPath]
   if (!stats) return
 
@@ -180,34 +206,17 @@ async function startFolderLrc(folderPath, source) {
   if (!files.length) { toastStore.success('LRC가 이미 모두 있습니다.'); return }
 
   const paths = files.map(f => f.path)
-  runningFolder.value = folderPath
-  const prog = { running: true, done: false, current: 0, total: paths.length, ok: 0, notFound: 0, currentFile: '' }
-  folderProgress.value[folderPath] = prog
-
-  try {
-    for (let i = 0; i < paths.length; i++) {
-      prog.current = i + 1
-      prog.currentFile = paths[i].split('/').pop()
-      folderProgress.value[folderPath] = { ...prog }
-      try {
-        const { data } = await browseApi.libraryFetchLyrics([paths[i]], source)
-        const r = (data.results || [])[0]
-        if (!r || r.status === 'ok') prog.ok++
-        else if (r.status === 'not_found') prog.notFound++
-      } catch { /* ignore individual errors */ }
-    }
-  } finally {
-    prog.running = false
-    prog.done = true
-    prog.currentFile = ''
-    folderProgress.value[folderPath] = { ...prog }
-    runningFolder.value = null
-    await scanFolder(folderPath)
-    const parts = []
-    if (prog.ok) parts.push(`${prog.ok}개 저장`)
-    if (prog.notFound) parts.push(`${prog.notFound}개 미발견`)
-    toastStore.success(parts.join(' · ') || '완료')
-  }
+  const sourceLabel = source === 'bugs' ? 'Bugs' : 'LRCLIB'
+  // 백그라운드 실행 (await 없음 - 다른 페이지 이동해도 계속 실행)
+  jobStore.startLrcJob({
+    files: paths,
+    source,
+    apiMode: 'library',
+    routePath: '/get-lrc',
+    routeLabel: folderPath.split('/').pop(),
+    folderPath,
+    sourceLabel,
+  })
 }
 
 onMounted(() => {

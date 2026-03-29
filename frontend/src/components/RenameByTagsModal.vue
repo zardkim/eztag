@@ -167,18 +167,20 @@ const presets = computed(() => [
 ])
 
 const variables = computed(() => [
-  { var: '%title%',        desc: t('renameModal.varTitle') },
-  { var: '%artist%',       desc: t('renameModal.varArtist') },
-  { var: '%albumartist%',  desc: t('renameModal.varAlbumArtist') },
-  { var: '%album%',        desc: t('renameModal.varAlbum') },
-  { var: '%track%',        desc: t('renameModal.varTrack') },
-  { var: '%totaltracks%',  desc: t('renameModal.varTotalTracks') },
-  { var: '%disc%',         desc: t('renameModal.varDisc') },
-  { var: '%year%',         desc: t('renameModal.varYear') },
-  { var: '%genre%',        desc: t('renameModal.varGenre') },
-  { var: '%publisher%',    desc: t('renameModal.varPublisher') },
-  { var: '%_filename%',    desc: t('renameModal.varFilename') },
-  { var: '%_ext%',         desc: t('renameModal.varExt') },
+  { var: '%title%',             desc: t('renameModal.varTitle') },
+  { var: '%artist%',            desc: t('renameModal.varArtist') },
+  { var: '%albumartist%',       desc: t('renameModal.varAlbumArtist') },
+  { var: '%album%',             desc: t('renameModal.varAlbum') },
+  { var: '$num(%track%,2)',     desc: t('renameModal.varTrackNum2') },
+  { var: '$num(%track%,3)',     desc: t('renameModal.varTrackNum3') },
+  { var: '%track%',             desc: t('renameModal.varTrack') },
+  { var: '%totaltracks%',       desc: t('renameModal.varTotalTracks') },
+  { var: '%disc%',              desc: t('renameModal.varDisc') },
+  { var: '%year%',              desc: t('renameModal.varYear') },
+  { var: '%genre%',             desc: t('renameModal.varGenre') },
+  { var: '%publisher%',         desc: t('renameModal.varPublisher') },
+  { var: '%_filename%',         desc: t('renameModal.varFilename') },
+  { var: '%_ext%',              desc: t('renameModal.varExt') },
 ])
 
 // ── 패턴 히스토리 ──────────────────────────────────────────
@@ -231,36 +233,56 @@ const applying = ref(false)
 
 const INVALID_CHARS = /[\\/:*?"<>|]/g
 
-function renderPattern(pat, fields) {
-  const FIELD_MAP = {
-    title: 'title',
-    albumartist: 'album_artist',
-    album: 'album_title',
-    totaltracks: 'total_tracks',
-    year: 'year',
-    genre: 'genre',
-    publisher: 'label',
+const _FIELD_MAP = {
+  title: 'title',
+  artist: 'artist',
+  albumartist: 'album_artist',
+  album: 'album_title',
+  totaltracks: 'total_tracks',
+  year: 'year',
+  genre: 'genre',
+  publisher: 'label',
+}
+
+function resolveVar(v, fields) {
+  v = v.toLowerCase()
+  if (v === '_filename') return fields._filename || ''
+  if (v === '_ext') return fields._ext || ''
+  if (v === '_bitrate') return String(fields.bitrate || '')
+  if (v === '_codec') return (fields.file_format || '').toUpperCase()
+  if (v === 'track') {
+    const n = fields.track_no
+    if (n == null) return ''
+    return String(parseInt(n) || 0)
   }
+  if (v === 'disc') {
+    const d = fields.disc_no
+    if (!d || d === 0) return ''
+    return String(d)
+  }
+  const key = _FIELD_MAP[v]
+  if (key) return fields[key] != null ? String(fields[key]) : ''
+  return ''
+}
+
+function renderPattern(pat, fields) {
+  // 1단계: $num(%field%,N) 처리
+  pat = pat.replace(/\$num\((%[^%]+%)\s*,\s*(\d+)\)/g, (m, inner, digits) => {
+    const varName = inner.slice(1, -1)
+    const raw = resolveVar(varName, fields)
+    const n = parseInt(raw)
+    if (isNaN(n)) return raw
+    return String(n).padStart(parseInt(digits), '0')
+  })
+  // 2단계: 나머지 %field% 처리 (%track%은 기본 2자리 패딩)
   return pat.replace(/%([^%]+)%/g, (m, v) => {
     v = v.toLowerCase()
-    if (v === '_filename') return fields._filename || ''
-    if (v === '_ext') return fields._ext || ''
-    if (v === '_bitrate') return String(fields.bitrate || '')
-    if (v === '_codec') return (fields.file_format || '').toUpperCase()
-    if (v === 'artist') return fields.artist || ''
     if (v === 'track') {
-      const n = fields.track_no
-      if (n == null) return ''
-      return String(parseInt(n) || 0).padStart(2, '0')
+      const raw = resolveVar(v, fields)
+      if (!raw) return ''
+      return raw.padStart(2, '0')
     }
-    if (v === 'disc') {
-      const d = fields.disc_no
-      if (!d || d === 0) return ''
-      return String(d)
-    }
-    const key = FIELD_MAP[v]
-    if (key) return fields[key] != null ? String(fields[key]) : ''
-    return m
+    return resolveVar(v, fields) || m
   })
 }
 

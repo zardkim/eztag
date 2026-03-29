@@ -27,7 +27,7 @@ from app.api.auth import get_current_user
 from app.models.workspace import WorkspaceSession, WorkspaceItem, WorkspaceHistoryOp
 from app.core.tag_reader import read_tags
 from app.core.tag_writer import write_tags
-from app.core.config_store import get_workspace_path, get_library_path
+from app.core.config_store import get_workspace_path, get_library_path, get_excluded_folders
 
 _log = logging.getLogger(__name__)
 
@@ -799,12 +799,13 @@ def workspace_children(
     if not p.is_dir():
         raise HTTPException(status_code=404, detail="폴더를 찾을 수 없습니다")
 
+    excluded = get_excluded_folders(db)
     items = sorted(p.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower()))
     result_dirs = []
     result_files = []
 
     for item in items:
-        if item.name.startswith("."):
+        if item.name.startswith(".") or item.name in excluded:
             continue
         if item.is_dir():
             has_audio = any(
@@ -815,7 +816,7 @@ def workspace_children(
                 "name": item.name,
                 "path": str(item),
                 "type": "folder",
-                "has_children": any(True for x in item.iterdir() if x.is_dir()),
+                "has_children": any(True for x in item.iterdir() if x.is_dir() and not x.name.startswith(".") and x.name not in excluded),
                 "has_audio": has_audio,
             })
         elif item.is_file() and item.suffix.lower() in AUDIO_EXTS_LOCAL:
@@ -878,12 +879,13 @@ def library_children(
     if not p.is_dir():
         raise HTTPException(status_code=404, detail="폴더를 찾을 수 없습니다")
 
+    excluded = get_excluded_folders(db)
     items = sorted(p.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower()))
     result_dirs = []
     result_files = []
 
     for item in items:
-        if item.name.startswith("."):
+        if item.name.startswith(".") or item.name in excluded:
             continue
         if item.is_dir():
             has_audio = any(
@@ -894,7 +896,7 @@ def library_children(
                 "name": item.name,
                 "path": str(item),
                 "type": "folder",
-                "has_children": any(True for _ in item.iterdir() if _.is_dir()),
+                "has_children": any(True for _ in item.iterdir() if _.is_dir() and not _.name.startswith(".") and _.name not in excluded),
                 "has_audio": has_audio,
             })
         elif item.is_file() and item.suffix.lower() in AUDIO_EXTS:

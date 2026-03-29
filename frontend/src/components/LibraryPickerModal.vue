@@ -62,7 +62,7 @@
               <button
                 v-if="folderMode"
                 class="shrink-0 text-xs px-2 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors opacity-0 group-hover:opacity-100"
-                @click.stop="$emit('select-folder', folder)"
+                @click.stop="onOpenFolder(folder)"
               >{{ $t('picker.open') }}</button>
             </div>
           </div>
@@ -103,6 +103,49 @@
         </div>
       </div>
 
+      <!-- 하위폴더 포함 열기 확인 다이얼로그 -->
+      <Teleport to="body">
+        <div v-if="showRecursiveConfirm" class="fixed inset-0 bg-black/60 z-[400] flex items-center justify-center p-4" @click.self="showRecursiveConfirm = false">
+          <div class="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl p-5">
+            <p class="text-base font-semibold text-gray-900 dark:text-white mb-1">📂 {{ pendingFolder?.name }}</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">{{ $t('picker.recursiveQuestion') }}</p>
+
+            <!-- 통계 -->
+            <div v-if="recursiveCountData" class="mb-3 px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="text-gray-500 dark:text-gray-400">{{ $t('picker.subfolderCount') }}</span>
+                <span class="font-medium text-gray-800 dark:text-gray-200">{{ recursiveCountData.folder_count }}개</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-gray-500 dark:text-gray-400">{{ $t('picker.fileCount') }}</span>
+                <span class="font-medium text-gray-800 dark:text-gray-200">{{ recursiveCountData.file_count }}개</span>
+              </div>
+            </div>
+            <div v-else-if="countLoading" class="mb-3 text-center text-xs text-gray-400 py-2">{{ $t('common.loading') }}</div>
+
+            <!-- 경고 -->
+            <div
+              v-if="recursiveCountData && (recursiveCountData.folder_count > 50 || recursiveCountData.file_count > 500)"
+              class="mb-3 px-3 py-2 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 text-xs text-yellow-700 dark:text-yellow-400"
+            >
+              ⚠️ {{ $t('picker.recursiveWarning') }}
+            </div>
+
+            <div class="flex gap-2 mt-1">
+              <button
+                class="flex-1 py-2.5 text-sm rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                @click="confirmRecursive(false)"
+              >{{ $t('picker.openThisOnly') }}</button>
+              <button
+                class="flex-[1.5] py-2.5 text-sm rounded-xl bg-blue-600 text-white hover:bg-blue-500 transition-colors font-medium"
+                :disabled="countLoading"
+                @click="confirmRecursive(true)"
+              >{{ $t('picker.openWithSubfolders') }}</button>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
       <!-- Footer -->
       <div class="px-5 py-3 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0">
         <p v-if="folderMode" class="text-xs text-gray-400">{{ $t('picker.folderHint') }}</p>
@@ -122,7 +165,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { workspaceApi } from '../api/index.js'
+import { workspaceApi, browseApi } from '../api/index.js'
 import { useToastStore } from '../stores/toast.js'
 
 const { t } = useI18n()
@@ -131,8 +174,41 @@ const props = defineProps({
   folderMode: { type: Boolean, default: false },
   area: { type: String, default: 'library' },  // 'library' | 'workspace'
 })
-const emit = defineEmits(['close', 'added', 'select-folder'])
+const emit = defineEmits(['close', 'added', 'select-folder', 'select-folder-recursive'])
 const toastStore = useToastStore()
+
+// ── 하위폴더 포함 열기 확인 ──────────────────────────────────
+const showRecursiveConfirm = ref(false)
+const pendingFolder = ref(null)
+const recursiveCountData = ref(null)
+const countLoading = ref(false)
+
+async function onOpenFolder(folder) {
+  pendingFolder.value = folder
+  recursiveCountData.value = null
+  showRecursiveConfirm.value = true
+  countLoading.value = true
+  try {
+    const { data } = await browseApi.recursiveCount(folder.path)
+    recursiveCountData.value = data
+  } catch {
+    // 카운트 실패 시에도 다이얼로그는 표시
+  } finally {
+    countLoading.value = false
+  }
+}
+
+function confirmRecursive(recursive) {
+  showRecursiveConfirm.value = false
+  if (!pendingFolder.value) return
+  if (recursive) {
+    emit('select-folder-recursive', pendingFolder.value)
+  } else {
+    emit('select-folder', pendingFolder.value)
+  }
+  pendingFolder.value = null
+  recursiveCountData.value = null
+}
 
 const loading = ref(false)
 const folders = ref([])

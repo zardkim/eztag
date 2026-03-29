@@ -95,6 +95,9 @@ export const browseApi = {
   exportFolderHtml: (path, lang = 'ko') => client.post('/browse/export-html-save', { path, lang }),
   renameFolder: (path, newName) => client.post('/browse/rename-folder', { path, new_name: newName }),
   deleteExtraFile: (path) => client.post('/browse/delete-extra-file', { path }),
+  deleteFolder: (path) => client.post('/browse/delete-folder', { path }),
+  recursiveCount: (path) => client.get('/browse/recursive-count', { params: { path } }),
+  recursiveFiles: (path) => client.post('/browse/recursive-files', { path }),
 }
 
 // Artists

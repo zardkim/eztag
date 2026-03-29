@@ -157,15 +157,17 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { useBrowserStore } from '../stores/browser.js'
 import { useToastStore } from '../stores/toast.js'
+import { useJobStore } from '../stores/job.js'
 import { browseApi } from '../api/index.js'
 
 defineEmits(['close'])
 
 const browserStore = useBrowserStore()
 const toastStore = useToastStore()
+const jobStore = useJobStore()
 
 // ── 상태 ──────────────────────────────────────────────────
 const urlMap = reactive({})       // path → youtube_url
@@ -175,8 +177,17 @@ const searchingMap = reactive({}) // path → boolean
 const savingMap = reactive({})    // path → boolean
 const activeRow = ref(null)       // 확장된 파일 path
 
-const bulkSearching = ref(false)
-const bulkProgress = reactive({ current: 0, total: 0 })
+// jobStore YouTube 작업에서 파생 (패널은 Browser.vue 안에 있으므로 같은 routePath)
+const _ytPanelJob = computed(() =>
+  jobStore.youtubeJob?.routePath === '/browser' ? jobStore.youtubeJob : null
+)
+const bulkSearching = computed(() => !!_ytPanelJob.value?.running)
+const bulkProgress = computed(() => _ytPanelJob.value || { current: 0, total: 0 })
+
+// URL이 새로 검색되면 urlMap에 즉시 반영
+watch(() => jobStore.youtubeJob?.lastFoundResult, (result) => {
+  if (result) urlMap[result.path] = result.url || ''
+})
 
 // ── 초기화 ────────────────────────────────────────────────
 function initFromFiles(files) {
@@ -267,35 +278,9 @@ async function searchAll() {
     toastStore.info('검색할 파일이 없습니다. (이미 URL이 있거나 미등록 파일)')
     return
   }
-  bulkSearching.value = true
-  bulkProgress.current = 0
-  bulkProgress.total = targets.length
-  for (const file of targets) {
-    try {
-      const artist = file.artist || ''
-      const title = file.title || file.filename || ''
-      const { data } = await browseApi.searchYoutubeMV(artist, title)
-      const results = Array.isArray(data) ? data : (data.results || [])
-      resultsMap[file.path] = results
-      if (results.length > 0) {
-        urlMap[file.path] = results[0].url
-        await browseApi.setTrackInfo({
-          path: file.path,
-          is_title_track: titleMap[file.path],
-          youtube_url: results[0].url,
-        })
-        browserStore.updateFiles([file.path], {
-          is_title_track: titleMap[file.path],
-          youtube_url: results[0].url,
-        })
-      }
-    } catch {
-      // 개별 파일 실패 무시
-    } finally {
-      bulkProgress.current++
-    }
-  }
-  bulkSearching.value = false
-  toastStore.info(`자동 검색 완료: ${targets.length}개 처리됨`)
+  const folderPath = browserStore.selectedFolder?.path || ''
+  const folderName = browserStore.selectedFolder?.name || ''
+  // 백그라운드 실행 (await 없음 - 다른 페이지 이동해도 계속 실행)
+  jobStore.startYoutubeJob({ files: targets, routePath: '/browser', routeLabel: folderName, folderPath })
 }
 </script>

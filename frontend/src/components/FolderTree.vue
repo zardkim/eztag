@@ -59,6 +59,8 @@ const ROOTS_CACHE_KEY = 'roots'
 const ROOTS_TTL = 5 * 60 * 1000  // 5분
 
 function onFolderSelect(folder) {
+  // 선택된 폴더의 하위 캐시 무효화 → 외부 변경사항 즉시 반영
+  sessionCache.delete(`children:${folder.path}`)
   browserStore.selectFolder(folder)
   if (route.path !== '/browser') {
     router.push('/browser')

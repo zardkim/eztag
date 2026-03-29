@@ -115,10 +115,10 @@ function toggleExpand() {
 
 function selectNode() {
   emit('select', props.node)
-  // 자식이 있으면 선택 시 자동으로 펼침
-  if ((props.node.has_children || props.node.isRoot) && !open.value) {
+  // 자식이 있으면 선택 시 자동으로 펼침 + 강제 새로고침 (외부 변경 감지)
+  if (props.node.has_children || props.node.isRoot) {
     open.value = true
-    loadChildren()
+    loadChildren(true)
   }
 }
 </script>

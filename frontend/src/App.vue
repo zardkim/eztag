@@ -101,6 +101,7 @@
         area="workspace"
         @close="mobileShowWorkspacePicker = false"
         @select-folder="onMobileSelectWorkspaceFolder"
+        @select-folder-recursive="f => { mobileShowWorkspacePicker = false; browserStore.selectFolderRecursive({ name: f.name, path: f.path }, [{ name: f.name, path: f.path }], 'workspace'); router.push('/browser') }"
       />
       <LibraryPickerModal
         v-if="mobileShowLibraryPicker"
@@ -108,6 +109,7 @@
         area="library"
         @close="mobileShowLibraryPicker = false"
         @select-folder="onMobileSelectLibraryFolder"
+        @select-folder-recursive="f => { mobileShowLibraryPicker = false; browserStore.selectFolderRecursive({ name: f.name, path: f.path }, [{ name: f.name, path: f.path }], 'library'); router.push('/browser') }"
       />
     </Teleport>
 
@@ -338,6 +340,23 @@
         <span class="text-[10px] font-medium">{{ $t('nav.settings') }}</span>
       </button>
 
+      <!-- 더보기 (브라우저 액션) -->
+      <button
+        v-if="route.path === '/browser' && browserStore.files.length > 0"
+        class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
+        :class="browserStore.mobileMenuOpen
+          ? 'text-blue-600 dark:text-blue-400'
+          : 'text-gray-500 dark:text-gray-400'"
+        @click="mobileUserOpen = false; browserStore.mobileMenuOpen = !browserStore.mobileMenuOpen"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+          <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+          <circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+        </svg>
+        <span class="text-[10px] font-medium">{{ $t('nav.more') }}</span>
+      </button>
+
       <!-- 아이디 -->
       <button
         class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
@@ -358,6 +377,8 @@
 
     <!-- ── 전역 토스트 ── -->
     <ToastContainer />
+    <!-- ── 백그라운드 작업 인디케이터 ── -->
+    <JobIndicator />
 
     <!-- ── 비밀번호 변경 모달 ── -->
     <Transition enter-from-class="opacity-0" leave-to-class="opacity-0" enter-active-class="transition duration-150" leave-active-class="transition duration-150">
@@ -406,6 +427,7 @@ import { configApi } from './api/config.js'
 import WorkspaceSidebar from './components/WorkspaceSidebar.vue'
 import ToastContainer from './components/ToastContainer.vue'
 import LibraryPickerModal from './components/LibraryPickerModal.vue'
+import JobIndicator from './components/JobIndicator.vue'
 
 /* global __APP_VERSION__ */
 const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.3.0'
@@ -458,6 +480,8 @@ onUnmounted(() => {
 
 // 최근 폴더 저장
 const RECENT_FOLDERS_KEY = 'eztag-recent-folders'
+const LAST_FOLDER_KEY = 'eztag-last-folder'
+
 function saveRecentFolder(folder, area) {
   try {
     const list = JSON.parse(localStorage.getItem(RECENT_FOLDERS_KEY) || '[]')
@@ -469,16 +493,25 @@ function saveRecentFolder(folder, area) {
   } catch { /* ignore */ }
 }
 
-// 폴더 선택 시 최근 목록 저장 (Browser.vue 직접 사용 시)
+// 폴더 선택 시 최근 목록 + 마지막 열기 폴더 저장
 watch(() => browserStore.selectedFolder, (folder) => {
   if (folder) {
     saveRecentFolder(folder, browserStore.currentArea)
+    // 마지막 열기 폴더 저장 (새로고침 후 복원용)
+    try {
+      localStorage.setItem(LAST_FOLDER_KEY, JSON.stringify({
+        folder: { name: folder.name, path: folder.path },
+        breadcrumb: browserStore.breadcrumb,
+        area: browserStore.currentArea,
+      }))
+    } catch { /* ignore */ }
   }
 })
 
 // 라우트 변경 시 시트 닫기
 watch(() => route.path, () => {
   mobileUserOpen.value = false
+  browserStore.mobileMenuOpen = false
 })
 
 // ── 언어 변경 ──────────────────────────────────────
@@ -575,6 +608,14 @@ async function loadAppConfig() {
           if (lib.roots?.length > 0) {
             const root = lib.roots[0]
             browserStore.selectFolder({ name: root.name, path: root.path }, [{ name: root.name, path: root.path }], 'library')
+          }
+        } catch { /* ignore */ }
+      } else {
+        // 시작 폴더 미설정 → 마지막으로 열었던 폴더 복원
+        try {
+          const saved = JSON.parse(localStorage.getItem(LAST_FOLDER_KEY) || 'null')
+          if (saved?.folder?.path) {
+            browserStore.selectFolder(saved.folder, saved.breadcrumb || [saved.folder], saved.area || null)
           }
         } catch { /* ignore */ }
       }

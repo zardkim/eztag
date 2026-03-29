@@ -129,6 +129,7 @@
         area="workspace"
         @close="showWorkspacePicker = false"
         @select-folder="onSelectWorkspaceFolder"
+        @select-folder-recursive="onSelectWorkspaceFolderRecursive"
       />
     </Teleport>
 
@@ -140,6 +141,7 @@
         area="library"
         @close="showLibraryPicker = false"
         @select-folder="onSelectLibraryFolder"
+        @select-folder-recursive="onSelectLibraryFolderRecursive"
       />
     </Teleport>
 
@@ -271,9 +273,21 @@ function onSelectWorkspaceFolder(folder) {
   if (route.path !== '/browser') router.push('/browser')
 }
 
+function onSelectWorkspaceFolderRecursive(folder) {
+  showWorkspacePicker.value = false
+  browserStore.selectFolderRecursive({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'workspace')
+  if (route.path !== '/browser') router.push('/browser')
+}
+
 function onSelectLibraryFolder(folder) {
   showLibraryPicker.value = false
   browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'library')
+  if (route.path !== '/browser') router.push('/browser')
+}
+
+function onSelectLibraryFolderRecursive(folder) {
+  showLibraryPicker.value = false
+  browserStore.selectFolderRecursive({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'library')
   if (route.path !== '/browser') router.push('/browser')
 }
 

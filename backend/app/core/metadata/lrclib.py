@@ -55,29 +55,33 @@ def _search(artist: str, title: str, album: str = "") -> Optional[str]:
     t_norm = _normalize(title)
     a_norm = _normalize(artist)
 
-    # 1순위: 제목+아티스트 일치 + synced_lyrics 있음
+    # LRCLIB API 응답은 camelCase 필드명 사용 (syncedLyrics, artistName, trackName)
+    # 1순위: 제목+아티스트 일치 + syncedLyrics 있음
     for item in items:
         if item.get("instrumental"):
             continue
+        item_artist = item.get("artistName") or ""
+        item_title  = item.get("trackName") or item.get("name") or ""
         if (
-            _normalize(item.get("name") or "") == t_norm
-            and (a_norm in _normalize(item.get("artist_name") or "")
-                 or _normalize(item.get("artist_name") or "") in a_norm)
-            and item.get("synced_lyrics")
+            _normalize(item_title) == t_norm
+            and (a_norm in _normalize(item_artist)
+                 or _normalize(item_artist) in a_norm)
+            and item.get("syncedLyrics")
         ):
-            return item["synced_lyrics"]
+            return item["syncedLyrics"]
 
-    # 2순위: 제목 일치 + synced_lyrics 있음
+    # 2순위: 제목 일치 + syncedLyrics 있음
     for item in items:
         if item.get("instrumental"):
             continue
-        if _normalize(item.get("name") or "") == t_norm and item.get("synced_lyrics"):
-            return item["synced_lyrics"]
+        item_title = item.get("trackName") or item.get("name") or ""
+        if _normalize(item_title) == t_norm and item.get("syncedLyrics"):
+            return item["syncedLyrics"]
 
-    # 3순위: 첫 번째 결과에 synced_lyrics 있음
+    # 3순위: 첫 번째 결과에 syncedLyrics 있음
     for item in items:
-        if item.get("synced_lyrics"):
-            return item["synced_lyrics"]
+        if item.get("syncedLyrics"):
+            return item["syncedLyrics"]
 
     return None
 

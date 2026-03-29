@@ -13,6 +13,9 @@ export const useBrowserStore = defineStore('browser', () => {
   const selectedFolder = ref(null)
   const selectedFile = ref(null)
   const currentArea = ref(null)  // 'workspace' | 'library' | null
+  const mobileMenuOpen = ref(false)  // 모바일 액션 바텀시트 열림 상태
+  const isRecursiveMode = ref(false)  // 하위폴더 전체 보기 모드
+  const folderGroups = ref([])         // [{ folder_path, folder_name, relative_path, files }]
   const files = ref([])
   const extraFiles = ref([])   // [{ filename, path, file_type, file_size, modified_time, is_eztag? }, ...]
   const albumDescription = ref(null)
@@ -96,7 +99,7 @@ export const useBrowserStore = defineStore('browser', () => {
     try {
       const [filesRes, childrenRes] = await Promise.all([
         browseApi.getFiles(path, force),
-        browseApi.getChildren(path).catch(() => ({ data: [] })),
+        browseApi.getChildren(path, force).catch(() => ({ data: [] })),
       ])
       const fileList  = Array.isArray(filesRes.data) ? filesRes.data : (filesRes.data.files ?? [])
       const extraList = filesRes.data.extra_files ?? []
@@ -149,6 +152,54 @@ export const useBrowserStore = defineStore('browser', () => {
     }
   }
 
+  async function loadRecursiveFiles(path) {
+    loading.value = true
+    error.value = null
+    fileWarning.value = null
+    checkedPaths.value = new Set()
+    files.value = []
+    subfolders.value = []
+    extraFiles.value = []
+    folderGroups.value = []
+    try {
+      const { data } = await browseApi.recursiveFiles(path)
+      folderGroups.value = data.groups
+      // 기존 함수 호환용 flat 목록
+      files.value = data.groups.flatMap(g => g.files)
+      isRecursiveMode.value = true
+      selectedFile.value = null
+    } catch (e) {
+      error.value = e.response?.data?.detail || '파일 목록을 불러올 수 없습니다.'
+      files.value = []
+      folderGroups.value = []
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function selectFolderRecursive(folder, crumb = null, area = null) {
+    if (_scanPollTimer) { clearTimeout(_scanPollTimer); _scanPollTimer = null }
+    selectedFolder.value = folder
+    selectedFile.value = null
+    selectedExtraFile.value = null
+    if (area) currentArea.value = area
+    checkedPaths.value = new Set()
+    filterText.value = ''
+    subfolders.value = []
+    extraFiles.value = []
+    albumDescription.value = null
+    hasEztagReport.value = false
+    isRecursiveMode.value = false
+    folderGroups.value = []
+    if (crumb !== null) {
+      breadcrumb.value = crumb
+    } else {
+      breadcrumb.value = [{ name: folder.name, path: folder.path }]
+    }
+    _filesCache.delete(folder.path)
+    loadRecursiveFiles(folder.path)
+  }
+
   function selectFolder(folder, crumb = null, area = null) {
     // 폴더 변경 시 이전 폴더의 스캔 완료 대기 타이머 취소
     if (_scanPollTimer) {
@@ -165,6 +216,8 @@ export const useBrowserStore = defineStore('browser', () => {
     extraFiles.value = []
     albumDescription.value = null
     hasEztagReport.value = false
+    isRecursiveMode.value = false
+    folderGroups.value = []
     if (folder) {
       // crumb이 명시적으로 전달되면 사용, 없으면 현재 breadcrumb에 추가
       if (crumb !== null) {
@@ -178,6 +231,8 @@ export const useBrowserStore = defineStore('browser', () => {
           breadcrumb.value = [...breadcrumb.value, { name: folder.name, path: folder.path }]
         }
       }
+      // 명시적 폴더 선택 시 캐시 무효화 → 외부 변경사항 즉시 반영
+      _filesCache.delete(folder.path)
       loadFiles(folder.path)
     } else {
       files.value = []
@@ -247,8 +302,10 @@ export const useBrowserStore = defineStore('browser', () => {
     selectedFolder, selectedFile, selectedExtraFile, files, extraFiles, albumDescription, hasEztagReport, subfolders, displayFiles,
     loading, error, fileWarning,
     checkedPaths, checkedFiles, isAllChecked,
-    sortKey, sortOrder, filterText, breadcrumb, currentArea,
-    loadFiles, selectFolder, selectFile, selectExtraFile, toggleCheck, toggleAll, setCheckedPaths,
+    sortKey, sortOrder, filterText, breadcrumb, currentArea, mobileMenuOpen,
+    isRecursiveMode, folderGroups,
+    loadFiles, selectFolder, selectFolderRecursive, loadRecursiveFiles,
+    selectFile, selectExtraFile, toggleCheck, toggleAll, setCheckedPaths,
     updateFile, updateFiles, invalidateFilesCache,
   }
 })

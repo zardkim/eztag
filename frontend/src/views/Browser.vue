@@ -165,12 +165,6 @@
           class="btn-toolbar shrink-0 text-xs !bg-orange-100 !text-orange-700 dark:!bg-orange-900/30 dark:!text-orange-400"
           @click="showMoveToLibraryModal = true"
         >{{ t('browser.moveToLibrary.button') }}</button>
-        <!-- 더보기 버튼 -->
-        <button
-          v-if="browserStore.selectedFolder && !browserStore.loading"
-          class="w-9 h-9 flex items-center justify-center rounded-xl text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0 text-xl font-bold leading-none"
-          @click="showMobileMenu = true"
-        >···</button>
       </div>
     </Teleport>
 
@@ -182,7 +176,7 @@
         enter-from-class="opacity-0"
         leave-to-class="opacity-0"
       >
-        <div v-if="showMobileMenu" class="lg:hidden fixed inset-0 z-[120] flex flex-col justify-end" @click="showMobileMenu = false">
+        <div v-if="browserStore.mobileMenuOpen" class="lg:hidden fixed inset-0 z-[120] flex flex-col justify-end" @click="browserStore.mobileMenuOpen = false">
           <div class="absolute inset-0 bg-black/40" />
           <Transition
             enter-active-class="transition duration-200 ease-out"
@@ -190,7 +184,7 @@
             enter-from-class="translate-y-full"
             leave-to-class="translate-y-full"
           >
-            <div v-if="showMobileMenu" class="relative bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl max-h-[80vh] flex flex-col" @click.stop>
+            <div v-if="browserStore.mobileMenuOpen" class="relative bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl max-h-[80vh] flex flex-col" @click.stop>
               <!-- 드래그 핸들 -->
               <div class="flex justify-center pt-3 pb-1 shrink-0">
                 <div class="w-10 h-1 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
@@ -202,7 +196,7 @@
                   <button
                     class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
                     :class="showPanel === 'tag' ? 'bg-blue-50 dark:bg-blue-900/20 !text-blue-600 dark:!text-blue-400' : ''"
-                    @click="openBatchPanel('tag'); showMobileMenu = false"
+                    @click="openBatchPanel('tag'); browserStore.mobileMenuOpen = false"
                   ><span class="text-xl">✏️</span>{{ $t('browser.editTag') }}</button>
 
                   <!-- 자동 태그 (아코디언) -->
@@ -220,47 +214,27 @@
                         v-for="p in availableProviders"
                         :key="p.key"
                         class="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
-                        @click="openAutoTagSearch(p.key); showMobileMenu = false; mobileAutoTagExpanded = false"
+                        @click="openAutoTagSearch(p.key); browserStore.mobileMenuOpen = false; mobileAutoTagExpanded = false"
                       ><img :src="p.logo" :alt="p.label" class="w-5 h-5 rounded object-cover shrink-0" />{{ p.label }}</button>
                     </div>
                   </div>
 
-                  <!-- LRC (아코디언) -->
-                  <div>
-                    <button
-                      class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors text-left disabled:opacity-50"
-                      :disabled="fetchingLyrics"
-                      @click="mobileLrcExpanded = !mobileLrcExpanded"
-                    >
-                      <span class="text-xl">🎵</span>
-                      <span class="flex-1">LRC</span>
-                      <span class="text-xs opacity-60 transition-transform duration-200 inline-block" :class="mobileLrcExpanded ? 'rotate-180' : ''">▾</span>
-                    </button>
-                    <div v-if="mobileLrcExpanded" class="mt-0.5 ml-6 space-y-0.5">
-                      <button
-                        class="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-left"
-                        @click="startFetchLyrics('auto'); showMobileMenu = false; mobileLrcExpanded = false"
-                      >
-                        <span class="text-lg">⚡</span>
-                        <div class="min-w-0">
-                          <div class="font-medium">{{ t('browser.lrcAuto') }}</div>
-                          <div class="text-[10px] text-gray-400 truncate">{{ lrcAutoDesc }}</div>
-                        </div>
-                      </button>
-                      <button
-                        v-for="src in [{key:'bugs', label:t('browser.lrcBugs')}, {key:'lrclib', label:t('browser.lrcLrclib')}]"
-                        :key="src.key"
-                        class="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-left"
-                        @click="startFetchLyrics(src.key); showMobileMenu = false; mobileLrcExpanded = false"
-                      ><span class="text-lg">🎵</span>{{ src.label }}</button>
-                    </div>
-                  </div>
+                  <!-- LRC (아이콘 시트로 열기) -->
+                  <button
+                    class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors text-left disabled:opacity-50"
+                    :disabled="fetchingLyrics"
+                    @click="showLrcSheet = true; browserStore.mobileMenuOpen = false"
+                  >
+                    <span class="text-xl">🎵</span>
+                    <span class="flex-1">LRC</span>
+                    <span class="text-xs opacity-40">▸</span>
+                  </button>
 
                   <!-- YouTube MV -->
                   <button
                     class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-left disabled:opacity-50"
                     :disabled="searchingYoutube"
-                    @click="startYoutubeSearch(); showMobileMenu = false"
+                    @click="startYoutubeSearch(); browserStore.mobileMenuOpen = false"
                   >
                     <svg viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 shrink-0"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
                     {{ searchingYoutube ? t('browser.ytBtnProgress', { current: ytProgress.current, total: ytProgress.total }) : t('browser.ytBtn') }}
@@ -270,20 +244,20 @@
                   <button
                     class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-colors text-left disabled:opacity-50"
                     :disabled="exportingHtml"
-                    @click="exportFolderHtml(); showMobileMenu = false"
+                    @click="exportFolderHtml(); browserStore.mobileMenuOpen = false"
                   ><span class="text-xl">🎴</span>{{ exportingHtml ? '...' : t('browser.exportHtml') }}</button>
 
                   <!-- 이름 변경 -->
                   <button
                     class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors text-left"
-                    @click="showRenameModal = true; showMobileMenu = false"
+                    @click="showRenameModal = true; browserStore.mobileMenuOpen = false"
                   ><span class="text-xl">🔤</span>{{ t('browser.rename') }}</button>
 
                   <!-- 라이브러리로 이동 (워크스페이스) -->
                   <button
                     v-if="browserStore.currentArea === 'workspace'"
                     class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors text-left"
-                    @click="showMoveToLibraryModal = true; showMobileMenu = false"
+                    @click="showMoveToLibraryModal = true; browserStore.mobileMenuOpen = false"
                   >{{ t('browser.moveToLibrary.button') }}</button>
                 </template>
 
@@ -291,6 +265,76 @@
 
               <!-- safe area -->
               <div class="shrink-0 pb-6"></div>
+            </div>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- ── 모바일 LRC 소스 선택 시트 ── -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        leave-active-class="transition duration-150 ease-in"
+        enter-from-class="opacity-0"
+        leave-to-class="opacity-0"
+      >
+        <div v-if="showLrcSheet" class="lg:hidden fixed inset-0 z-[130] flex flex-col justify-end" @click="showLrcSheet = false">
+          <div class="absolute inset-0 bg-black/50" />
+          <Transition
+            enter-active-class="transition duration-200 ease-out"
+            leave-active-class="transition duration-150 ease-in"
+            enter-from-class="translate-y-full"
+            leave-to-class="translate-y-full"
+          >
+            <div v-if="showLrcSheet" class="relative bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl" @click.stop>
+              <!-- 드래그 핸들 -->
+              <div class="flex justify-center pt-3 pb-2 shrink-0">
+                <div class="w-10 h-1 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+              </div>
+
+              <!-- 타이틀 -->
+              <p class="text-center text-base font-semibold text-gray-900 dark:text-white px-5 pb-4">🎵 LRC 가사 검색</p>
+
+              <!-- 3 아이콘 카드 -->
+              <div class="grid grid-cols-3 gap-3 px-5 pb-4">
+                <!-- 자동 -->
+                <button
+                  class="flex flex-col items-center gap-1.5 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 active:scale-95 rounded-2xl px-2 py-4 transition-all text-center"
+                  @click="startFetchLyrics('auto'); showLrcSheet = false"
+                >
+                  <span class="text-3xl leading-none">⚡</span>
+                  <span class="text-sm font-semibold text-purple-700 dark:text-purple-300">{{ t('browser.lrcAuto') }}</span>
+                  <span class="text-[10px] text-gray-400 dark:text-gray-500 leading-tight line-clamp-2">{{ lrcAutoDesc }}</span>
+                </button>
+
+                <!-- Bugs -->
+                <button
+                  class="flex flex-col items-center gap-1.5 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 active:scale-95 rounded-2xl px-2 py-4 transition-all text-center"
+                  @click="startFetchLyrics('bugs'); showLrcSheet = false"
+                >
+                  <span class="text-3xl leading-none">🎵</span>
+                  <span class="text-sm font-semibold text-purple-700 dark:text-purple-300">{{ t('browser.lrcBugs') }}</span>
+                  <span class="text-[10px] text-gray-400 dark:text-gray-500 leading-tight">벅스 뮤직</span>
+                </button>
+
+                <!-- LRCLIB -->
+                <button
+                  class="flex flex-col items-center gap-1.5 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 active:scale-95 rounded-2xl px-2 py-4 transition-all text-center"
+                  @click="startFetchLyrics('lrclib'); showLrcSheet = false"
+                >
+                  <span class="text-3xl leading-none">📄</span>
+                  <span class="text-sm font-semibold text-purple-700 dark:text-purple-300">{{ t('browser.lrcLrclib') }}</span>
+                  <span class="text-[10px] text-gray-400 dark:text-gray-500 leading-tight">lrclib.net</span>
+                </button>
+              </div>
+
+              <!-- 취소 -->
+              <button
+                class="w-full py-4 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors border-t border-gray-100 dark:border-gray-800"
+                @click="showLrcSheet = false"
+              >{{ t('common.cancel') }}</button>
+              <div class="pb-safe-bottom" style="padding-bottom: env(safe-area-inset-bottom, 12px)"></div>
             </div>
           </Transition>
         </div>
@@ -346,7 +390,7 @@
         <div class="flex-1 min-w-0">
           <div class="flex items-center justify-between mb-1">
             <span class="text-xs font-semibold text-purple-700 dark:text-purple-300">
-              {{ fetchingLyrics ? t('browser.lrcSearching', { current: lrcProgress.current, total: lrcProgress.total, source: lrcProgress.source }) : t('browser.lrcComplete') }}
+              {{ fetchingLyrics ? t('browser.lrcSearching', { current: lrcProgress.current, total: lrcProgress.total, source: lrcProgress.sourceLabel }) : t('browser.lrcComplete') }}
             </span>
             <span class="text-xs text-purple-500 dark:text-purple-400">
               {{ lrcProgress.ok }}✅ {{ lrcProgress.notFound }}❌ {{ lrcProgress.noSync }}⚠️
@@ -362,7 +406,7 @@
           <!-- 현재 파일 -->
           <p v-if="lrcProgress.currentFile" class="text-[10px] text-purple-500 dark:text-purple-400 truncate mt-0.5">{{ lrcProgress.currentFile }}</p>
         </div>
-        <button v-if="lrcProgress.done" class="text-purple-400 hover:text-purple-600 text-xs shrink-0" @click="lrcProgress.done = false">✕</button>
+        <button v-if="lrcProgress.done" class="text-purple-400 hover:text-purple-600 text-xs shrink-0" @click="jobStore.clearLrcJob()">✕</button>
       </div>
     </Transition>
 
@@ -393,7 +437,7 @@
             </div>
             <p v-if="ytProgress.currentFile && searchingYoutube" class="text-[10px] text-red-500 dark:text-red-400 truncate mt-0.5">{{ ytProgress.currentFile }}</p>
           </div>
-          <button v-if="ytProgress.done" class="text-red-400 hover:text-red-600 text-xs shrink-0" @click="ytProgress.done = false; ytResults = []">✕</button>
+          <button v-if="ytProgress.done" class="text-red-400 hover:text-red-600 text-xs shrink-0" @click="jobStore.clearYoutubeJob()">✕</button>
         </div>
         <!-- 결과 목록 (완료 후 표시) -->
         <div v-if="ytProgress.done && ytResults.length > 0" class="max-h-44 overflow-y-auto border-t border-red-100 dark:border-red-800">
@@ -504,6 +548,114 @@
         <div v-else-if="browserStore.files.length === 0 && (browserStore.subfolders?.length ?? 0) === 0" class="flex flex-col items-center justify-center h-32 text-center p-4">
           <p class="text-gray-400 text-sm">{{ $t('browser.noFiles') }}</p>
         </div>
+
+        <!-- ── 재귀(하위폴더 전체) 모드 ── -->
+        <template v-else-if="browserStore.isRecursiveMode">
+          <!-- 재귀 모드 헤더 -->
+          <div class="px-4 pt-3 pb-2 flex items-center gap-3">
+            <span class="text-xs text-gray-400">📂 {{ t('browser.recursiveMode') }}</span>
+            <span class="text-xs text-gray-400">{{ t('browser.recursiveSummary', { folders: browserStore.folderGroups.length, files: browserStore.files.length }) }}</span>
+            <button
+              class="ml-auto text-xs px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              @click="browserStore.selectFolder(browserStore.selectedFolder, browserStore.breadcrumb, browserStore.currentArea)"
+            >{{ t('browser.recursiveExit') }}</button>
+          </div>
+
+          <!-- 필터 결과 없음 -->
+          <div v-if="browserStore.files.length > 0 && browserStore.displayFiles.length === 0" class="flex items-center justify-center h-24">
+            <p class="text-gray-400 text-sm">{{ t('browser.noFilterResults') }}</p>
+          </div>
+
+          <!-- 폴더별 그룹 목록 -->
+          <div v-for="group in filteredGroups" :key="group.folder_path" class="mb-1">
+            <!-- 폴더 헤더 -->
+            <div class="sticky top-0 z-[5] px-4 py-1.5 bg-gray-50 dark:bg-gray-800/80 border-y border-gray-200 dark:border-gray-700/60 backdrop-blur flex items-center gap-2">
+              <span class="text-yellow-400 text-sm">📁</span>
+              <span class="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">{{ group.relative_path || group.folder_name }}</span>
+              <span class="ml-auto text-[10px] text-gray-400 shrink-0">{{ group.files.length }}곡</span>
+            </div>
+            <!-- 모바일 카드 -->
+            <div class="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+              <div
+                v-for="file in group.files"
+                :key="file.path"
+                class="flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors"
+                :class="browserStore.selectedFile?.path === file.path
+                  ? 'bg-blue-50 dark:bg-blue-900/20 border-l-2 border-blue-400'
+                  : browserStore.checkedPaths.has(file.path)
+                  ? 'bg-blue-50/60 dark:bg-blue-900/15 border-l-2 border-blue-300'
+                  : 'hover:bg-gray-50 dark:hover:bg-gray-800/50 border-l-2 border-transparent'"
+                @click="onRowClick(file, $event)"
+              >
+                <div class="w-10 h-10 rounded overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
+                  <img v-if="file.has_cover" :src="`/api/browse/file-cover?path=${encodeURIComponent(file.path)}`" class="w-full h-full object-cover" loading="lazy" />
+                  <span v-else class="text-gray-300 dark:text-gray-600 text-sm">🎵</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-1.5">
+                    <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ file.title || file.filename }}</p>
+                    <span v-if="file.file_format" class="text-[9px] font-mono font-semibold px-1 py-0.5 rounded shrink-0" :class="formatBadgeClass(file.file_format)">{{ file.file_format }}</span>
+                  </div>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ file.artist }}<span v-if="file.artist && file.album_title"> · </span>{{ file.album_title }}</p>
+                  <div class="flex items-center gap-2 text-[10px] text-gray-400 mt-0.5">
+                    <span v-if="file.track_no">{{ t('browser.trackNo', { n: file.track_no }) }}</span>
+                    <span v-if="file.duration">{{ formatDuration(file.duration) }}</span>
+                    <span v-if="file.bitrate">{{ file.bitrate }}k</span>
+                  </div>
+                </div>
+                <button
+                  class="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-gray-300 hover:text-blue-500 transition-colors"
+                  @click.stop="currentPlay = file"
+                >{{ currentPlay?.path === file.path ? '⏸' : '▶' }}</button>
+              </div>
+            </div>
+            <!-- 데스크톱 테이블 -->
+            <div class="hidden md:block overflow-x-auto">
+              <table class="w-full min-w-[900px] text-sm">
+                <tbody>
+                  <tr
+                    v-for="file in group.files"
+                    :key="file.path"
+                    class="border-b border-gray-100 dark:border-gray-800 cursor-pointer transition-colors"
+                    :class="browserStore.selectedFile?.path === file.path
+                      ? 'bg-blue-100 dark:bg-blue-800/60 border-l-2 border-l-blue-500'
+                      : browserStore.checkedPaths.has(file.path)
+                      ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-l-blue-300'
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-700/40 border-l-2 border-l-transparent'"
+                    @click="onRowClick(file, $event)"
+                  >
+                    <td class="text-center px-2 py-1.5 text-xs text-gray-400 w-10">{{ file.disc_no || '' }}</td>
+                    <td class="text-center px-2 py-1.5 text-xs text-gray-500 w-10">{{ file.track_no || '' }}</td>
+                    <td class="w-8 py-1">
+                      <div class="w-7 h-7 rounded overflow-hidden bg-gray-100 dark:bg-gray-800 mx-auto">
+                        <img v-if="file.has_cover" :src="`/api/browse/file-cover?path=${encodeURIComponent(file.path)}`" class="w-full h-full object-cover" loading="lazy" />
+                        <span v-else class="w-full h-full flex items-center justify-center text-gray-300 text-xs">🎵</span>
+                      </div>
+                    </td>
+                    <td class="px-2 py-1.5 min-w-[160px]">
+                      <span class="text-gray-900 dark:text-white text-xs font-medium">{{ file.title || file.filename }}</span>
+                      <span v-if="file.is_title_track" class="ml-1 text-[9px] px-1 py-0.5 rounded bg-yellow-100 dark:bg-yellow-900/40 text-yellow-600 dark:text-yellow-400">TITLE</span>
+                    </td>
+                    <td class="px-2 py-1.5 text-xs text-gray-600 dark:text-gray-400 min-w-[100px] truncate max-w-[140px]">{{ file.artist }}</td>
+                    <td class="px-2 py-1.5 text-xs text-gray-500 dark:text-gray-500 min-w-[80px] truncate max-w-[120px]">{{ file.album_title }}</td>
+                    <td class="px-2 py-1.5 text-xs text-gray-500 w-12">{{ file.year }}</td>
+                    <td class="px-2 py-1.5 w-16">
+                      <span v-if="file.file_format" class="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded" :class="formatBadgeClass(file.file_format)">{{ file.file_format }}</span>
+                    </td>
+                    <td class="px-2 py-1.5 text-xs text-gray-400 w-16">{{ file.duration ? formatDuration(file.duration) : '' }}</td>
+                    <td class="px-2 py-1.5 text-xs text-gray-400 w-14">{{ file.bitrate ? file.bitrate + 'k' : '' }}</td>
+                    <td class="px-2 py-1.5 w-8 text-center">
+                      <button
+                        class="text-gray-300 hover:text-blue-500 transition-colors"
+                        @click.stop="currentPlay = file"
+                      >{{ currentPlay?.path === file.path ? '⏸' : '▶' }}</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </template>
 
         <template v-else>
           <!-- 권한 경고 -->
@@ -779,6 +931,7 @@ import MiniPlayer from '../components/MiniPlayer.vue'
 import { useBrowserStore } from '../stores/browser.js'
 import { useToastStore } from '../stores/toast.js'
 import { useHistoryStore } from '../stores/history.js'
+import { useJobStore } from '../stores/job.js'
 import { configApi } from '../api/config.js'
 import { browseApi, workspaceApi } from '../api/index.js'
 import { downloadBlob } from '../utils/download.js'
@@ -787,6 +940,7 @@ const { t, locale } = useI18n()
 const browserStore = useBrowserStore()
 const historyStore = useHistoryStore()
 const toastStore = useToastStore()
+const jobStore = useJobStore()
 const showPanel = ref(null)
 const showSpotifyDialog = ref(false)
 const currentPlay = ref(null)
@@ -809,9 +963,14 @@ function openYtDialog(url) {
 }
 
 // ── YouTube MV 자동 검색 ────────────────────────────────────
-const searchingYoutube = ref(false)
-const ytProgress = reactive({ current: 0, total: 0, found: 0, currentFile: '', done: false })
-const ytResults = ref([])  // [{ path, title, url, found }]
+const _currentFolderPath = computed(() => browserStore.selectedFolder?.path || '')
+const _ytBrowserJob = computed(() =>
+  jobStore.youtubeJob?.routePath === '/browser' && jobStore.youtubeJob?.folderPath === _currentFolderPath.value
+    ? jobStore.youtubeJob : null
+)
+const searchingYoutube = computed(() => !!_ytBrowserJob.value?.running)
+const ytProgress = computed(() => _ytBrowserJob.value || {})
+const ytResults = computed(() => _ytBrowserJob.value?.results || [])
 
 async function startYoutubeSearch() {
   const allFiles = browserStore.files.filter(f => f.scanned !== false)
@@ -823,44 +982,10 @@ async function startYoutubeSearch() {
   if (!targets.length) { toastStore.info(t('browser.ytNoFiles')); return }
   if (!await toastStore.confirm(t('browser.ytConfirm', { n: targets.length }))) return
 
-  searchingYoutube.value = true
-  ytProgress.current = 0
-  ytProgress.total = targets.length
-  ytProgress.found = 0
-  ytProgress.currentFile = ''
-  ytProgress.done = false
-  ytResults.value = []
-
-  for (const file of targets) {
-    ytProgress.currentFile = file.title || file.filename
-    try {
-      const { data } = await browseApi.searchYoutubeMV(file.artist || '', file.title || file.filename || '')
-      const results = Array.isArray(data) ? data : (data.results || [])
-      if (results.length > 0) {
-        const url = results[0].url
-        await browseApi.setTrackInfo({ path: file.path, youtube_url: url, is_title_track: !!file.is_title_track })
-        browserStore.updateFiles([file.path], { youtube_url: url })
-        ytProgress.found++
-        ytResults.value.push({ path: file.path, title: file.title || file.filename, url, found: true })
-      } else {
-        ytResults.value.push({ path: file.path, title: file.title || file.filename, url: null, found: false })
-      }
-    } catch (e) {
-      const status = e.response?.status
-      const detail = e.response?.data?.detail
-      if (status === 422 && detail === 'youtube_not_configured') {
-        searchingYoutube.value = false
-        ytProgress.done = true
-        toastStore.info(t('browser.ytNotConfigured'))
-        return
-      }
-      ytResults.value.push({ path: file.path, title: file.title || file.filename, url: null, found: false })
-    } finally {
-      ytProgress.current++
-    }
-  }
-  searchingYoutube.value = false
-  ytProgress.done = true
+  const folderPath = browserStore.selectedFolder?.path || ''
+  const folderName = browserStore.selectedFolder?.name || ''
+  // 백그라운드 실행 (await 없음 - 다른 페이지 이동해도 계속 실행)
+  jobStore.startYoutubeJob({ files: targets, routePath: '/browser', routeLabel: folderName, folderPath })
 }
 
 async function clearYoutubeUrl(file) {
@@ -876,20 +1001,20 @@ async function clearYoutubeUrl(file) {
 watch(() => browserStore.selectedFolder, () => {
   showPanel.value = null
   currentPlay.value = null
-  ytProgress.done = false
-  ytResults.value = []
-  showMobileMenu.value = false
+  // 완료된 작업은 다른 폴더로 이동 시 클리어 (진행 중인 작업은 백그라운드 유지)
+  if (jobStore.youtubeJob?.done) jobStore.clearYoutubeJob()
+  if (jobStore.lrcJob?.done) jobStore.clearLrcJob()
+  browserStore.mobileMenuOpen = false
   mobileAutoTagExpanded.value = false
-  mobileLrcExpanded.value = false
+  showLrcSheet.value = false
 })
 
 // ── 툴바 Teleport 준비 (DOM 커밋 이후에만 활성화) ──
 const toolbarReady = ref(false)
 
-// ── 모바일 바텀시트 ──────────────────────────────────
-const showMobileMenu = ref(false)
+// ── 모바일 바텀시트 (열림 상태는 browser store에서 관리)
 const mobileAutoTagExpanded = ref(false)
-const mobileLrcExpanded = ref(false)
+const showLrcSheet = ref(false)
 
 // ── 자동 태그 드롭다운 ──────────────────────────────
 const showAutoTagMenu = ref(false)
@@ -1058,6 +1183,23 @@ function formatBadgeClass(fmt) {
   return map[(fmt || '').toLowerCase()] || 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
 }
 
+// 재귀 모드: filterText 적용된 그룹 목록
+const filteredGroups = computed(() => {
+  const q = browserStore.filterText.trim().toLowerCase()
+  return browserStore.folderGroups
+    .map(g => {
+      const files = q
+        ? g.files.filter(f =>
+            (f.title || f.filename || '').toLowerCase().includes(q) ||
+            (f.artist || '').toLowerCase().includes(q) ||
+            (f.album_title || '').toLowerCase().includes(q)
+          )
+        : g.files
+      return { ...g, files }
+    })
+    .filter(g => g.files.length > 0)
+})
+
 function formatDuration(sec) {
   if (!sec) return ''
   const m = Math.floor(sec / 60)
@@ -1193,13 +1335,14 @@ function sortIcon(key) {
 }
 
 // ── LRC 가져오기 ──────────────────────────────────────────
-const fetchingLyrics = ref(false)
 const showLrcMenu = ref(false)
 const lrcMenuRef = ref(null)
-const lrcProgress = reactive({
-  total: 0, current: 0, ok: 0, notFound: 0, noSync: 0, errors: 0,
-  currentFile: '', source: '', done: false,
-})
+const _lrcBrowserJob = computed(() =>
+  jobStore.lrcJob?.routePath === '/browser' && jobStore.lrcJob?.folderPath === _currentFolderPath.value
+    ? jobStore.lrcJob : null
+)
+const fetchingLyrics = computed(() => !!_lrcBrowserJob.value?.running)
+const lrcProgress = computed(() => _lrcBrowserJob.value || {})
 
 // LRC 설정 (자동 모드 표시용)
 const lrcPrimarySource = ref('bugs')
@@ -1327,7 +1470,7 @@ async function onRenamed(result) {
 
 async function startFetchLyrics(source) {
   showLrcMenu.value = false
-  if (fetchingLyrics.value) return
+  if (jobStore.lrcJob?.running) return
 
   const allFiles = browserStore.files
   const targetFiles = browserStore.checkedPaths.size > 0
@@ -1337,57 +1480,55 @@ async function startFetchLyrics(source) {
       : allFiles
   if (!targetFiles.length) return
 
-  // 진행 상태 초기화
-  const srcLabel = source === 'auto' ? `⚡ ${lrcAutoDesc.value}` : source === 'bugs' ? 'Bugs' : 'LRCLIB'
-  Object.assign(lrcProgress, { total: targetFiles.length, current: 0, ok: 0, notFound: 0, noSync: 0, errors: 0, currentFile: '', source: srcLabel, done: false })
-  fetchingLyrics.value = true
-
-  try {
-    for (let i = 0; i < targetFiles.length; i++) {
-      const f = targetFiles[i]
-      lrcProgress.current = i + 1
-      lrcProgress.currentFile = f.filename || f.path.split('/').pop()
-      try {
-        const fileInfo = {
-          path: f.path,
-          title: f.title || '',
-          artist: f.artist || f.album_artist || '',
-          album: f.album_title || '',
-        }
-        const { data } = await browseApi.fetchLyrics([fileInfo], source)
-        const r = (data.results || [])[0]
-        if (!r || r.status === 'ok') {
-          lrcProgress.ok++
-          // 파일 목록의 has_lrc 즉시 반영
-          browserStore.updateFile({ path: f.path, has_lrc: true })
-        } else if (r.status === 'not_found') lrcProgress.notFound++
-        else if (r.status === 'no_sync') lrcProgress.noSync++
-        else lrcProgress.errors++
-      } catch {
-        lrcProgress.errors++
-      }
-    }
-  } finally {
-    fetchingLyrics.value = false
-    lrcProgress.currentFile = ''
-    lrcProgress.done = true
-    // 완료 후 토스트 요약
-    const parts = []
-    if (lrcProgress.ok) parts.push(t('browser.lrcSaved', { n: lrcProgress.ok }))
-    if (lrcProgress.noSync) parts.push(t('browser.lrcNoSync', { n: lrcProgress.noSync }))
-    if (lrcProgress.notFound) parts.push(t('browser.lrcNotFound', { n: lrcProgress.notFound }))
-    if (lrcProgress.errors) parts.push(t('browser.lrcErrors', { n: lrcProgress.errors }))
-    toastStore.success(parts.join(' · ') || t('browser.lrcDone'))
-    // LRC 저장 성공 시 extraFiles(사이드바 LRC 목록) 갱신
-    if (lrcProgress.ok > 0) {
-      const folderPath = browserStore.selectedFolder?.path
-      if (folderPath) {
-        browserStore.invalidateFilesCache(folderPath)
-        await browserStore.loadFiles(folderPath, true)
-      }
-    }
-  }
+  const sourceLabel = source === 'auto' ? `⚡ ${lrcAutoDesc.value}` : source === 'bugs' ? 'Bugs' : 'LRCLIB'
+  const folderPath = browserStore.selectedFolder?.path || ''
+  const folderName = browserStore.selectedFolder?.name || ''
+  // 백그라운드 실행 (await 없음 - 다른 페이지 이동해도 계속 실행)
+  jobStore.startLrcJob({ files: targetFiles, source, apiMode: 'browser', routePath: '/browser', routeLabel: folderName, folderPath, sourceLabel })
 }
+
+// LRC 완료 감지: 파일 목록 갱신 + 토스트
+watch(() => jobStore.lrcJob?.done, async (done) => {
+  if (!done) return
+  const job = jobStore.lrcJob
+  if (!job || job.routePath !== '/browser' || job.folderPath !== _currentFolderPath.value) return
+  const parts = []
+  if (job.ok) parts.push(t('browser.lrcSaved', { n: job.ok }))
+  if (job.noSync) parts.push(t('browser.lrcNoSync', { n: job.noSync }))
+  if (job.notFound) parts.push(t('browser.lrcNotFound', { n: job.notFound }))
+  if (job.errors) parts.push(t('browser.lrcErrors', { n: job.errors }))
+  toastStore.success(parts.join(' · ') || t('browser.lrcDone'))
+  if (job.ok > 0) {
+    browserStore.invalidateFilesCache(job.folderPath)
+    await browserStore.loadFiles(job.folderPath, true)
+  }
+})
+
+// YouTube 완료 감지: 토스트
+watch(() => jobStore.youtubeJob?.done, (done) => {
+  if (!done) return
+  const job = jobStore.youtubeJob
+  if (!job || job.routePath !== '/browser' || job.folderPath !== _currentFolderPath.value) return
+  if (job.notConfigured) {
+    toastStore.info(t('browser.ytNotConfigured'))
+  } else {
+    toastStore.success(t('browser.ytDone', { n: job.found }))
+  }
+})
+
+// LRC 파일별 실시간 has_lrc 반영 (같은 폴더에 있을 때)
+watch(() => jobStore.lrcJob?.lastOkPath, (path) => {
+  if (path && jobStore.lrcJob?.folderPath === _currentFolderPath.value) {
+    browserStore.updateFile({ path, has_lrc: true })
+  }
+})
+
+// YouTube URL 실시간 반영 (같은 폴더에 있을 때)
+watch(() => jobStore.youtubeJob?.lastFoundResult, (result) => {
+  if (result && jobStore.youtubeJob?.folderPath === _currentFolderPath.value) {
+    browserStore.updateFiles([result.path], { youtube_url: result.url })
+  }
+})
 </script>
 
 <style scoped>
