@@ -418,7 +418,7 @@ def get_files(
             elif ext == ".html":
                 stat = item.stat()
                 # eztag 생성 파일 감지: 파일명 패턴 또는 generator 메타태그 확인
-                is_eztag = item.name.startswith("[Info]")
+                is_eztag = item.name.startswith("[Info]") or item.name.startswith("[앨범카드]")
                 if not is_eztag:
                     try:
                         with item.open("r", encoding="utf-8", errors="ignore") as _hf:
@@ -725,11 +725,28 @@ def get_file_cover(
     db: Session = Depends(get_db),
 ):
     """오디오 파일의 내장 커버아트를 이미지로 반환."""
+    # 서버 사이드 커버 데이터 캐시 확인 (DB 쿼리 없이 즉시 반환 — 동시 요청 DB 풀 고갈 방지)
+    cache_key = f"{path}:{index}"
+    cached = _cache.get_cover_data(cache_key)
+    if cached:
+        data, mime, etag = cached
+        if_none_match = request.headers.get("if-none-match")
+        if etag and if_none_match == etag:
+            return Response(status_code=304, headers={
+                "ETag": etag,
+                "Cache-Control": "private, max-age=3600",
+            })
+        headers = {"Cache-Control": "private, max-age=3600"}
+        if etag:
+            headers["ETag"] = etag
+        return Response(content=data, media_type=mime, headers=headers)
+
+    # 캐시 미스: 경로 검증 + 파일에서 커버 추출
     p = _validate_path(path, db, allow_workspace=True)
     if not p.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 
-    # ETag: 파일 mtime 기반 — 파일이 바뀌지 않으면 브라우저 캐시 사용
+    # ETag: 파일 mtime 기반
     try:
         mtime = p.stat().st_mtime
         etag = f'"{int(mtime)}-{index}"'
@@ -748,6 +765,9 @@ def get_file_cover(
         raise HTTPException(status_code=404, detail="No cover art in file")
 
     data, mime = result
+    # 서버 캐시에 저장 (이후 동일 요청은 DB 쿼리 없이 처리)
+    _cache.set_cover_data(cache_key, (data, mime, etag))
+
     headers = {"Cache-Control": "private, max-age=3600"}
     if etag:
         headers["ETag"] = etag
@@ -1897,29 +1917,44 @@ def export_folder_html_save(
     genre = first.get("genre")
     label = first.get("label")
 
-    # 앨범 description 조회 (DB) - album_id 기준, 없으면 album_title+artist로 폴백
+    # 앨범 description 조회 (DB)
+    # 1순위: DB Track의 album_id
+    # 2순위: 실제 파일 태그에서 읽은 album_title+artist (태그 적용 후 DB 미반영 대응)
+    # 3순위: DB Track의 album_title+artist (구 값 폴백)
     album_description = None
     from app.models.album import Album as AlbumModel
+
+    def _find_desc_by_title(title, artist):
+        if not title:
+            return None
+        q = db.query(AlbumModel).filter(AlbumModel.title == title)
+        if artist:
+            q = q.filter(AlbumModel.album_artist == artist)
+        alb = q.first()
+        return alb.description if alb and alb.description else None
+
+    # 1순위: album_id 직접 조회
     for _p in [str(item) for item in audio_items]:
         _t = tracks_map.get(_p)
-        if not _t:
-            continue
-        if _t.album_id:
+        if _t and _t.album_id:
             alb = db.query(AlbumModel).filter(AlbumModel.id == _t.album_id).first()
             if alb and alb.description:
                 album_description = alb.description
                 break
-        # 폴백: album_title+album_artist로 조회
-        _title = _t.album_title or album_title
-        _artist = _t.album_artist or album_artist
-        if _title:
-            q = db.query(AlbumModel).filter(AlbumModel.title == _title)
-            if _artist:
-                q = q.filter(AlbumModel.album_artist == _artist)
-            alb = q.first()
-            if alb and alb.description:
-                album_description = alb.description
-                break
+
+    # 2순위: 실제 파일 태그 기반 조회 (태그가 DB보다 최신인 경우)
+    if not album_description and audio_items:
+        try:
+            actual = read_tags(str(audio_items[0]))
+            actual_title = actual.get("album_title") or ""
+            actual_artist = actual.get("album_artist") or actual.get("artist") or ""
+            album_description = _find_desc_by_title(actual_title, actual_artist)
+        except Exception:
+            pass
+
+    # 3순위: DB Track의 album_title+artist (폴백)
+    if not album_description:
+        album_description = _find_desc_by_title(album_title, album_artist)
 
     # 커버아트
     cover_paths = [t["file_path"] for t in track_dicts if t.get("has_cover")]
@@ -1944,7 +1979,7 @@ def export_folder_html_save(
     )
 
     # 폴더에 파일 저장
-    filename = _safe_filename(f"[Info] {album_artist or p.name} - {album_title}") + ".html"
+    filename = _safe_filename(f"[앨범카드] {album_artist or p.name} - {album_title}") + ".html"
     out_path = p / filename
     try:
         out_path.write_text(html, encoding="utf-8")

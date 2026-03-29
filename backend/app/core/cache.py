@@ -16,10 +16,11 @@ from cachetools import TTLCache
 
 _lock = threading.Lock()
 
-_files_cache    = TTLCache(maxsize=500,  ttl=900)   # 폴더 500개, 15분
-_covers_cache   = TTLCache(maxsize=2000, ttl=600)   # 파일 2000개, 10분
-_children_cache = TTLCache(maxsize=500,  ttl=600)   # 폴더 500개, 10분
-_roots_cache    = TTLCache(maxsize=1,    ttl=600)   # 루트 1개,   10분
+_files_cache      = TTLCache(maxsize=500,  ttl=900)   # 폴더 500개, 15분
+_covers_cache     = TTLCache(maxsize=2000, ttl=600)   # 파일 2000개, 10분
+_children_cache   = TTLCache(maxsize=500,  ttl=600)   # 폴더 500개, 10분
+_roots_cache      = TTLCache(maxsize=1,    ttl=600)   # 루트 1개,   10분
+_cover_data_cache = TTLCache(maxsize=500,  ttl=600)   # 커버 바이너리 500개, 10분 (동시 요청 DB 충돌 방지)
 
 
 # ── files ────────────────────────────────────────────────────
@@ -78,6 +79,23 @@ def invalidate_roots():
         _roots_cache.pop("roots", None)
 
 
+# ── cover binary data ────────────────────────────────────────
+def get_cover_data(key: str):
+    with _lock:
+        return _cover_data_cache.get(key)
+
+def set_cover_data(key: str, value):
+    with _lock:
+        _cover_data_cache[key] = value
+
+def invalidate_cover_data(file_path: str):
+    with _lock:
+        # 해당 파일의 모든 index 항목 제거
+        keys_to_del = [k for k in list(_cover_data_cache.keys()) if k.startswith(file_path + ":")]
+        for k in keys_to_del:
+            _cover_data_cache.pop(k, None)
+
+
 # ── 전체 무효화 (스캔 완료 후) ────────────────────────────────
 def clear_all():
     with _lock:
@@ -85,6 +103,7 @@ def clear_all():
         _covers_cache.clear()
         _children_cache.clear()
         _roots_cache.clear()
+        _cover_data_cache.clear()
 
 
 # ── 파일 쓰기 후 관련 캐시 제거 ──────────────────────────────
@@ -94,3 +113,4 @@ def invalidate_for_file(file_path: str):
     folder = str(Path(file_path).parent)
     invalidate_files(folder)
     invalidate_covers(file_path)
+    invalidate_cover_data(file_path)

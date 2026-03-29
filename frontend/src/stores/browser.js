@@ -8,6 +8,7 @@ const FILES_TTL_MS = 3 * 60 * 1000  // 3분
 
 // 백그라운드 스캔 완료 대기 타이머 (모듈 레벨 — store 인스턴스 외부)
 let _scanPollTimer = null
+let _scanRetryCount = 0
 
 export const useBrowserStore = defineStore('browser', () => {
   const selectedFolder = ref(null)
@@ -77,6 +78,10 @@ export const useBrowserStore = defineStore('browser', () => {
   })
 
   async function loadFiles(path, force = false) {
+    // 새 폴더 요청이면 재시도 카운터 초기화
+    if (selectedFolder.value?.path !== path) {
+      _scanRetryCount = 0
+    }
     // 캐시 확인
     if (!force) {
       const entry = _filesCache.get(path)
@@ -116,24 +121,30 @@ export const useBrowserStore = defineStore('browser', () => {
       subfolders.value = subs
       selectedFile.value = null
 
-      // 캐시 저장 (오류 없을 때만)
-      if (!warning) {
-        _filesCache.set(path, { files: fileList, extraFiles: extraList, albumDescription: desc, hasEztagReport: hasEztag, subfolders: subs, warning, ts: Date.now() })
-      }
-
-      // 백그라운드 스캔 완료 대기: scanned=false 파일이 있으면 2.5초 후 재조회
       if (_scanPollTimer) {
         clearTimeout(_scanPollTimer)
         _scanPollTimer = null
       }
+
       const hasUnscanned = fileList.some(f => f.scanned === false)
-      if (hasUnscanned) {
+      if (hasUnscanned && _scanRetryCount < 4) {
+        // 아직 스캔 미완료: 로딩 상태 유지하며 1초 후 재조회 (최대 4회 = 4초)
+        _scanRetryCount++
         _scanPollTimer = setTimeout(() => {
           _scanPollTimer = null
           if (selectedFolder.value?.path === path) {
             loadFiles(path, true)
           }
-        }, 2500)
+        }, 1000)
+        return  // loading=true 유지, 파일 목록 미표시
+      }
+
+      // 스캔 완료(또는 최대 재시도 초과) — 한 번에 표시
+      _scanRetryCount = 0
+
+      // 캐시 저장 (오류 없을 때만)
+      if (!warning) {
+        _filesCache.set(path, { files: fileList, extraFiles: extraList, albumDescription: desc, hasEztagReport: hasEztag, subfolders: subs, warning, ts: Date.now() })
       }
     } catch (e) {
       error.value = e.response?.data?.detail || '파일 목록을 불러올 수 없습니다.'
@@ -179,6 +190,7 @@ export const useBrowserStore = defineStore('browser', () => {
 
   function selectFolderRecursive(folder, crumb = null, area = null) {
     if (_scanPollTimer) { clearTimeout(_scanPollTimer); _scanPollTimer = null }
+    _scanRetryCount = 0
     selectedFolder.value = folder
     selectedFile.value = null
     selectedExtraFile.value = null
@@ -201,11 +213,12 @@ export const useBrowserStore = defineStore('browser', () => {
   }
 
   function selectFolder(folder, crumb = null, area = null) {
-    // 폴더 변경 시 이전 폴더의 스캔 완료 대기 타이머 취소
+    // 폴더 변경 시 이전 폴더의 스캔 완료 대기 타이머 취소, 재시도 카운터 초기화
     if (_scanPollTimer) {
       clearTimeout(_scanPollTimer)
       _scanPollTimer = null
     }
+    _scanRetryCount = 0
     selectedFolder.value = folder
     selectedFile.value = null
     selectedExtraFile.value = null

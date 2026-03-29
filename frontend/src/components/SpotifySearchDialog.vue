@@ -22,22 +22,50 @@
       <template v-if="mode === 'search'">
         <!-- 검색바 + 소스 선택 -->
         <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0 space-y-2">
+
+          <!-- 검색 방식 칩 -->
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-[10px] text-gray-400 shrink-0">{{ $t('tagSearch.searchMode') }}</span>
+            <button
+              v-for="sm in searchModes"
+              :key="sm.key"
+              class="px-2 py-0.5 rounded-full border text-[10px] font-medium transition-all"
+              :class="searchMode === sm.key
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-blue-400'"
+              @click="setSearchMode(sm.key)"
+            >{{ sm.label }}</button>
+          </div>
+
+          <!-- 검색바 (텍스트 or ID 입력) -->
           <div class="flex gap-2">
-            <input
-              v-model="query"
-              class="field flex-1 text-sm"
-              :placeholder="$t('tagSearch.searchPlaceholder')"
-              @keyup.enter="doSearch"
-              ref="searchInput"
-            />
+            <template v-if="searchMode === 'melon_id' || searchMode === 'bugs_id'">
+              <input
+                v-model="idInput"
+                class="field flex-1 text-sm font-mono"
+                :placeholder="searchMode === 'melon_id' ? $t('tagSearch.melonIdPlaceholder') : $t('tagSearch.bugsIdPlaceholder')"
+                @keyup.enter="doSearch"
+                ref="searchInput"
+              />
+            </template>
+            <template v-else>
+              <input
+                v-model="query"
+                class="field flex-1 text-sm"
+                :placeholder="$t('tagSearch.searchPlaceholder')"
+                @keyup.enter="doSearch"
+                ref="searchInput"
+              />
+            </template>
             <button
               class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors disabled:opacity-60 shrink-0"
-              :disabled="searchLoading || !activeProviders.length"
+              :disabled="searchLoading || (searchMode === 'melon_id' || searchMode === 'bugs_id' ? !idInput.trim() : !activeProviders.length)"
               @click="doSearch"
             >{{ searchLoading ? $t('tagSearch.searching') : $t('tagSearch.search') }}</button>
           </div>
-          <!-- 소스 선택 -->
-          <div class="flex items-center gap-2 flex-wrap">
+
+          <!-- 소스 선택 (ID 모드가 아닐 때만) -->
+          <div v-if="searchMode !== 'melon_id' && searchMode !== 'bugs_id'" class="flex items-center gap-2 flex-wrap">
             <span class="text-xs text-gray-400 shrink-0">{{ $t('tagSearch.sourceLabel') }}</span>
             <template v-for="p in availableProviders" :key="p.key">
               <button
@@ -331,6 +359,8 @@ const emit = defineEmits(['close', 'applied'])
 // ── 상태 ──────────────────────────────────────
 const mode = ref('search')   // 'search' | 'loading' | 'compare'
 const query = ref('')
+const searchMode = ref('album')   // 'album' | 'artist_album' | 'title_album' | 'melon_id' | 'bugs_id'
+const idInput = ref('')
 const searchLoading = ref(false)
 const applying = ref(false)
 const searchError = ref('')
@@ -340,6 +370,48 @@ const selectedAlbum = ref(null)
 const remoteTracks = ref([])    // 선택된 앨범의 트랙 목록 (provider 무관)
 const loadingProvider = ref('spotify')
 const searchInput = ref(null)
+
+// ── 검색 방식 목록 ─────────────────────────────
+const searchModes = computed(() => [
+  { key: 'album',        label: t('tagSearch.modeAlbum') },
+  { key: 'artist_album', label: t('tagSearch.modeArtistAlbum') },
+  { key: 'title_album',  label: t('tagSearch.modeTitleAlbum') },
+  { key: 'melon_id',     label: t('tagSearch.modeMelonId') },
+  { key: 'bugs_id',      label: t('tagSearch.modeBugsId') },
+])
+
+function setSearchMode(sm) {
+  searchMode.value = sm
+  if (sm === 'melon_id') {
+    // 멜론만 강제 선택
+    selectedProviders.value = ['melon']
+    idInput.value = ''
+  } else if (sm === 'bugs_id') {
+    selectedProviders.value = ['bugs']
+    idInput.value = ''
+  } else {
+    // 텍스트 검색: 이전 소스 복원
+    const allEnabled = Object.entries(providerConfig.value).filter(([, v]) => v).map(([k]) => k)
+    if (selectedProviders.value.length === 0 || ['melon','bugs'].includes(selectedProviders.value[0]) && selectedProviders.value.length === 1) {
+      selectedProviders.value = allEnabled
+    }
+    updateQueryFromMode(sm)
+  }
+}
+
+function updateQueryFromMode(sm) {
+  const f = firstFile.value
+  const albumTitle = f?.album_title || parseFolderNameToQuery(browserStore.selectedFolder?.name) || ''
+  const artist = f?.album_artist || f?.artist || ''
+  const title = f?.title || ''
+  if (sm === 'artist_album') {
+    query.value = [artist, albumTitle].filter(Boolean).join(' ')
+  } else if (sm === 'title_album') {
+    query.value = [title, albumTitle].filter(Boolean).join(' ')
+  } else {
+    query.value = albumTitle
+  }
+}
 
 // ── 소스 설정 ──────────────────────────────────
 const providerConfig = ref({ spotify: false, bugs: false })
@@ -436,11 +508,20 @@ onMounted(async () => {
     selectedProviders.value = props.initialProviders ?? ['spotify', 'bugs', 'melon']
   }
 
+  // 초기 검색 모드: 아티스트+앨범명 둘 다 있으면 artist_album, 아니면 album
   const f = firstFile.value
-  query.value = f?.album_title
-    || parseFolderNameToQuery(browserStore.selectedFolder?.name)
-    || f?.title
-    || ''
+  const hasArtist = !!(f?.album_artist || f?.artist)
+  const hasAlbum  = !!(f?.album_title)
+  if (hasArtist && hasAlbum) {
+    searchMode.value = 'artist_album'
+    query.value = [(f.album_artist || f.artist), f.album_title].filter(Boolean).join(' ')
+  } else {
+    searchMode.value = 'album'
+    query.value = f?.album_title
+      || parseFolderNameToQuery(browserStore.selectedFolder?.name)
+      || f?.title
+      || ''
+  }
   await nextTick()
   searchInput.value?.focus()
   if (query.value) doSearch()
@@ -469,6 +550,43 @@ function parseFolderNameToQuery(name) {
 
 // ── 검색 ──────────────────────────────────────
 async function doSearch() {
+  // ID 직접 조회 (멜론/벅스)
+  if (searchMode.value === 'melon_id' || searchMode.value === 'bugs_id') {
+    const id = idInput.value.trim()
+    if (!id) return
+    const provider = searchMode.value === 'melon_id' ? 'melon' : 'bugs'
+    searchLoading.value = true
+    searchError.value = ''
+    try {
+      const { data } = await metadataApi.albumTracks(id, provider)
+      const albumInfo = data.album || {}
+      await selectAlbum({
+        provider,
+        provider_id: id,
+        title:        albumInfo.album_title || albumInfo.title || id,
+        album_title:  albumInfo.album_title || albumInfo.title || id,
+        artist:       albumInfo.album_artist || albumInfo.artist,
+        album_artist: albumInfo.album_artist || albumInfo.artist,
+        cover_url:    albumInfo.cover_url,
+        release_date: albumInfo.release_date,
+        year:         albumInfo.year,
+        genre:        albumInfo.genre,
+        label:        albumInfo.label,
+        description:  albumInfo.description,
+        total_tracks: albumInfo.total_tracks,
+        album_type:   albumInfo.album_type,
+        ...albumInfo,
+      })
+    } catch (e) {
+      searchError.value = e.response?.data?.detail || t('tagSearch.searchFailed')
+      searched.value = true
+    } finally {
+      searchLoading.value = false
+    }
+    return
+  }
+
+  // 텍스트 검색
   const q = query.value.trim()
   if (!q || !activeProviders.value.length) return
   searchLoading.value = true

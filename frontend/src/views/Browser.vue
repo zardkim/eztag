@@ -504,10 +504,12 @@
     <div class="relative flex-1 flex overflow-hidden min-h-0">
       <!-- HTML 파일 뷰어 -->
       <div v-if="browserStore.selectedExtraFile?.file_type === 'html'" class="flex-1 flex flex-col min-h-0">
-        <div class="shrink-0 flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-          <span class="text-xs text-gray-500 truncate">{{ browserStore.selectedExtraFile.filename }}</span>
+        <div class="shrink-0 flex items-center gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div class="flex-1 min-w-0 overflow-hidden">
+            <span class="text-xs text-gray-500 block truncate">{{ browserStore.selectedExtraFile.filename }}</span>
+          </div>
           <button
-            class="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white ml-4 shrink-0"
+            class="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white shrink-0 whitespace-nowrap"
             @click="browserStore.selectExtraFile(null)"
           >✕ {{ t('common.close') }}</button>
         </div>
@@ -588,7 +590,7 @@
                 @click="onRowClick(file, $event)"
               >
                 <div class="w-10 h-10 rounded overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-                  <img v-if="file.has_cover" :src="`/api/browse/file-cover?path=${encodeURIComponent(file.path)}`" class="w-full h-full object-cover" loading="lazy" />
+                  <img v-if="file.has_cover" :src="`/api/browse/file-cover?path=${encodeURIComponent(file.path)}`" class="w-full h-full object-cover" />
                   <span v-else class="text-gray-300 dark:text-gray-600 text-sm">🎵</span>
                 </div>
                 <div class="flex-1 min-w-0">
@@ -628,7 +630,7 @@
                     <td class="text-center px-2 py-1.5 text-xs text-gray-500 w-10">{{ file.track_no || '' }}</td>
                     <td class="w-8 py-1">
                       <div class="w-7 h-7 rounded overflow-hidden bg-gray-100 dark:bg-gray-800 mx-auto">
-                        <img v-if="file.has_cover" :src="`/api/browse/file-cover?path=${encodeURIComponent(file.path)}`" class="w-full h-full object-cover" loading="lazy" />
+                        <img v-if="file.has_cover" :src="`/api/browse/file-cover?path=${encodeURIComponent(file.path)}`" class="w-full h-full object-cover" />
                         <span v-else class="w-full h-full flex items-center justify-center text-gray-300 text-xs">🎵</span>
                       </div>
                     </td>
@@ -723,7 +725,7 @@
             >
               <!-- 커버 -->
               <div class="w-10 h-10 rounded overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-                <img v-if="file.has_cover" :src="`/api/browse/file-cover?path=${encodeURIComponent(file.path)}`" class="w-full h-full object-cover" loading="lazy" />
+                <img v-if="file.has_cover" :src="`/api/browse/file-cover?path=${encodeURIComponent(file.path)}`" class="w-full h-full object-cover" />
                 <span v-else class="text-gray-300 dark:text-gray-600 text-sm">🎵</span>
               </div>
               <!-- 정보 -->
@@ -800,7 +802,7 @@
                   <td class="px-2 py-2 text-center text-gray-400 text-xs">{{ file.track_no ?? '' }}</td>
                   <td class="py-1 pl-2 shrink-0">
                     <div class="w-8 h-8 rounded overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                      <img v-if="file.has_cover" :src="`/api/browse/file-cover?path=${encodeURIComponent(file.path)}`" class="w-full h-full object-cover" loading="lazy" />
+                      <img v-if="file.has_cover" :src="`/api/browse/file-cover?path=${encodeURIComponent(file.path)}`" class="w-full h-full object-cover" />
                       <span v-else class="text-gray-300 dark:text-gray-600 text-xs">🎵</span>
                     </div>
                   </td>
