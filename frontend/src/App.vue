@@ -276,34 +276,42 @@
          MOBILE: 하단 내비게이션 바
     ══════════════════════════════════════════════ -->
     <nav class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex" style="height: calc(4rem + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px);">
-      <!-- 홈 -->
+
+      <!-- ① 홈 (파란색) -->
       <RouterLink
         to="/home"
         class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
         :class="route.path === '/home' && !mobileUserOpen
-          ? 'text-blue-600 dark:text-blue-400'
-          : 'text-gray-500 dark:text-gray-400'"
+          ? 'text-blue-500 dark:text-blue-400'
+          : 'text-gray-400 dark:text-gray-500'"
         @click="mobileUserOpen = false"
       >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-        </svg>
+        <div class="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
+          :class="route.path === '/home' && !mobileUserOpen
+            ? 'bg-blue-50 dark:bg-blue-900/30'
+            : ''">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+          </svg>
+        </div>
         <span class="text-[10px] font-medium">{{ $t('nav.home') }}</span>
       </RouterLink>
 
-      <!-- + 폴더 열기 -->
+      <!-- ② + 폴더 열기 (초록색) -->
       <div class="flex-1 flex flex-col items-center justify-center relative">
         <button
-          class="flex flex-col items-center justify-center gap-0.5 transition-colors text-gray-500 dark:text-gray-400"
+          class="flex flex-col items-center justify-center gap-0.5 transition-colors"
+          :class="mobileFolderMenuOpen ? 'text-emerald-500 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-500'"
           @click.stop="mobileUserOpen = false; mobileFolderMenuOpen = !mobileFolderMenuOpen"
         >
-          <div class="w-9 h-9 rounded-2xl flex items-center justify-center transition-all"
-            :class="mobileFolderMenuOpen ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'"
+          <div class="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
+            :class="mobileFolderMenuOpen ? 'bg-emerald-500 text-white' : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 dark:text-emerald-400'"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
             </svg>
           </div>
+          <span class="text-[10px] font-medium">열기</span>
         </button>
         <!-- 팝업 메뉴 -->
         <Transition enter-from-class="opacity-0 scale-95" leave-to-class="opacity-0 scale-95" enter-active-class="transition duration-150 origin-bottom" leave-active-class="transition duration-100 origin-bottom">
@@ -325,49 +333,57 @@
         </Transition>
       </div>
 
-      <!-- 설정 -->
+      <!-- ③ 태깅 (보라색) -->
       <button
         class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
-        :class="route.path === '/settings' && !mobileUserOpen
-          ? 'text-blue-600 dark:text-blue-400'
-          : 'text-gray-500 dark:text-gray-400'"
-        @click="router.push('/settings'); mobileUserOpen = false"
+        :class="route.path === '/browser' && browserStore.mobileMenuOpen
+          ? 'text-violet-500 dark:text-violet-400'
+          : (route.path === '/browser' && browserStore.files.length > 0)
+            ? 'text-violet-400 dark:text-violet-500'
+            : 'text-gray-400 dark:text-gray-500'"
+        @click="mobileUserOpen = false; route.path === '/browser' ? browserStore.mobileMenuOpen = !browserStore.mobileMenuOpen : router.push('/browser')"
       >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-        <span class="text-[10px] font-medium">{{ $t('nav.settings') }}</span>
-      </button>
-
-      <!-- 더보기 (브라우저 액션) -->
-      <button
-        v-if="route.path === '/browser' && browserStore.files.length > 0"
-        class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
-        :class="browserStore.mobileMenuOpen
-          ? 'text-blue-600 dark:text-blue-400'
-          : 'text-gray-500 dark:text-gray-400'"
-        @click="mobileUserOpen = false; browserStore.mobileMenuOpen = !browserStore.mobileMenuOpen"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/>
-          <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
-          <circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/>
-        </svg>
+        <div class="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
+          :class="route.path === '/browser' && browserStore.mobileMenuOpen
+            ? 'bg-violet-500 text-white'
+            : 'bg-violet-50 dark:bg-violet-900/30 text-violet-500 dark:text-violet-400'"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/>
+          </svg>
+        </div>
         <span class="text-[10px] font-medium">{{ $t('nav.more') }}</span>
       </button>
 
-      <!-- 아이디 -->
+      <!-- ④ 설정 (주황색) -->
       <button
         class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
-        :class="mobileUserOpen
-          ? 'text-blue-600 dark:text-blue-400'
-          : 'text-gray-500 dark:text-gray-400'"
+        :class="route.path === '/settings' && !mobileUserOpen
+          ? 'text-orange-500 dark:text-orange-400'
+          : 'text-gray-400 dark:text-gray-500'"
+        @click="router.push('/settings'); mobileUserOpen = false"
+      >
+        <div class="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
+          :class="route.path === '/settings' && !mobileUserOpen
+            ? 'bg-orange-50 dark:bg-orange-900/30'
+            : ''">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+        </div>
+        <span class="text-[10px] font-medium">{{ $t('nav.settings') }}</span>
+      </button>
+
+      <!-- ⑤ 아이디 (분홍색) -->
+      <button
+        class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
+        :class="mobileUserOpen ? 'text-rose-500 dark:text-rose-400' : 'text-gray-400 dark:text-gray-500'"
         @click="mobileUserOpen = !mobileUserOpen"
       >
         <span
-          class="w-7 h-7 rounded-full text-white flex items-center justify-center text-xs font-bold transition-colors"
-          :class="mobileUserOpen ? 'bg-blue-600' : 'bg-blue-500'"
+          class="w-8 h-8 rounded-xl text-white flex items-center justify-center text-xs font-bold transition-colors"
+          :class="mobileUserOpen ? 'bg-rose-500' : 'bg-rose-400 dark:bg-rose-500'"
         >
           {{ (authStore.user?.username || '?')[0].toUpperCase() }}
         </span>

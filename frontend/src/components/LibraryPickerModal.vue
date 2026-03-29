@@ -216,6 +216,14 @@ const files = ref([])
 const breadcrumb = ref([])
 const searchQuery = ref('')
 
+const lastPathKey = `eztag-lastpicker-${props.area}`
+
+function saveLastPath() {
+  try {
+    localStorage.setItem(lastPathKey, JSON.stringify(breadcrumb.value))
+  } catch {}
+}
+
 const filteredFolders = computed(() => {
   if (!searchQuery.value.trim()) return folders.value
   const q = searchQuery.value.trim().toLowerCase()
@@ -255,12 +263,14 @@ function enterFolder(folder) {
   breadcrumb.value.push({ name: folder.name, path: folder.path })
   searchQuery.value = ''
   loadChildren(folder.path)
+  saveLastPath()
 }
 
 function navigateTo(crumb, index) {
   if (index === breadcrumb.value.length - 1) return
   breadcrumb.value = breadcrumb.value.slice(0, index + 1)
   loadChildren(crumb.path)
+  saveLastPath()
 }
 
 function goUp() {
@@ -273,6 +283,7 @@ function goUp() {
     breadcrumb.value = breadcrumb.value.slice(0, -1)
     loadChildren(parent.path)
   }
+  saveLastPath()
 }
 
 
@@ -289,10 +300,29 @@ function extBadge(ext) {
 
 onMounted(async () => {
   await loadRoots()
-  // Library 모드: 항상 첫 번째 루트(library_path)로 자동 진입
-  // Workspace 모드: 단일 루트일 때만 자동 진입
-  if (folders.value.length >= 1 && (props.area === 'library' || folders.value.length === 1)) {
-    enterFolder(folders.value[0])
+
+  // 마지막 열었던 경로 복원 시도
+  let restored = false
+  try {
+    const saved = localStorage.getItem(lastPathKey)
+    if (saved) {
+      const savedCrumb = JSON.parse(saved)
+      if (Array.isArray(savedCrumb) && savedCrumb.length > 0) {
+        breadcrumb.value = savedCrumb
+        await loadChildren(savedCrumb[savedCrumb.length - 1].path)
+        restored = true
+      }
+    }
+  } catch {
+    // 저장된 경로가 없거나 오류 시 기본 동작으로 폴백
+  }
+
+  if (!restored) {
+    // Library 모드: 항상 첫 번째 루트(library_path)로 자동 진입
+    // Workspace 모드: 단일 루트일 때만 자동 진입
+    if (folders.value.length >= 1 && (props.area === 'library' || folders.value.length === 1)) {
+      enterFolder(folders.value[0])
+    }
   }
 })
 </script>

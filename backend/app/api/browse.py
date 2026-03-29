@@ -1897,16 +1897,29 @@ def export_folder_html_save(
     genre = first.get("genre")
     label = first.get("label")
 
-    # 앨범 description 조회 (DB) - 모든 트랙 순회하여 album_id 있는 것 기준
+    # 앨범 description 조회 (DB) - album_id 기준, 없으면 album_title+artist로 폴백
     album_description = None
+    from app.models.album import Album as AlbumModel
     for _p in [str(item) for item in audio_items]:
         _t = tracks_map.get(_p)
-        if _t and _t.album_id:
-            from app.models.album import Album as AlbumModel
+        if not _t:
+            continue
+        if _t.album_id:
             alb = db.query(AlbumModel).filter(AlbumModel.id == _t.album_id).first()
-            if alb:
+            if alb and alb.description:
                 album_description = alb.description
-            break
+                break
+        # 폴백: album_title+album_artist로 조회
+        _title = _t.album_title or album_title
+        _artist = _t.album_artist or album_artist
+        if _title:
+            q = db.query(AlbumModel).filter(AlbumModel.title == _title)
+            if _artist:
+                q = q.filter(AlbumModel.album_artist == _artist)
+            alb = q.first()
+            if alb and alb.description:
+                album_description = alb.description
+                break
 
     # 커버아트
     cover_paths = [t["file_path"] for t in track_dicts if t.get("has_cover")]

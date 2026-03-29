@@ -175,6 +175,12 @@ class MusicScanner:
         track.comment = tags.get("comment")
         track.file_size = tags.get("file_size")
         track.modified_time = mtime
+        # album_id 재연산: 앨범 태그 변경 시 album 연결 갱신
+        artist = self._get_or_create_artist(tags.get("album_artist") or tags.get("artist"))
+        album = self._get_or_create_album(tags, artist)
+        if album:
+            track.album_id = album.id
+            album.track_count = (album.track_count or 0) + 1
         has_cover = tags.get("has_cover", False)
         if not has_cover:
             has_cover = _find_and_embed_local_cover(track.file_path)

@@ -112,6 +112,7 @@ export const albumsApi = {
   get: (id) => client.get(`/albums/${id}`),
   exportHtml: (id) => client.get(`/albums/${id}/export-html`, { responseType: 'blob' }),
   setDescription: (id, description) => client.patch(`/albums/${id}/description`, { description }),
+  ensureAlbum: (title, artist) => client.post('/albums/ensure', { title, artist }),
 }
 
 // Tracks

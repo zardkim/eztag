@@ -8,7 +8,7 @@ export default {
     settings: 'Settings',
     browser: 'File Browser',
     workspace: 'Workspace',
-    more: 'More',
+    more: 'Tag',
   },
   home: {
     title: 'Home',

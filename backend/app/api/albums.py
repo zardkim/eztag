@@ -44,6 +44,34 @@ class AlbumDescriptionBody(BaseModel):
     description: Optional[str] = None
 
 
+class AlbumEnsureBody(BaseModel):
+    title: str
+    artist: Optional[str] = None
+
+
+@router.post("/ensure")
+def ensure_album(
+    body: AlbumEnsureBody,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """title+artist로 앨범을 조회하거나 없으면 생성 후 album_id를 반환합니다."""
+    title = body.title.strip()
+    artist = (body.artist or "").strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="title required")
+    query = db.query(Album).filter(Album.title == title)
+    if artist:
+        query = query.filter(Album.album_artist == artist)
+    album = query.first()
+    if not album:
+        album = Album(title=title, album_artist=artist or None)
+        db.add(album)
+        db.commit()
+        db.refresh(album)
+    return {"id": album.id, "title": album.title}
+
+
 @router.patch("/{album_id}/description")
 def set_album_description(
     album_id: int,

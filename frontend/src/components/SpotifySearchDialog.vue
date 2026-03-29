@@ -663,7 +663,19 @@ async function applyAll() {
 
     // 앨범 소개 DB 저장 (파일 태그 미기록)
     if (s.description) {
-      const albumId = firstFile.value?.album_id
+      let albumId = firstFile.value?.album_id
+      if (!albumId) {
+        const title = (s.album_title || s.title || '').trim()
+        const artist = (s.album_artist || s.artist || '').trim()
+        if (title) {
+          try {
+            const { data } = await albumsApi.ensureAlbum(title, artist)
+            albumId = data.id
+          } catch (e) {
+            console.warn('앨범 조회/생성 실패:', e)
+          }
+        }
+      }
       if (albumId) {
         try {
           await albumsApi.setDescription(albumId, s.description)

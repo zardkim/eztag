@@ -8,7 +8,7 @@ export default {
     settings: '설정',
     browser: '파일 브라우저',
     workspace: '작업공간',
-    more: '더보기',
+    more: '태깅',
   },
   home: {
     title: '홈',
