@@ -186,16 +186,23 @@ const countLoading = ref(false)
 async function onOpenFolder(folder) {
   pendingFolder.value = folder
   recursiveCountData.value = null
-  showRecursiveConfirm.value = true
   countLoading.value = true
   try {
     const { data } = await browseApi.recursiveCount(folder.path)
     recursiveCountData.value = data
+    // 하위폴더 10개 미만 & 파일 500개 미만이면 다이얼로그 없이 바로 열기
+    if (data.folder_count < 10 && data.file_count < 500) {
+      pendingFolder.value = null
+      recursiveCountData.value = null
+      emit('select-folder', folder)
+      return
+    }
   } catch {
-    // 카운트 실패 시에도 다이얼로그는 표시
+    // 카운트 실패 시 다이얼로그 표시 (안전하게 사용자에게 확인)
   } finally {
     countLoading.value = false
   }
+  showRecursiveConfirm.value = true
 }
 
 function confirmRecursive(recursive) {
