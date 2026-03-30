@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.8.4-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.8.17-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -25,9 +25,10 @@ A web application for managing music library metadata and editing audio tags.
 - **Auto Metadata Search** — Spotify, Bugs, Melon, Apple Music integration
 - **Cover Art Management** — Auto extract and embed covers (case-insensitive: cover/COVER/Cover), upload
 - **Rename by Tags** — Batch file rename using pattern strings
-- **HTML Export** — Generate HTML with track list, title tracks, and YouTube MV embeds
-- **Title Track / YouTube MV** — Mark title tracks and link YouTube URLs (auto search via YouTube Data API v3), in-app player
-- **Get LRC Lyrics** — Auto-download LRC lyric files from Bugs / LRCLIB
+- **HTML Album Card** — Generate HTML with track list, title tracks, and YouTube MV embeds (long descriptions auto-collapsible at 10+ lines)
+- **Title Track / YouTube MV** — Mark title tracks and link YouTube URLs (official MV auto-search), in-app player
+- **Get LRC Lyrics** — Auto-download LRC lyric files from AlSong · Bugs · LRCLIB
+- **Background Jobs** — LRC and YouTube searches run in the background; continue even when navigating to other pages
 - **Backup / Restore** — Full DB backup (settings, presets, metadata) as tar.gz
 - **PWA Support** — Install on mobile home screen, offline static asset cache
 - **Mobile Optimized** — Responsive layout, home screen (recent folders + clear list), bottom tab navigation
@@ -192,21 +193,28 @@ docker-compose pull && docker-compose up -d
 | Item | Description |
 |------|-------------|
 | Spotify API | Enter Client ID / Client Secret |
-| YouTube Data API v3 | API key for auto MV search |
+| YouTube Data API v3 | API key for official MV auto-search |
+| LRC Source | Select default LRC source (AlSong · Bugs · LRCLIB) via card-style UI |
 | Get LRC Folder | Default folder for LRC lyrics search |
 
 ## Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **v0.8.4** | 2026-03-24 | HTML viewer sidebar click fix, YouTube search accuracy improvements, redirect to home after login |
-| v0.8.3 | 2026-03-24 | cachetools dependency fix, port mapping fix |
-| v0.8.0 | 2026-03-24 | Workspace/Library dual areas, YouTube in-app player, auto cover embed, backup stability, various bug fixes |
-| v0.7.0 | 2026-03-23 | PWA support, AI cover art generation, security improvements |
-| v0.6.0 | 2026-03-23 | YouTube MV panel, folder rename, full i18n expansion, UI improvements |
-| v0.5.0 | 2026-03-22 | Title track / YouTube MV, mobile layout overhaul, login language toggle |
-| v0.4.0 | — | Workspace-based tag editing, mobile toolbar |
-| v0.3.0 | — | LRC lyrics, HTML export |
+| **v0.8.17** | 2026-03-30 | AlSong LRC search, album card description collapse/expand, card-style LRC source UI in settings, stricter YouTube MV search (official only), mini-player bitrate single-line fix |
+| v0.8.16 | 2026-03-29 | Expanded auto-tag search modes, album description save fix, cover art cache, single-render file list, HTML viewer mobile close button, album card filename format |
+| v0.8.15 | 2026-03-29 | Album description in HTML card, mobile bottom menu redesign, folder picker remembers last path |
+| v0.8.14 | 2026-03-29 | Background LRC/YouTube search, folder CRUD, recursive folder open, multiple improvements |
+| v0.8.13 | 2026-03-28 | Album card rename, YouTube dialog improvements, Hero gradient enhancements |
+| v0.8.12 | 2026-03-28 | Bugs Music 403 bypass (HTML parsing), LRC search stability |
+| v0.8.10 | 2026-03-27 | HTML album card export improvements, genre/label display |
+| v0.8.4  | 2026-03-24 | HTML viewer sidebar click fix, YouTube search accuracy improvements |
+| v0.8.0  | 2026-03-24 | Workspace/Library dual areas, YouTube in-app player, auto cover embed, backup stability |
+| v0.7.0  | 2026-03-23 | PWA support, AI cover art generation, security improvements |
+| v0.6.0  | 2026-03-23 | YouTube MV panel, folder rename, full i18n expansion, UI improvements |
+| v0.5.0  | 2026-03-22 | Title track / YouTube MV, mobile layout overhaul, login language toggle |
+| v0.4.0  | — | Workspace-based tag editing, mobile toolbar |
+| v0.3.0  | — | LRC lyrics, HTML export |
 
 ---
 
