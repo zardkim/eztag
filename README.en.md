@@ -22,12 +22,12 @@ A web application for managing music library metadata and editing audio tags.
 
 - **File Browser** — Browse music folders across two separate areas: Workspace and Library
 - **Tag Editor** — Individual and batch tag editing, including Description (Comment)
-- **Auto Metadata Search** — Spotify, Bugs, Melon, Apple Music integration
+- **Auto Metadata Search** — Spotify and external tag source integration
 - **Cover Art Management** — Auto extract and embed covers (case-insensitive: cover/COVER/Cover), upload
 - **Rename by Tags** — Batch file rename using pattern strings
 - **HTML Album Card** — Generate HTML with track list, title tracks, and YouTube MV embeds (long descriptions auto-collapsible at 10+ lines)
 - **Title Track / YouTube MV** — Mark title tracks and link YouTube URLs (official MV auto-search), in-app player
-- **Get LRC Lyrics** — Auto-download LRC lyric files from AlSong · Bugs · LRCLIB
+- **Get LRC Lyrics** — Auto-download LRC lyric files from external tag sources
 - **Background Jobs** — LRC and YouTube searches run in the background; continue even when navigating to other pages
 - **Backup / Restore** — Full DB backup (settings, presets, metadata) as tar.gz
 - **PWA Support** — Install on mobile home screen, offline static asset cache
@@ -194,19 +194,19 @@ docker-compose pull && docker-compose up -d
 |------|-------------|
 | Spotify API | Enter Client ID / Client Secret |
 | YouTube Data API v3 | API key for official MV auto-search |
-| LRC Source | Select default LRC source (AlSong · Bugs · LRCLIB) via card-style UI |
+| LRC Source | Select default LRC source (external tag sources) via card-style UI |
 | Get LRC Folder | Default folder for LRC lyrics search |
 
 ## Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **v0.8.17** | 2026-03-30 | AlSong LRC search, album card description collapse/expand, card-style LRC source UI in settings, stricter YouTube MV search (official only), mini-player bitrate single-line fix |
+| **v0.8.17** | 2026-03-30 | External tag source LRC search, album card description collapse/expand, card-style LRC source UI in settings, stricter YouTube MV search (official only), mini-player bitrate single-line fix |
 | v0.8.16 | 2026-03-29 | Expanded auto-tag search modes, album description save fix, cover art cache, single-render file list, HTML viewer mobile close button, album card filename format |
 | v0.8.15 | 2026-03-29 | Album description in HTML card, mobile bottom menu redesign, folder picker remembers last path |
 | v0.8.14 | 2026-03-29 | Background LRC/YouTube search, folder CRUD, recursive folder open, multiple improvements |
 | v0.8.13 | 2026-03-28 | Album card rename, YouTube dialog improvements, Hero gradient enhancements |
-| v0.8.12 | 2026-03-28 | Bugs Music 403 bypass (HTML parsing), LRC search stability |
+| v0.8.12 | 2026-03-28 | External tag source stability improvements, LRC search stability |
 | v0.8.10 | 2026-03-27 | HTML album card export improvements, genre/label display |
 | v0.8.4  | 2026-03-24 | HTML viewer sidebar click fix, YouTube search accuracy improvements |
 | v0.8.0  | 2026-03-24 | Workspace/Library dual areas, YouTube in-app player, auto cover embed, backup stability |
