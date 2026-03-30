@@ -1,6 +1,6 @@
 <template>
-  <div class="fixed inset-0 bg-black/60 z-[300] flex items-center justify-center p-4" @click.self="$emit('close')">
-    <div class="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-xl shadow-2xl flex flex-col max-h-[80vh]">
+  <div class="fixed inset-0 bg-black/60 z-[300] flex items-center justify-center p-4" @click="$emit('close')">
+    <div class="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-xl shadow-2xl flex flex-col max-h-[80vh]" @click.stop>
 
       <!-- Header -->
       <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800 shrink-0">
@@ -105,8 +105,8 @@
 
       <!-- 하위폴더 포함 열기 확인 다이얼로그 -->
       <Teleport to="body">
-        <div v-if="showRecursiveConfirm" class="fixed inset-0 bg-black/60 z-[400] flex items-center justify-center p-4" @click.self="showRecursiveConfirm = false">
-          <div class="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl p-5">
+        <div v-if="showRecursiveConfirm" class="fixed inset-0 bg-black/60 z-[400] flex items-center justify-center p-4" @click="showRecursiveConfirm = false">
+          <div class="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl p-5" @click.stop>
             <p class="text-base font-semibold text-gray-900 dark:text-white mb-1">📂 {{ pendingFolder?.name }}</p>
             <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">{{ $t('picker.recursiveQuestion') }}</p>
 
@@ -261,8 +261,7 @@ async function loadRoots() {
 
 function enterFolder(folder) {
   breadcrumb.value.push({ name: folder.name, path: folder.path })
-  searchQuery.value = ''
-  loadChildren(folder.path)
+  loadChildren(folder.path).then(() => { searchQuery.value = '' })
   saveLastPath()
 }
 
