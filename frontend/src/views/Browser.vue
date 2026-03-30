@@ -89,6 +89,16 @@
             class="btn-toolbar !bg-orange-100 !text-orange-700 hover:!bg-orange-200 dark:!bg-orange-900/30 dark:!text-orange-400 shrink-0"
             @click="showMoveToLibraryModal = true"
           >{{ t('browser.moveToLibrary.button') }}</button>
+
+          <!-- 구분선 -->
+          <div class="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0"></div>
+
+          <!-- 마법사 -->
+          <button
+            class="btn-toolbar !bg-indigo-100 !text-indigo-700 hover:!bg-indigo-200 dark:!bg-indigo-900/30 dark:!text-indigo-400 shrink-0 flex items-center gap-1"
+            @click="browserStore.wizardOpen = true"
+            :title="t('wizard.title')"
+          >🪄 {{ t('wizard.title') }}</button>
         </template>
 
         <template v-else-if="!browserStore.selectedFolder">
@@ -226,12 +236,6 @@
                     @click="showRenameModal = true; browserStore.mobileMenuOpen = false"
                   ><span class="text-xl">🔤</span>{{ t('browser.rename') }}</button>
 
-                  <!-- 라이브러리로 이동 (워크스페이스) -->
-                  <button
-                    v-if="browserStore.currentArea === 'workspace'"
-                    class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors text-left"
-                    @click="showMoveToLibraryModal = true; browserStore.mobileMenuOpen = false"
-                  >{{ t('browser.moveToLibrary.button') }}</button>
                 </template>
 
               </div>
@@ -432,8 +436,8 @@
     <RenameByTagsModal
       v-if="showRenameModal"
       :files="renameTargetFiles"
-      @close="showRenameModal = false"
-      @renamed="onRenamed"
+      @close="showRenameModal = false; if (_wizardRenameResolve) { const fn = _wizardRenameResolve; _wizardRenameResolve = null; fn() }"
+      @renamed="_wizardRenameResolve ? onRenameForWizard($event) : onRenamed($event)"
     />
 
     <!-- 폴더 이동 모달 -->
@@ -467,12 +471,10 @@
     <div class="relative flex-1 flex overflow-hidden min-h-0">
       <!-- HTML 파일 뷰어 -->
       <div v-if="browserStore.selectedExtraFile?.file_type === 'html'" class="flex-1 flex flex-col min-h-0">
-        <div class="shrink-0 flex items-center gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-          <div class="flex-1 min-w-0 overflow-hidden">
-            <span class="text-xs text-gray-500 block truncate">{{ browserStore.selectedExtraFile.filename }}</span>
-          </div>
+        <div class="shrink-0 grid grid-cols-[1fr_auto] items-center gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <span class="text-xs text-gray-500 truncate min-w-0">{{ browserStore.selectedExtraFile.filename }}</span>
           <button
-            class="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white shrink-0 whitespace-nowrap"
+            class="text-xs text-gray-400 hover:text-gray-700 dark:hover:text-white whitespace-nowrap"
             @click="browserStore.selectExtraFile(null)"
           >✕ {{ t('common.close') }}</button>
         </div>
@@ -534,7 +536,23 @@
           <!-- 폴더별 그룹 목록 -->
           <div v-for="group in filteredGroups" :key="group.folder_path" class="mb-1">
             <!-- 폴더 헤더 -->
-            <div class="sticky top-0 z-[5] px-4 py-1.5 bg-gray-50 dark:bg-gray-800/80 border-y border-gray-200 dark:border-gray-700/60 backdrop-blur flex items-center gap-2">
+            <div
+              class="sticky top-0 z-[5] px-4 py-1.5 bg-gray-50 dark:bg-gray-800/80 border-y border-gray-200 dark:border-gray-700/60 backdrop-blur flex items-center gap-2 cursor-pointer select-none"
+              @click="selectFolderGroup(group)"
+            >
+              <!-- 폴더 체크박스 -->
+              <div class="shrink-0 w-5 h-5 rounded flex items-center justify-center transition-colors"
+                :class="groupCheckState(group) === 'all'
+                  ? 'bg-blue-500'
+                  : groupCheckState(group) === 'some'
+                  ? 'bg-blue-200 dark:bg-blue-700'
+                  : 'border-2 border-gray-300 dark:border-gray-600'"
+              >
+                <svg v-if="groupCheckState(group) === 'all'" viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5 text-white" stroke="currentColor" stroke-width="3">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+                <div v-else-if="groupCheckState(group) === 'some'" class="w-2 h-0.5 bg-blue-600 dark:bg-blue-300 rounded"></div>
+              </div>
               <span class="text-yellow-400 text-sm">📁</span>
               <span class="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">{{ group.relative_path || group.folder_name }}</span>
               <span class="ml-auto text-[10px] text-gray-400 shrink-0">{{ group.files.length }}곡</span>
@@ -544,17 +562,30 @@
               <div
                 v-for="file in group.files"
                 :key="file.path"
-                class="flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors"
+                class="flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors select-none"
                 :class="browserStore.selectedFile?.path === file.path
                   ? 'bg-blue-50 dark:bg-blue-900/20 border-l-2 border-blue-400'
                   : browserStore.checkedPaths.has(file.path)
                   ? 'bg-blue-50/60 dark:bg-blue-900/15 border-l-2 border-blue-300'
                   : 'hover:bg-gray-50 dark:hover:bg-gray-800/50 border-l-2 border-transparent'"
-                @click="onRowClick(file, $event)"
+                @click="onMobileCardClick(file)"
+                @touchstart.passive="onMobileTouchStart(file)"
+                @touchend.passive="onMobileTouchEnd"
+                @touchmove.passive="onMobileTouchMove"
               >
-                <div class="w-10 h-10 rounded overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
+                <div class="w-10 h-10 rounded overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0 relative">
                   <img v-if="file.has_cover" :src="`/api/browse/file-cover?path=${encodeURIComponent(file.path)}`" class="w-full h-full object-cover" />
                   <span v-else class="text-gray-300 dark:text-gray-600 text-sm">🎵</span>
+                  <div
+                    v-if="mobileSelectMode"
+                    class="absolute inset-0 flex items-center justify-center transition-colors"
+                    :class="browserStore.checkedPaths.has(file.path) ? 'bg-blue-500/80' : 'bg-black/30'"
+                  >
+                    <svg v-if="browserStore.checkedPaths.has(file.path)" viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-white" stroke="currentColor" stroke-width="3">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <div v-else class="w-5 h-5 rounded-full border-2 border-white/80"></div>
+                  </div>
                 </div>
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-1.5">
@@ -678,18 +709,34 @@
             <div
               v-for="file in browserStore.displayFiles"
               :key="file.path"
-              class="flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors"
+              class="flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors select-none"
               :class="browserStore.selectedFile?.path === file.path
                 ? 'bg-blue-50 dark:bg-blue-900/20 border-l-2 border-blue-400 dark:border-blue-500'
                 : browserStore.checkedPaths.has(file.path)
                 ? 'bg-blue-50/60 dark:bg-blue-900/15 border-l-2 border-blue-300 dark:border-blue-600'
                 : 'hover:bg-gray-50 dark:hover:bg-gray-800/50 border-l-2 border-transparent'"
-              @click="onRowClick(file, $event)"
+              @click="onMobileCardClick(file)"
+              @touchstart.passive="onMobileTouchStart(file)"
+              @touchend.passive="onMobileTouchEnd"
+              @touchmove.passive="onMobileTouchMove"
             >
-              <!-- 커버 -->
-              <div class="w-10 h-10 rounded overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
+              <!-- 커버 (선택 모드 시 체크박스 오버레이) -->
+              <div class="w-10 h-10 rounded overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0 relative">
                 <img v-if="file.has_cover" :src="`/api/browse/file-cover?path=${encodeURIComponent(file.path)}`" class="w-full h-full object-cover" />
                 <span v-else class="text-gray-300 dark:text-gray-600 text-sm">🎵</span>
+                <!-- 선택 모드 체크박스 오버레이 -->
+                <div
+                  v-if="mobileSelectMode"
+                  class="absolute inset-0 flex items-center justify-center transition-colors"
+                  :class="browserStore.checkedPaths.has(file.path)
+                    ? 'bg-blue-500/80'
+                    : 'bg-black/30'"
+                >
+                  <svg v-if="browserStore.checkedPaths.has(file.path)" viewBox="0 0 24 24" fill="none" class="w-6 h-6 text-white" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <div v-else class="w-5 h-5 rounded-full border-2 border-white/80"></div>
+                </div>
               </div>
               <!-- 정보 -->
               <div class="flex-1 min-w-0">
@@ -877,8 +924,23 @@
     <SpotifySearchDialog
       v-if="showSpotifyDialog"
       :initial-providers="selectedAutoProviders"
-      @close="showSpotifyDialog = false"
-      @applied="showSpotifyDialog = false"
+      @close="onSpotifyDialogClose"
+      @applied="onSpotifyDialogClose"
+    />
+
+    <!-- 마법사 다이얼로그 -->
+    <WizardDialog
+      v-model="browserStore.wizardOpen"
+      :available-providers="availableProviders"
+      :current-step="wizardCurrentStep"
+      :steps-done="wizardStepsDone"
+      :step-status="wizardStepStatus"
+      :waiting-next="wizardWaitingNext"
+      :is-finished="wizardIsFinished"
+      :phase="wizardPhase"
+      @start="onWizardStart"
+      @next-step="onWizardNext"
+      @close="onWizardClose"
     />
   </div>
 </template>
@@ -893,6 +955,7 @@ import MoveToDestinationModal from '../components/MoveToDestinationModal.vue'
 import MoveToLibraryModal from '../components/MoveToLibraryModal.vue'
 // import AICoverModal from '../components/AICoverModal.vue' // AI 커버아트 (개발 중단)
 import MiniPlayer from '../components/MiniPlayer.vue'
+import WizardDialog from '../components/WizardDialog.vue'
 import { useBrowserStore } from '../stores/browser.js'
 import { useToastStore } from '../stores/toast.js'
 import { useHistoryStore } from '../stores/history.js'
@@ -962,6 +1025,14 @@ async function clearYoutubeUrl(file) {
   }
 }
 
+// App.vue 등에서 wizardOpen을 true로 세팅하면 마법사 열림
+watch(() => browserStore.wizardOpen, (v) => {
+  if (!v) {
+    if (wizardPhase.value === 'running' && !wizardIsFinished.value) return  // 실행 중이면 닫기 무시
+    wizardPhase.value = 'setup'
+  }
+})
+
 // 폴더 변경 시 패널·선택 초기화
 watch(() => browserStore.selectedFolder, () => {
   showPanel.value = null
@@ -972,6 +1043,7 @@ watch(() => browserStore.selectedFolder, () => {
   browserStore.mobileMenuOpen = false
   mobileAutoTagExpanded.value = false
   showLrcDialog.value = false
+  mobileSelectMode.value = false
 })
 
 // ── 툴바 Teleport 준비 (DOM 커밋 이후에만 활성화) ──
@@ -1216,6 +1288,84 @@ function onRowClick(file) {
   showPanel.value = 'tag'
 }
 
+// ── 재귀 모드 폴더 단위 선택 ─────────────────────────────────
+function groupCheckState(group) {
+  const paths = group.files.map(f => f.path)
+  const checkedCount = paths.filter(p => browserStore.checkedPaths.has(p)).length
+  if (checkedCount === 0) return 'none'
+  if (checkedCount === paths.length) return 'all'
+  return 'some'
+}
+
+function selectFolderGroup(group) {
+  const paths = group.files.map(f => f.path)
+  const allChecked = paths.every(p => browserStore.checkedPaths.has(p))
+  const next = new Set(browserStore.checkedPaths)
+  if (allChecked) {
+    paths.forEach(p => next.delete(p))
+  } else {
+    paths.forEach(p => next.add(p))
+  }
+  browserStore.setCheckedPaths(next)
+  browserStore.selectFile(null)
+  if (next.size > 0) {
+    showPanel.value = 'tag'
+  } else {
+    showPanel.value = null
+    mobileSelectMode.value = false
+  }
+}
+
+// ── 모바일 롱프레스 다중 선택 ────────────────────────────────
+const mobileSelectMode = ref(false)
+let _longPressTimer = null
+let _longPressMoved = false
+
+function onMobileTouchStart(file) {
+  _longPressMoved = false
+  _longPressTimer = setTimeout(() => {
+    if (_longPressMoved) return
+    // 진동 피드백 (지원하는 기기만)
+    navigator.vibrate?.(50)
+    mobileSelectMode.value = true
+    browserStore.setCheckedPaths(new Set())
+    browserStore.selectFile(null)
+    showPanel.value = null
+    browserStore.toggleCheck(file)
+  }, 500)
+}
+
+function onMobileTouchEnd() {
+  clearTimeout(_longPressTimer)
+}
+
+function onMobileTouchMove() {
+  _longPressMoved = true
+  clearTimeout(_longPressTimer)
+}
+
+function onMobileCardClick(file) {
+  if (mobileSelectMode.value) {
+    browserStore.toggleCheck(file)
+    // 모두 해제되면 선택 모드 종료
+    if (browserStore.checkedPaths.size === 0) {
+      mobileSelectMode.value = false
+      showPanel.value = null
+    } else {
+      showPanel.value = 'tag'
+    }
+  } else {
+    onRowClick(file)
+  }
+}
+
+// 외부에서 checkedPaths가 비워지면 선택 모드 종료 (툴바 ✕ 버튼 등)
+watch(() => browserStore.checkedPaths.size, (size) => {
+  if (size === 0 && mobileSelectMode.value) {
+    mobileSelectMode.value = false
+  }
+})
+
 function closePanel() {
   showPanel.value = null
   browserStore.selectFile(null)
@@ -1431,6 +1581,149 @@ async function startFetchLyrics(source) {
   const folderName = browserStore.selectedFolder?.name || ''
   // 백그라운드 실행 (await 없음 - 다른 페이지 이동해도 계속 실행)
   jobStore.startLrcJob({ files: targetFiles, source, apiMode: 'browser', routePath: '/browser', routeLabel: folderName, folderPath, sourceLabel })
+}
+
+// ── 마법사 ────────────────────────────────────────────────────
+const wizardPhase = ref('setup')        // 'setup' | 'running'
+const wizardSteps = ref([])             // 실행할 단계 배열
+const wizardCurrentStep = ref(-1)
+const wizardStepsDone = ref([])
+const wizardStepStatus = ref('')
+const wizardWaitingNext = ref(false)
+const wizardIsFinished = ref(false)
+
+// SpotifySearchDialog가 닫힐 때 마법사 '다음 단계' 처리
+let _wizardSpotifyResolve = null
+function onSpotifyDialogClose() {
+  showSpotifyDialog.value = false
+  if (_wizardSpotifyResolve) {
+    const fn = _wizardSpotifyResolve
+    _wizardSpotifyResolve = null
+    fn()
+  }
+}
+
+// RenameByTagsModal 완료 시 마법사 '다음 단계' 처리
+let _wizardRenameResolve = null
+async function onRenameForWizard(result) {
+  await onRenamed(result)
+  if (_wizardRenameResolve) {
+    const fn = _wizardRenameResolve
+    _wizardRenameResolve = null
+    fn()
+  }
+}
+
+// 마법사 대기 버튼 클릭 → 다음 단계 진행
+function onWizardNext() {
+  wizardWaitingNext.value = false
+}
+
+function onWizardClose() {
+  browserStore.wizardOpen = false
+  wizardPhase.value = 'setup'
+  wizardCurrentStep.value = -1
+  wizardStepsDone.value = []
+  wizardStepStatus.value = ''
+  wizardWaitingNext.value = false
+  wizardIsFinished.value = false
+  _wizardSpotifyResolve = null
+  _wizardRenameResolve = null
+}
+
+function onWizardStart(steps) {
+  wizardSteps.value = steps
+  wizardStepsDone.value = steps.map(() => false)
+  wizardCurrentStep.value = 0
+  wizardPhase.value = 'running'
+  wizardWaitingNext.value = false
+  wizardIsFinished.value = false
+  runWizard()
+}
+
+async function runWizard() {
+  for (let i = 0; i < wizardSteps.value.length; i++) {
+    wizardCurrentStep.value = i
+    wizardWaitingNext.value = false
+    wizardStepStatus.value = ''
+    const step = wizardSteps.value[i]
+
+    if (step.id === 'autoTag') {
+      // 인터랙티브: SpotifySearchDialog 열기 → 닫힐 때까지 대기
+      wizardStepStatus.value = t('wizard.statusRunning')
+      const providerKey = step.providerKey || (availableProviders.value[0]?.key ?? 'spotify')
+      selectedAutoProviders.value = [providerKey]
+      showSpotifyDialog.value = true
+      await new Promise(resolve => { _wizardSpotifyResolve = resolve })
+
+    } else if (step.id === 'lrc') {
+      // 자동: LRC 백그라운드 작업 시작 → 완료 대기
+      const source = step.lrcSource || 'alsong'
+      wizardStepStatus.value = t('wizard.statusRunning')
+      await new Promise(resolve => {
+        const targetFiles = browserStore.files
+        if (!targetFiles.length) { resolve(); return }
+        const sourceLabel = source === 'alsong' ? '알송' : source === 'bugs' ? 'Bugs' : 'LRCLIB'
+        const folderPath = browserStore.selectedFolder?.path || ''
+        const folderName = browserStore.selectedFolder?.name || ''
+        jobStore.startLrcJob({ files: targetFiles, source, apiMode: 'browser', routePath: '/browser', routeLabel: folderName, folderPath, sourceLabel })
+        // 완료 감지 watche
+        const unwatch = watch(() => jobStore.lrcJob?.done, (done) => {
+          if (done && jobStore.lrcJob?.folderPath === folderPath) {
+            unwatch()
+            resolve()
+          }
+        })
+      })
+
+    } else if (step.id === 'youtube') {
+      // 자동: YouTube 백그라운드 작업 시작 → 완료 대기
+      const allFiles = browserStore.files.filter(f => f.scanned !== false)
+      if (allFiles.length) {
+        wizardStepStatus.value = t('wizard.statusRunning')
+        const folderPath = browserStore.selectedFolder?.path || ''
+        const folderName = browserStore.selectedFolder?.name || ''
+        await new Promise(resolve => {
+          jobStore.startYoutubeJob({ files: allFiles, routePath: '/browser', routeLabel: folderName, folderPath })
+          const unwatch = watch(() => jobStore.youtubeJob?.done, (done) => {
+            if (done && jobStore.youtubeJob?.folderPath === folderPath) {
+              unwatch()
+              resolve()
+            }
+          })
+        })
+      }
+
+    } else if (step.id === 'rename') {
+      // 인터랙티브: RenameByTagsModal 열기 → 닫힐 때까지 대기
+      wizardStepStatus.value = t('wizard.statusRunning')
+      showRenameModal.value = true
+      wizardWaitingNext.value = true
+      await new Promise(resolve => { _wizardRenameResolve = resolve })
+
+    } else if (step.id === 'albumCard') {
+      // 자동: HTML 내보내기
+      const path = browserStore.selectedFolder?.path
+      if (path) {
+        wizardStepStatus.value = t('wizard.statusRunning')
+        exportingHtml.value = true
+        try {
+          await browseApi.exportFolderHtml(path, locale.value)
+          browserStore.invalidateFilesCache(path)
+          browserStore.loadFiles(path, true)
+        } catch { /* ignore */ } finally {
+          exportingHtml.value = false
+        }
+      }
+    }
+
+    wizardStepsDone.value[i] = true
+    wizardStepsDone.value = [...wizardStepsDone.value]
+  }
+
+  wizardCurrentStep.value = -1
+  wizardIsFinished.value = true
+  wizardWaitingNext.value = false
 }
 
 // LRC 완료 감지: 파일 목록 갱신 + 토스트

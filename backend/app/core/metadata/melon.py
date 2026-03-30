@@ -7,6 +7,7 @@ Melon 메타데이터 검색.
 """
 import logging
 import re
+import threading
 from typing import Optional
 from urllib.parse import quote
 
@@ -19,6 +20,7 @@ _BASE = "https://www.melon.com"
 _SEARCH_ALBUM_URL = f"{_BASE}/search/album/index.htm?q={{query}}"
 _SEARCH_TRACK_URL = f"{_BASE}/search/song/index.htm?q={{query}}"
 _ALBUM_URL        = f"{_BASE}/album/detail.htm?albumId={{album_id}}"
+_HOME_URL         = f"{_BASE}/"
 
 _HEADERS = {
     "User-Agent": (
@@ -30,6 +32,27 @@ _HEADERS = {
     "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8",
     "Referer": "https://www.melon.com/",
 }
+
+# ── 세션 싱글턴 (쿠키 유지) ──────────────────────────────────────────────────
+_session_lock = threading.Lock()
+_session: Optional[requests.Session] = None
+_session_warmed = False
+
+
+def _get_session() -> requests.Session:
+    """쿠키가 설정된 세션 반환. 최초 1회만 홈 방문."""
+    global _session, _session_warmed
+    with _session_lock:
+        if _session is None:
+            _session = requests.Session()
+            _session.headers.update(_HEADERS)
+        if not _session_warmed:
+            try:
+                _session.get(_HOME_URL, timeout=8)
+                _session_warmed = True
+            except Exception:
+                pass
+    return _session
 
 
 # ── 공통 헬퍼 ────────────────────────────────────────────────────────────────
@@ -71,8 +94,9 @@ def _artist_text(el) -> str:
 
 
 def _fetch(url: str) -> Optional[BeautifulSoup]:
+    s = _get_session()
     try:
-        resp = requests.get(url, headers=_HEADERS, timeout=15)
+        resp = s.get(url, timeout=15)
         resp.raise_for_status()
         resp.encoding = "utf-8"
         return BeautifulSoup(resp.text, "html.parser")

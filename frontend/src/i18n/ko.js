@@ -848,4 +848,21 @@ export default {
     errMismatch: '새 비밀번호가 일치하지 않습니다',
     errFailed: '비밀번호 변경에 실패했습니다',
   },
+  wizard: {
+    title: '마법사',
+    short: '마법사',
+    setupHint: '실행할 작업 순서를 지정하세요. 위아래 버튼으로 순서를 변경할 수 있습니다.',
+    start: '마법사 실행',
+    next: '다음 단계',
+    done: '모든 작업이 완료되었습니다!',
+    interactiveHint: '작업을 완료하면 다음 단계 버튼을 눌러주세요.',
+    statusRunning: '진행 중...',
+    step: {
+      autoTag: '자동 태그',
+      lrc: 'LRC 가사 검색',
+      youtube: 'YouTube MV 검색',
+      rename: '파일명 변경',
+      albumCard: '앨범 카드 생성',
+    },
+  },
 }

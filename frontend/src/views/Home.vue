@@ -125,8 +125,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useBrowserStore } from '../stores/browser.js'
 import LibraryPickerModal from '../components/LibraryPickerModal.vue'
@@ -134,6 +134,7 @@ import { configApi } from '../api/config.js'
 
 const { t, locale } = useI18n()
 const router = useRouter()
+const route = useRoute()
 const browserStore = useBrowserStore()
 
 const RECENT_KEY = 'eztag-recent-folders'
@@ -171,21 +172,24 @@ function clearRecent() {
 
 onMounted(loadRecent)
 
-function openFolder(item) {
+async function openFolder(item) {
   browserStore.selectFolder({ name: item.name, path: item.path }, [{ name: item.name, path: item.path }], item.area || null)
-  router.push('/browser')
+  await nextTick()
+  if (route.path !== '/browser') router.push('/browser')
 }
 
-function onSelectWorkspaceFolder(folder) {
+async function onSelectWorkspaceFolder(folder) {
   showWorkspacePicker.value = false
   browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'workspace')
-  router.push('/browser')
+  await nextTick()
+  if (route.path !== '/browser') router.push('/browser')
 }
 
-function onSelectLibraryFolder(folder) {
+async function onSelectLibraryFolder(folder) {
   showLibraryPicker.value = false
   browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'library')
-  router.push('/browser')
+  await nextTick()
+  if (route.path !== '/browser') router.push('/browser')
 }
 
 function formatTime(ts) {

@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.8.17-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.8.18-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -201,7 +201,8 @@ docker-compose pull && docker-compose up -d
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **v0.8.17** | 2026-03-30 | External tag source LRC search, album card description collapse/expand, card-style LRC source UI in settings, stricter YouTube MV search (official only), mini-player bitrate single-line fix |
+| **v0.8.18** | 2026-03-31 | Wizard (5-step sequential automation), mobile long-press multi-select, folder-level selection in recursive mode, external tag 403 bypass improvements |
+| v0.8.17 | 2026-03-30 | External tag source LRC search, album card description collapse/expand, card-style LRC source UI in settings, stricter YouTube MV search (official only), mini-player bitrate single-line fix |
 | v0.8.16 | 2026-03-29 | Expanded auto-tag search modes, album description save fix, cover art cache, single-render file list, HTML viewer mobile close button, album card filename format |
 | v0.8.15 | 2026-03-29 | Album description in HTML card, mobile bottom menu redesign, folder picker remembers last path |
 | v0.8.14 | 2026-03-29 | Background LRC/YouTube search, folder CRUD, recursive folder open, multiple improvements |

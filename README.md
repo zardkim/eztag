@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.8.17-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.8.18-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -201,7 +201,8 @@ docker-compose pull && docker-compose up -d
 
 | 버전 | 날짜 | 주요 변경사항 |
 |------|------|--------------|
-| **v0.8.17** | 2026-03-30 | 외부 태그 지원 LRC 검색 추가, 앨범카드 소개 접기/펼치기, 설정 LRC 카드형 UI, YouTube MV 검색 정확도 강화, 미니플레이어 비트레이트 1줄 표시 |
+| **v0.8.18** | 2026-03-31 | 마법사 기능(5단계 자동 순차 실행), 모바일 롱프레스 다중 선택, 재귀 모드 폴더 단위 선택, 외부 태그 403 우회 개선 |
+| v0.8.17 | 2026-03-30 | 외부 태그 지원 LRC 검색 추가, 앨범카드 소개 접기/펼치기, 설정 LRC 카드형 UI, YouTube MV 검색 정확도 강화, 미니플레이어 비트레이트 1줄 표시 |
 | v0.8.16 | 2026-03-29 | 자동태그 검색모드 확장, 앨범설명 저장 수정, 앨범아트 캐시, 파일목록 단일렌더, HTML뷰어 모바일 닫기버튼, 앨범카드 파일명 형식 변경 |
 | v0.8.15 | 2026-03-29 | 앨범설명 HTML카드 반영, 모바일 하단메뉴 개편, 폴더피커 마지막경로 기억 |
 | v0.8.14 | 2026-03-29 | 백그라운드 LRC/YouTube 검색, 폴더 CRUD, 재귀 폴더 열기 등 다수 개선 |

@@ -849,4 +849,21 @@ export default {
     errMismatch: 'New passwords do not match',
     errFailed: 'Failed to change password',
   },
+  wizard: {
+    title: 'Wizard',
+    short: 'Wizard',
+    setupHint: 'Set the order of operations. Use the up/down buttons to reorder.',
+    start: 'Run Wizard',
+    next: 'Next Step',
+    done: 'All tasks completed!',
+    interactiveHint: 'Complete the task, then click Next Step to continue.',
+    statusRunning: 'Running...',
+    step: {
+      autoTag: 'Auto Tag',
+      lrc: 'LRC Lyrics Search',
+      youtube: 'YouTube MV Search',
+      rename: 'Rename Files',
+      albumCard: 'Album Card',
+    },
+  },
 }

@@ -7,10 +7,11 @@ Apple Music 메타데이터 검색.
 import json
 import logging
 import re
+import threading
 from typing import Optional
 from urllib.parse import quote
 
-import requests  # _fetch 내부에서만 사용
+import requests
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 _BASE = "https://music.apple.com"
 _SEARCH_URL = f"{_BASE}/{{storefront}}/search?term={{query}}"
 _ALBUM_URL  = f"{_BASE}/{{storefront}}/album/{{album_id}}"
+_HOME_URL   = f"{_BASE}/"
 
 # 제거할 일반 장르 키워드 (다국어)
 _GENERIC_GENRES = {
@@ -33,15 +35,38 @@ _HEADERS = {
     ),
     "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Referer": "https://music.apple.com/",
 }
+
+# ── 세션 싱글턴 (쿠키 유지) ──────────────────────────────────────────────────
+_session_lock = threading.Lock()
+_session: Optional[requests.Session] = None
+_session_warmed = False
+
+
+def _get_session() -> requests.Session:
+    """쿠키가 설정된 세션 반환. 최초 1회만 홈 방문."""
+    global _session, _session_warmed
+    with _session_lock:
+        if _session is None:
+            _session = requests.Session()
+            _session.headers.update(_HEADERS)
+        if not _session_warmed:
+            try:
+                _session.get(_HOME_URL, timeout=8)
+                _session_warmed = True
+            except Exception:
+                pass
+    return _session
 
 
 # ── 공통 헬퍼 ────────────────────────────────────────────────────────────────
 
 def _fetch(url: str) -> Optional[BeautifulSoup]:
     """UTF-8 강제 디코딩으로 HTML 가져오기."""
+    s = _get_session()
     try:
-        resp = requests.get(url, headers=_HEADERS, timeout=15)
+        resp = s.get(url, timeout=15)
         resp.raise_for_status()
         # Apple Music은 Content-Type에 charset 없이 UTF-8 반환 → 강제 지정
         resp.encoding = "utf-8"

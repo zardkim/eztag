@@ -13,10 +13,13 @@
         <!-- 상위 폴더 이동 버튼 -->
         <button
           v-if="breadcrumb.length > 0"
-          class="shrink-0 w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors mr-0.5"
+          class="shrink-0 flex items-center justify-center px-1.5 h-6 gap-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors mr-1 font-medium"
           :title="$t('picker.parentFolder')"
           @click="goUp"
-        >↑</button>
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7M12 3v18"/></svg>
+          <span>{{ $t('picker.parentFolder') }}</span>
+        </button>
         <template v-for="(crumb, i) in breadcrumb" :key="crumb.path">
           <span v-if="i > 0" class="text-gray-300 dark:text-gray-700 shrink-0">/</span>
           <button
@@ -46,9 +49,18 @@
       <!-- 목록 -->
       <div v-else class="flex-1 overflow-y-auto min-h-0">
         <!-- 폴더 -->
-        <div v-if="filteredFolders.length > 0" class="px-4 pt-3 pb-1">
+        <div v-if="breadcrumb.length > 0 || filteredFolders.length > 0" class="px-4 pt-3 pb-1">
           <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">{{ $t('picker.folderSection') }}</p>
           <div class="space-y-0.5">
+            <!-- 상위폴더 항목 -->
+            <div
+              v-if="breadcrumb.length > 0"
+              class="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+              @click="goUp"
+            >
+              <span class="text-gray-400 shrink-0 text-base">↩</span>
+              <span class="text-sm text-gray-500 dark:text-gray-400">.. {{ $t('picker.parentFolder') }}</span>
+            </div>
             <div
               v-for="folder in filteredFolders"
               :key="folder.path"

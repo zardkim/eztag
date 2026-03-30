@@ -355,7 +355,24 @@
         <span class="text-[10px] font-medium">{{ $t('nav.more') }}</span>
       </button>
 
-      <!-- ④ 설정 (주황색) -->
+      <!-- ④ 마법사 (인디고) -->
+      <button
+        class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
+        :class="browserStore.wizardOpen
+          ? 'text-indigo-500 dark:text-indigo-400'
+          : 'text-gray-400 dark:text-gray-500'"
+        @click="mobileUserOpen = false; mobileFolderMenuOpen = false; if (route.path !== '/browser') router.push('/browser'); browserStore.wizardOpen = true"
+      >
+        <div class="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
+          :class="browserStore.wizardOpen
+            ? 'bg-indigo-50 dark:bg-indigo-900/30'
+            : ''">
+          <span class="text-xl leading-none">🪄</span>
+        </div>
+        <span class="text-[10px] font-medium">{{ $t('wizard.short') }}</span>
+      </button>
+
+      <!-- ⑤ 설정 (주황색) -->
       <button
         class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
         :class="route.path === '/settings' && !mobileUserOpen
@@ -498,21 +515,29 @@ onUnmounted(() => {
 const RECENT_FOLDERS_KEY = 'eztag-recent-folders'
 const LAST_FOLDER_KEY = 'eztag-last-folder'
 
-function saveRecentFolder(folder, area) {
+async function saveRecentFolder(folder, area) {
   try {
-    const list = JSON.parse(localStorage.getItem(RECENT_FOLDERS_KEY) || '[]')
-    const filtered = list.filter(f => f.path !== folder.path)
+    // 저장 직전 서버 최신 목록을 조회하여 기기 간 기록이 덮어쓰이지 않도록 병합
+    let base = []
+    try {
+      const { data } = await configApi.get()
+      const raw = data.recent_folders?.value
+      if (raw) base = JSON.parse(raw)
+    } catch { /* 서버 조회 실패 시 로컬 fallback */ }
+    if (!base.length) {
+      base = JSON.parse(localStorage.getItem(RECENT_FOLDERS_KEY) || '[]')
+    }
+    const filtered = base.filter(f => f.path !== folder.path)
     const updated = [{ name: folder.name, path: folder.path, area: area || null, timestamp: Date.now() }, ...filtered].slice(0, 15)
     localStorage.setItem(RECENT_FOLDERS_KEY, JSON.stringify(updated))
-    // 서버에도 저장 (기기 간 동기화)
     configApi.update({ recent_folders: JSON.stringify(updated) }).catch(() => {})
   } catch { /* ignore */ }
 }
 
 // 폴더 선택 시 최근 목록 + 마지막 열기 폴더 저장
-watch(() => browserStore.selectedFolder, (folder) => {
+watch(() => browserStore.selectedFolder, async (folder) => {
   if (folder) {
-    saveRecentFolder(folder, browserStore.currentArea)
+    await saveRecentFolder(folder, browserStore.currentArea)
     // 마지막 열기 폴더 저장 (새로고침 후 복원용)
     try {
       localStorage.setItem(LAST_FOLDER_KEY, JSON.stringify({
@@ -606,6 +631,11 @@ async function loadAppConfig() {
   try {
     const { data } = await configApi.get()
     appConfigStore.apply(data.config)
+    // 앱 시작 시 서버 최근 폴더 목록으로 로컬 갱신 (초기 동기화)
+    try {
+      const serverRaw = data.recent_folders?.value
+      if (serverRaw) localStorage.setItem(RECENT_FOLDERS_KEY, serverRaw)
+    } catch { /* ignore */ }
     document.title = document.title.replace(/ - .+$/, ` - ${appConfigStore.browserTitle}`)
     // 시작 폴더 자동 열기 (폴더가 아직 선택되지 않은 경우만)
     if (!browserStore.selectedFolder) {
