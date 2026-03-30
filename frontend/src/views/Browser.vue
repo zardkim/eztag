@@ -938,8 +938,10 @@
       :waiting-next="wizardWaitingNext"
       :is-finished="wizardIsFinished"
       :phase="wizardPhase"
+      :hidden="wizardHidden"
       @start="onWizardStart"
       @next-step="onWizardNext"
+      @skip-step="onWizardSkip"
       @close="onWizardClose"
     />
   </div>
@@ -1589,6 +1591,7 @@ const wizardSteps = ref([])             // 실행할 단계 배열
 const wizardCurrentStep = ref(-1)
 const wizardStepsDone = ref([])
 const wizardStepStatus = ref('')
+const wizardHidden = ref(false)         // SpotifyDialog 열릴 때 마법사 숨김
 const wizardWaitingNext = ref(false)
 const wizardIsFinished = ref(false)
 
@@ -1596,9 +1599,11 @@ const wizardIsFinished = ref(false)
 let _wizardSpotifyResolve = null
 function onSpotifyDialogClose() {
   showSpotifyDialog.value = false
+  wizardHidden.value = false
   if (_wizardSpotifyResolve) {
     const fn = _wizardSpotifyResolve
     _wizardSpotifyResolve = null
+    _wizardCurrentResolve = null
     fn()
   }
 }
@@ -1610,6 +1615,7 @@ async function onRenameForWizard(result) {
   if (_wizardRenameResolve) {
     const fn = _wizardRenameResolve
     _wizardRenameResolve = null
+    _wizardCurrentResolve = null
     fn()
   }
 }
@@ -1617,6 +1623,26 @@ async function onRenameForWizard(result) {
 // 마법사 대기 버튼 클릭 → 다음 단계 진행
 function onWizardNext() {
   wizardWaitingNext.value = false
+}
+
+// 마법사 현재 단계 건너뛰기
+let _wizardCurrentResolve = null
+function onWizardSkip() {
+  if (showSpotifyDialog.value) {
+    showSpotifyDialog.value = false
+    wizardHidden.value = false
+    _wizardSpotifyResolve = null
+  }
+  if (showRenameModal.value) {
+    showRenameModal.value = false
+    _wizardRenameResolve = null
+  }
+  wizardWaitingNext.value = false
+  if (_wizardCurrentResolve) {
+    const fn = _wizardCurrentResolve
+    _wizardCurrentResolve = null
+    fn()
+  }
 }
 
 function onWizardClose() {
@@ -1627,8 +1653,10 @@ function onWizardClose() {
   wizardStepStatus.value = ''
   wizardWaitingNext.value = false
   wizardIsFinished.value = false
+  wizardHidden.value = false
   _wizardSpotifyResolve = null
   _wizardRenameResolve = null
+  _wizardCurrentResolve = null
 }
 
 function onWizardStart(steps) {
@@ -1649,28 +1677,32 @@ async function runWizard() {
     const step = wizardSteps.value[i]
 
     if (step.id === 'autoTag') {
-      // 인터랙티브: SpotifySearchDialog 열기 → 닫힐 때까지 대기
+      // 인터랙티브: SpotifySearchDialog 열기 → 닫힐 때까지 대기 (마법사 다이얼로그 숨김)
       wizardStepStatus.value = t('wizard.statusRunning')
       const providerKey = step.providerKey || (availableProviders.value[0]?.key ?? 'spotify')
       selectedAutoProviders.value = [providerKey]
+      wizardHidden.value = true
       showSpotifyDialog.value = true
-      await new Promise(resolve => { _wizardSpotifyResolve = resolve })
+      await new Promise(resolve => { _wizardSpotifyResolve = resolve; _wizardCurrentResolve = resolve })
+      _wizardCurrentResolve = null
 
     } else if (step.id === 'lrc') {
       // 자동: LRC 백그라운드 작업 시작 → 완료 대기
       const source = step.lrcSource || 'alsong'
       wizardStepStatus.value = t('wizard.statusRunning')
       await new Promise(resolve => {
+        _wizardCurrentResolve = resolve
         const targetFiles = browserStore.files
-        if (!targetFiles.length) { resolve(); return }
+        if (!targetFiles.length) { _wizardCurrentResolve = null; resolve(); return }
         const sourceLabel = source === 'alsong' ? '알송' : source === 'bugs' ? 'Bugs' : 'LRCLIB'
         const folderPath = browserStore.selectedFolder?.path || ''
         const folderName = browserStore.selectedFolder?.name || ''
         jobStore.startLrcJob({ files: targetFiles, source, apiMode: 'browser', routePath: '/browser', routeLabel: folderName, folderPath, sourceLabel })
-        // 완료 감지 watche
+        // 완료 감지
         const unwatch = watch(() => jobStore.lrcJob?.done, (done) => {
           if (done && jobStore.lrcJob?.folderPath === folderPath) {
             unwatch()
+            _wizardCurrentResolve = null
             resolve()
           }
         })
@@ -1684,10 +1716,12 @@ async function runWizard() {
         const folderPath = browserStore.selectedFolder?.path || ''
         const folderName = browserStore.selectedFolder?.name || ''
         await new Promise(resolve => {
+          _wizardCurrentResolve = resolve
           jobStore.startYoutubeJob({ files: allFiles, routePath: '/browser', routeLabel: folderName, folderPath })
           const unwatch = watch(() => jobStore.youtubeJob?.done, (done) => {
             if (done && jobStore.youtubeJob?.folderPath === folderPath) {
               unwatch()
+              _wizardCurrentResolve = null
               resolve()
             }
           })
@@ -1699,7 +1733,8 @@ async function runWizard() {
       wizardStepStatus.value = t('wizard.statusRunning')
       showRenameModal.value = true
       wizardWaitingNext.value = true
-      await new Promise(resolve => { _wizardRenameResolve = resolve })
+      await new Promise(resolve => { _wizardRenameResolve = resolve; _wizardCurrentResolve = resolve })
+      _wizardCurrentResolve = null
 
     } else if (step.id === 'albumCard') {
       // 자동: HTML 내보내기

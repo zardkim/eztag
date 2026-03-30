@@ -6,7 +6,8 @@
       enter-from-class="opacity-0"
       leave-to-class="opacity-0"
     >
-      <div v-if="modelValue" class="fixed inset-0 z-[300] flex items-end sm:items-center justify-center" @click.self="tryClose">
+      <div v-if="modelValue">
+      <div v-show="!hidden" class="fixed inset-0 z-[300] flex items-end sm:items-center justify-center" @click.self="tryClose">
         <div class="absolute inset-0 bg-black/50" @click="tryClose" />
         <div class="relative bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[90vh] flex flex-col" @click.stop>
           <!-- 헤더 -->
@@ -26,7 +27,8 @@
               <div
                 v-for="(step, i) in steps"
                 :key="step.id"
-                class="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-xl px-3 py-2.5"
+                class="flex items-center gap-2 rounded-xl px-3 py-2.5 transition-colors"
+                :class="step.enabled !== false ? 'bg-gray-50 dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-800/30 opacity-50'"
               >
                 <!-- 번호 -->
                 <span class="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-[11px] font-bold flex items-center justify-center shrink-0">{{ i + 1 }}</span>
@@ -35,7 +37,7 @@
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ t('wizard.step.' + step.id) }}</p>
                   <!-- 자동태그: 소스 선택 -->
-                  <div v-if="step.id === 'autoTag'" class="mt-1.5 flex flex-wrap gap-1">
+                  <div v-if="step.id === 'autoTag' && step.enabled !== false" class="mt-1.5 flex flex-wrap gap-1">
                     <button
                       v-for="p in availableProviders"
                       :key="p.key"
@@ -50,7 +52,7 @@
                     </button>
                   </div>
                   <!-- LRC: 소스 선택 -->
-                  <div v-if="step.id === 'lrc'" class="mt-1.5 flex gap-1">
+                  <div v-if="step.id === 'lrc' && step.enabled !== false" class="mt-1.5 flex gap-1">
                     <button
                       v-for="src in lrcSources"
                       :key="src.key"
@@ -62,6 +64,17 @@
                     >{{ src.label }}</button>
                   </div>
                 </div>
+                <!-- 활성/비활성 토글 -->
+                <button
+                  class="shrink-0 w-9 h-5 rounded-full transition-colors relative"
+                  :class="step.enabled !== false ? 'bg-indigo-500' : 'bg-gray-300 dark:bg-gray-600'"
+                  @click="step.enabled = step.enabled === false ? true : false"
+                >
+                  <span
+                    class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all"
+                    :class="step.enabled !== false ? 'left-[18px]' : 'left-0.5'"
+                  />
+                </button>
                 <!-- 위/아래 버튼 -->
                 <div class="flex flex-col gap-0.5 shrink-0">
                   <button
@@ -81,7 +94,8 @@
             <!-- 실행 버튼 -->
             <div class="shrink-0 px-5 pb-6 pt-3 border-t border-gray-100 dark:border-gray-800">
               <button
-                class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors"
+                class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl transition-colors"
+                :disabled="enabledCount === 0"
                 @click="startWizard"
               >🪄 {{ t('wizard.start') }}</button>
             </div>
@@ -93,7 +107,7 @@
               <!-- 단계별 상태 -->
               <div class="space-y-2 mb-4">
                 <div
-                  v-for="(step, i) in steps"
+                  v-for="(step, i) in activeSteps"
                   :key="step.id"
                   class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors"
                   :class="stepStateClass(i)"
@@ -116,13 +130,27 @@
                 />
               </div>
 
-              <!-- 인터랙티브 단계: 다음 단계 버튼 -->
-              <div v-if="waitingNext" class="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl px-4 py-3 text-center">
-                <p class="text-xs text-indigo-600 dark:text-indigo-400 mb-2">{{ t('wizard.interactiveHint') }}</p>
+              <!-- 인터랙티브 단계: 완료 + 건너뛰기 버튼 -->
+              <div v-if="waitingNext && !isFinished" class="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl px-4 py-3 text-center space-y-2">
+                <p class="text-xs text-indigo-600 dark:text-indigo-400">{{ t('wizard.interactiveHint') }}</p>
+                <div class="flex gap-2 justify-center">
+                  <button
+                    class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors"
+                    @click="$emit('nextStep')"
+                  >{{ t('wizard.next') }} ▶</button>
+                  <button
+                    class="px-5 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-sm text-gray-600 dark:text-gray-300 rounded-xl transition-colors"
+                    @click="$emit('skipStep')"
+                  >{{ t('wizard.skip') }}</button>
+                </div>
+              </div>
+
+              <!-- 진행 중 단계: 건너뛰기 버튼 -->
+              <div v-else-if="!isFinished && currentStep >= 0" class="text-center">
                 <button
-                  class="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors"
-                  @click="$emit('nextStep')"
-                >{{ t('wizard.next') }} ▶</button>
+                  class="px-4 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs text-gray-500 dark:text-gray-400 rounded-lg transition-colors"
+                  @click="$emit('skipStep')"
+                >{{ t('wizard.skip') }}</button>
               </div>
 
               <!-- 완료 -->
@@ -137,6 +165,7 @@
             </div>
           </template>
         </div>
+      </div>
       </div>
     </Transition>
   </Teleport>
@@ -157,9 +186,10 @@ const props = defineProps({
   waitingNext: Boolean,
   isFinished: Boolean,
   phase: { type: String, default: 'setup' },  // 'setup' | 'running'
+  hidden: Boolean,
 })
 
-const emit = defineEmits(['update:modelValue', 'start', 'nextStep', 'close'])
+const emit = defineEmits(['update:modelValue', 'start', 'nextStep', 'skipStep', 'close'])
 
 const lrcSources = [
   { key: 'alsong', label: '알송' },
@@ -167,15 +197,44 @@ const lrcSources = [
   { key: 'lrclib', label: 'LRCLIB' },
 ]
 
+const STORAGE_KEY = 'eztag-wizard-steps'
+
 const DEFAULT_STEPS = [
-  { id: 'autoTag',  icon: '🏷',  providerKey: '' },
-  { id: 'lrc',      icon: '🎵',  lrcSource: 'alsong' },
-  { id: 'youtube',  icon: '▶️' },
-  { id: 'rename',   icon: '🔤' },
-  { id: 'albumCard',icon: '🎴' },
+  { id: 'autoTag',   icon: '🏷',  providerKey: '', enabled: true },
+  { id: 'lrc',       icon: '🎵',  lrcSource: 'alsong', enabled: true },
+  { id: 'youtube',   icon: '▶️',  enabled: true },
+  { id: 'rename',    icon: '🔤',  enabled: true },
+  { id: 'albumCard', icon: '🎴',  enabled: true },
 ]
 
-const steps = ref(DEFAULT_STEPS.map(s => ({ ...s })))
+// localStorage에서 저장된 단계 순서/설정 로드 (없으면 DEFAULT_STEPS)
+function loadSteps() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
+    if (!Array.isArray(saved)) return DEFAULT_STEPS.map(s => ({ ...s }))
+    // 저장된 순서 기준으로 재조합, DEFAULT에 없는 id 제거, DEFAULT에만 있는 id 뒤에 추가
+    const result = []
+    for (const s of saved) {
+      const def = DEFAULT_STEPS.find(d => d.id === s.id)
+      if (def) result.push({ ...def, enabled: s.enabled ?? true, providerKey: s.providerKey ?? def.providerKey, lrcSource: s.lrcSource ?? def.lrcSource })
+    }
+    for (const def of DEFAULT_STEPS) {
+      if (!result.find(r => r.id === def.id)) result.push({ ...def })
+    }
+    return result
+  } catch { return DEFAULT_STEPS.map(s => ({ ...s })) }
+}
+
+function saveSteps(stepList) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(
+    stepList.map(s => ({ id: s.id, enabled: s.enabled ?? true, providerKey: s.providerKey, lrcSource: s.lrcSource }))
+  ))
+}
+
+const steps = ref(loadSteps())
+const activeSteps = ref([])  // 실행 중인 단계 (enabled만)
+
+const enabledCount = computed(() => steps.value.filter(s => s.enabled !== false).length)
 
 // 공급자 목록 업데이트 시 기본 providerKey 설정
 watch(() => props.availableProviders, (providers) => {
@@ -187,19 +246,19 @@ watch(() => props.availableProviders, (providers) => {
   }
 }, { immediate: true })
 
-// 다이얼로그가 열릴 때 setup 상태로 리셋 (단, 실행 중이면 유지)
+// 다이얼로그가 열릴 때 저장된 설정 불러오기 (실행 중이면 유지)
 watch(() => props.modelValue, (v) => {
   if (v && props.phase === 'setup') {
-    steps.value = DEFAULT_STEPS.map(s => ({ ...s }))
+    steps.value = loadSteps()
     if (props.availableProviders.length > 0) {
       const autoTagStep = steps.value.find(s => s.id === 'autoTag')
-      if (autoTagStep) autoTagStep.providerKey = props.availableProviders[0].key
+      if (autoTagStep && !autoTagStep.providerKey) autoTagStep.providerKey = props.availableProviders[0].key
     }
   }
 })
 
 const progressPct = computed(() => {
-  const total = steps.value.length
+  const total = activeSteps.value.length || steps.value.filter(s => s.enabled !== false).length
   const done = props.stepsDone.filter(Boolean).length
   if (props.isFinished) return 100
   if (props.currentStep < 0) return 0
@@ -215,7 +274,10 @@ function moveStep(i, dir) {
 }
 
 function startWizard() {
-  emit('start', steps.value.map(s => ({ ...s })))
+  saveSteps(steps.value)
+  const enabled = steps.value.filter(s => s.enabled !== false)
+  activeSteps.value = enabled.map(s => ({ ...s }))
+  emit('start', activeSteps.value)
 }
 
 function tryClose() {
@@ -232,6 +294,6 @@ function stepStateClass(i) {
 function stepStateIcon(i) {
   if (props.stepsDone[i]) return '✅'
   if (props.currentStep === i) return '⏳'
-  return steps.value[i].icon
+  return activeSteps.value[i]?.icon ?? ''
 }
 </script>

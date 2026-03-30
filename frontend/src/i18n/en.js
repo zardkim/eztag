@@ -855,6 +855,7 @@ export default {
     setupHint: 'Set the order of operations. Use the up/down buttons to reorder.',
     start: 'Run Wizard',
     next: 'Next Step',
+    skip: 'Skip',
     done: 'All tasks completed!',
     interactiveHint: 'Complete the task, then click Next Step to continue.',
     statusRunning: 'Running...',

@@ -854,6 +854,7 @@ export default {
     setupHint: '실행할 작업 순서를 지정하세요. 위아래 버튼으로 순서를 변경할 수 있습니다.',
     start: '마법사 실행',
     next: '다음 단계',
+    skip: '건너뛰기',
     done: '모든 작업이 완료되었습니다!',
     interactiveHint: '작업을 완료하면 다음 단계 버튼을 눌러주세요.',
     statusRunning: '진행 중...',
