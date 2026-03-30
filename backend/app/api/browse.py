@@ -418,7 +418,7 @@ def get_files(
             elif ext == ".html":
                 stat = item.stat()
                 # eztag 생성 파일 감지: 파일명 패턴 또는 generator 메타태그 확인
-                is_eztag = item.name.startswith("[Info]") or item.name.startswith("[앨범카드]")
+                is_eztag = item.name.startswith("[Info]") or item.name.startswith("[앨범카드]") or item.name.startswith("[AlbumCard]")
                 if not is_eztag:
                     try:
                         with item.open("r", encoding="utf-8", errors="ignore") as _hf:
@@ -1147,6 +1147,9 @@ def _do_fetch_lrc(source: str, file_path, artist: str, title: str, album: str) -
     if source == "lrclib":
         from app.core.metadata.lrclib import fetch_lrc_for_file
         return fetch_lrc_for_file(str(file_path), artist, title, album)
+    elif source == "alsong":
+        from app.core.metadata.alsong import fetch_lrc_for_file
+        return fetch_lrc_for_file(str(file_path), artist, title)
     else:
         from app.core.metadata.bugs_lyrics import fetch_lrc_for_file
         return fetch_lrc_for_file(str(file_path), artist, title)
@@ -1318,7 +1321,7 @@ def get_library_audio_files(
 # ── 라이브러리 폴더 LRC 가져오기 ─────────────────────────────
 class LibraryFetchLyricsRequest(BaseModel):
     paths: list[str]
-    source: str = "bugs"  # "bugs" | "lrclib"
+    source: str = "bugs"  # "bugs" | "lrclib" | "alsong"
 
 
 @router.post("/library-fetch-lyrics")
@@ -1328,11 +1331,6 @@ def library_fetch_lyrics(
     current_user=Depends(get_current_user),
 ):
     """이동할 폴더 파일에 대한 LRC 검색 (이동할 폴더 경로 허용)."""
-    if req.source == "lrclib":
-        from app.core.metadata.lrclib import fetch_lrc_for_file
-    else:
-        from app.core.metadata.bugs_lyrics import fetch_lrc_for_file
-
     results = []
     for path_str in req.paths:
         try:
@@ -1353,10 +1351,7 @@ def library_fetch_lyrics(
             if _is_instrumental(title):
                 results.append({"path": path_str, "status": "not_found", "message": "반주/경음악 건너뜀"})
                 continue
-            if req.source == "lrclib":
-                result = fetch_lrc_for_file(str(p), artist, title, album)
-            else:
-                result = fetch_lrc_for_file(str(p), artist, title)
+            result = _do_fetch_lrc(req.source, p, artist, title, album)
             results.append({"path": path_str, **result})
         except HTTPException:
             results.append({"path": path_str, "status": "error", "message": "허용되지 않는 경로입니다"})
@@ -1979,7 +1974,8 @@ def export_folder_html_save(
     )
 
     # 폴더에 파일 저장
-    filename = _safe_filename(f"[앨범카드] {album_artist or p.name} - {album_title}") + ".html"
+    prefix = "[AlbumCard]" if lang == "en" else "[앨범카드]"
+    filename = _safe_filename(f"{prefix} {album_artist or p.name} - {album_title}") + ".html"
     out_path = p / filename
     try:
         out_path.write_text(html, encoding="utf-8")

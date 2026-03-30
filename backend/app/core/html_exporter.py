@@ -241,10 +241,26 @@ body {
 /* ── 앨범 소개 (PC) ── */
 .desc-box {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: 12px; padding: 20px 24px; margin-bottom: 24px;
+  border-radius: 12px; padding: 20px 24px; margin-bottom: 8px;
   font-size: 13px; color: var(--text2); line-height: 1.8;
   white-space: pre-wrap; word-break: break-word;
 }
+.desc-box.collapsed {
+  max-height: 18em; overflow: hidden; position: relative;
+}
+.desc-box.collapsed::after {
+  content: ""; position: absolute; bottom: 0; left: 0; right: 0;
+  height: 60px;
+  background: linear-gradient(transparent, var(--surface));
+  border-radius: 0 0 12px 12px;
+}
+.desc-toggle-btn {
+  display: block; width: 100%; padding: 8px; margin-bottom: 20px;
+  background: none; border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text3); font-size: 12px; cursor: pointer; text-align: center;
+  transition: color 0.15s, border-color 0.15s;
+}
+.desc-toggle-btn:hover { color: var(--text2); border-color: var(--text3); }
 
 /* ── 앨범 소개 (모바일, 접기/펼치기) ── */
 details.desc-details {
@@ -594,6 +610,8 @@ _I18N: dict[str, dict[str, str]] = {
         "type_single":     "싱글",
         "type_ep":         "EP",
         "type_album":      "정규앨범",
+        "show_more":       "더 보기",
+        "show_less":       "접기",
     },
     "en": {
         "lang":            "en",
@@ -625,6 +643,8 @@ _I18N: dict[str, dict[str, str]] = {
         "type_single":     "Single",
         "type_ep":         "EP",
         "type_album":      "Album",
+        "show_more":       "Show more",
+        "show_less":       "Show less",
     },
 }
 
@@ -712,16 +732,34 @@ def build_html(
     desc_html_mobile = ""
     if description and description.strip():
         desc_escaped = _safe(description).replace("\n", "<br>")
-        desc_html_pc = (
-            f'  <div class="section-title">{i18n["album_intro"]}</div>\n'
-            f'  <div class="desc-box desc-box-pc">{desc_escaped}</div>\n'
-        )
-        desc_html_mobile = (
-            f'  <details class="desc-details">\n'
-            f'    <summary>{i18n["album_intro"]}</summary>\n'
-            f'    <div class="desc-box">{desc_escaped}</div>\n'
-            f'  </details>\n'
-        )
+        line_count = description.count("\n") + 1
+        if line_count >= 10:
+            # PC: collapsed + 더 보기 버튼
+            desc_html_pc = (
+                f'  <div class="section-title">{i18n["album_intro"]}</div>\n'
+                f'  <div class="desc-box desc-box-pc collapsed" id="desc-box-pc">{desc_escaped}</div>\n'
+                f'  <button class="desc-toggle-btn desc-box-pc" id="desc-toggle-btn"'
+                f' onclick="(function(){{var b=document.getElementById(\'desc-box-pc\');var t=document.getElementById(\'desc-toggle-btn\');if(b.classList.contains(\'collapsed\')){{b.classList.remove(\'collapsed\');t.textContent=\'{i18n["show_less"]}\'}}else{{b.classList.add(\'collapsed\');t.textContent=\'{i18n["show_more"]}\'}}}})()">▼ {i18n["show_more"]}</button>\n'
+            )
+            # Mobile: details 접기/펼치기
+            desc_html_mobile = (
+                f'  <details class="desc-details">\n'
+                f'    <summary>{i18n["album_intro"]}</summary>\n'
+                f'    <div class="desc-box">{desc_escaped}</div>\n'
+                f'  </details>\n'
+            )
+        else:
+            # 짧은 소개 — 항상 표시
+            desc_html_pc = (
+                f'  <div class="section-title">{i18n["album_intro"]}</div>\n'
+                f'  <div class="desc-box desc-box-pc">{desc_escaped}</div>\n'
+            )
+            desc_html_mobile = (
+                f'  <details class="desc-details">\n'
+                f'    <summary>{i18n["album_intro"]}</summary>\n'
+                f'    <div class="desc-box">{desc_escaped}</div>\n'
+                f'  </details>\n'
+            )
 
     # 옵션 컬럼 존재 여부
     has_youtube          = any(t.get("youtube_url") for t in tracks)

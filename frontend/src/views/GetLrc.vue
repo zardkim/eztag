@@ -81,6 +81,11 @@
                 :disabled="!!runningFolder || !folderStats[folder.path]"
                 @click="startFolderLrc(folder.path, 'lrclib')"
               >🎵 LRCLIB</button>
+              <button
+                class="px-2.5 py-1 text-xs rounded-lg bg-teal-100 dark:bg-teal-900/30 hover:bg-teal-200 dark:hover:bg-teal-900/50 text-teal-700 dark:text-teal-300 transition-colors disabled:opacity-50 flex items-center gap-1"
+                :disabled="!!runningFolder || !folderStats[folder.path]"
+                @click="startFolderLrc(folder.path, 'alsong')"
+              ><img src="/logo/alsong.jpg" class="w-4 h-4 rounded object-cover shrink-0" alt="알송" /> 알송</button>
             </div>
           </div>
 
@@ -206,7 +211,7 @@ async function startFolderLrc(folderPath, source) {
   if (!files.length) { toastStore.success('LRC가 이미 모두 있습니다.'); return }
 
   const paths = files.map(f => f.path)
-  const sourceLabel = source === 'bugs' ? 'Bugs' : 'LRCLIB'
+  const sourceLabel = source === 'bugs' ? 'Bugs' : source === 'alsong' ? '알송' : 'LRCLIB'
   // 백그라운드 실행 (await 없음 - 다른 페이지 이동해도 계속 실행)
   jobStore.startLrcJob({
     files: paths,

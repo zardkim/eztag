@@ -52,26 +52,18 @@ def _title_matches(track_title: str, video_title: str, artist: str = "", channel
     if not words:
         return False  # 제목이 너무 짧으면 거부
 
-    matched = sum(1 for w in words if w in norm_video)
-    # 1-2 단어: 전부 매치, 3단어 이상: 80% 이상 매치
-    if len(words) <= 2:
-        threshold = len(words)
-    else:
-        threshold = max(1, round(len(words) * 0.8))
-
-    if matched < threshold:
+    # 모든 핵심 단어가 영상 제목에 포함되어야 함 (100% 매치)
+    if not all(w in norm_video for w in words):
         return False
 
-    # 아티스트 이름이 영상 제목 또는 채널명에 포함되어야 함
+    # 아티스트 이름이 영상 제목 또는 채널명에 포함되어야 함 (전체 아티스트명 단위 검사)
     if artist:
         norm_artist = _normalize(artist)
-        artist_words = [w for w in norm_artist.split() if len(w) >= 2]
         norm_channel = _normalize(channel)
-        if artist_words:
-            in_title = any(w in norm_video for w in artist_words)
-            in_channel = any(w in norm_channel for w in artist_words) if channel else False
-            if not in_title and not in_channel:
-                return False
+        in_title = norm_artist in norm_video
+        in_channel = norm_artist in norm_channel if channel else False
+        if not in_title and not in_channel:
+            return False
 
     return True
 
@@ -134,5 +126,5 @@ def search_music_video(artist: str, title: str, api_key: str, max_results: int =
         else:
             others.append(entry)
 
-    # 공식 MV를 앞에, 나머지를 뒤에, 최대 5개
-    return (official + others)[:5]
+    # 공식 MV만 반환, 최대 5개
+    return official[:5]

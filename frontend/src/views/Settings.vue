@@ -384,24 +384,50 @@
           </section>
           -->
 
-          <!-- LRC 소스 우선순위 -->
+          <!-- LRC 소스 기본설정 -->
           <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm mt-4">
             <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">🎵 {{ $t('settings.lrcSource.title') }}</h3>
             <p class="text-xs text-gray-500 mb-4">{{ $t('settings.lrcSource.desc') }}</p>
-            <div class="space-y-3">
-              <ConfigRow :label="$t('settings.lrcSource.primary')" :desc="$t('settings.lrcSource.primaryDesc')">
-                <select v-model="form.lrc_primary_source" class="field w-40" @change="saveLrcSources">
-                  <option value="bugs">🎵 Bugs 뮤직 (한국어)</option>
-                  <option value="lrclib">🌐 LRCLIB.net (국제)</option>
-                </select>
-              </ConfigRow>
-              <ConfigRow :label="$t('settings.lrcSource.fallback')" :desc="$t('settings.lrcSource.fallbackDesc')">
-                <select v-model="form.lrc_fallback_source" class="field w-40" @change="saveLrcSources">
-                  <option value="none">{{ $t('settings.lrcSource.fallbackNone') }}</option>
-                  <option value="bugs">🎵 Bugs 뮤직 (한국어)</option>
-                  <option value="lrclib">🌐 LRCLIB.net (국제)</option>
-                </select>
-              </ConfigRow>
+            <div class="grid grid-cols-3 gap-3">
+              <!-- 알송 -->
+              <button
+                class="flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all"
+                :class="form.lrc_primary_source === 'alsong'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'"
+                @click="form.lrc_primary_source = 'alsong'; saveLrcSources()"
+              >
+                <img src="/logo/alsong.jpg" class="w-10 h-10 rounded-lg object-cover" alt="알송" />
+                <span class="text-xs font-medium text-gray-900 dark:text-white">알송</span>
+                <span class="text-[10px] text-gray-400">{{ $t('settings.lrcSource.regionKorean') }}</span>
+                <span v-if="form.lrc_primary_source === 'alsong'" class="text-[10px] text-blue-500 font-semibold">{{ $t('settings.lrcSource.selected') }}</span>
+              </button>
+              <!-- Bugs -->
+              <button
+                class="flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all"
+                :class="form.lrc_primary_source === 'bugs'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'"
+                @click="form.lrc_primary_source = 'bugs'; saveLrcSources()"
+              >
+                <img src="/logo/bugs.jpg" class="w-10 h-10 rounded-lg object-cover" alt="Bugs" />
+                <span class="text-xs font-medium text-gray-900 dark:text-white">Bugs</span>
+                <span class="text-[10px] text-gray-400">{{ $t('settings.lrcSource.regionKorean') }}</span>
+                <span v-if="form.lrc_primary_source === 'bugs'" class="text-[10px] text-blue-500 font-semibold">{{ $t('settings.lrcSource.selected') }}</span>
+              </button>
+              <!-- LRCLIB -->
+              <button
+                class="flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all"
+                :class="form.lrc_primary_source === 'lrclib'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'"
+                @click="form.lrc_primary_source = 'lrclib'; saveLrcSources()"
+              >
+                <div class="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-2xl">📄</div>
+                <span class="text-xs font-medium text-gray-900 dark:text-white">LRCLIB</span>
+                <span class="text-[10px] text-gray-400">{{ $t('settings.lrcSource.regionGlobal') }}</span>
+                <span v-if="form.lrc_primary_source === 'lrclib'" class="text-[10px] text-blue-500 font-semibold">{{ $t('settings.lrcSource.selected') }}</span>
+              </button>
             </div>
           </section>
         </template>
@@ -727,8 +753,8 @@ const form = reactive({
   melon_enabled: true,
   youtube_enabled: false,
   youtube_api_key: '',
-  lrc_primary_source: 'bugs',
-  lrc_fallback_source: 'lrclib',
+  lrc_primary_source: 'alsong',
+  lrc_fallback_source: 'none',
   // ai_cover_enabled: false,           // AI 커버아트 (개발 중단)
   // ai_cover_gemini_api_key: '',
   // ai_cover_default_model: 'gemini-2.5-flash-image',
@@ -750,7 +776,7 @@ async function saveLrcSources() {
   try {
     await configApi.update({
       lrc_primary_source: form.lrc_primary_source,
-      lrc_fallback_source: form.lrc_fallback_source,
+      lrc_fallback_source: 'none',
     })
     toastStore.success(t('settings.toast.saved'))
   } catch (e) {
@@ -836,8 +862,7 @@ async function loadConfig() {
     form.melon_enabled = (c.melon_enabled?.value ?? 'true') === 'true'
     form.youtube_enabled = c.youtube_enabled?.value === 'true'
     form.youtube_api_key = c.youtube_api_key?.value ?? ''
-    form.lrc_primary_source = c.lrc_primary_source?.value ?? 'bugs'
-    form.lrc_fallback_source = c.lrc_fallback_source?.value ?? 'lrclib'
+    form.lrc_primary_source = c.lrc_primary_source?.value ?? 'alsong'
     const exRaw = c.excluded_folders?.value ?? '@eaDir,.dav,@Recycle,#recycle,.Spotlight-V100,.Trashes'
     excludedFolders.value = exRaw.split(',').map(s => s.trim()).filter(Boolean)
     // AI 커버아트 (개발 중단)

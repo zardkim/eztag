@@ -60,38 +60,11 @@
           <div class="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0"></div>
 
           <!-- 그룹3: LRC / YouTube MV / HTML 생성 -->
-          <div class="relative shrink-0" ref="lrcMenuRef">
-            <button
-              class="btn-toolbar !bg-purple-100 !text-purple-700 hover:!bg-purple-200 dark:!bg-purple-900/30 dark:!text-purple-400 disabled:opacity-40 flex items-center gap-1"
-              :disabled="fetchingLyrics || (browserStore.checkedPaths.size === 0 && browserStore.files.length === 0)"
-              @click="showLrcMenu = !showLrcMenu"
-            >🎵 LRC<span class="text-[10px] opacity-60">▾</span></button>
-            <div
-              v-if="showLrcMenu"
-              class="fixed top-10 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-[200] py-1.5"
-              :style="lrcMenuPos"
-            >
-              <p class="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ t('browser.lrcSourceLabel') }}</p>
-              <button
-                class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-left"
-                @click="startFetchLyrics('auto')"
-              >
-                <span class="text-base">⚡</span>
-                <div class="flex-1 min-w-0">
-                  <div class="font-medium">{{ t('browser.lrcAuto') }}</div>
-                  <div class="text-[10px] text-gray-400 truncate">{{ lrcAutoDesc }}</div>
-                </div>
-              </button>
-              <div class="mx-3 my-1 border-t border-gray-100 dark:border-gray-700"></div>
-              <p class="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ t('browser.lrcManual') }}</p>
-              <button
-                v-for="src in [{key:'bugs', label:t('browser.lrcBugs')}, {key:'lrclib', label:t('browser.lrcLrclib')}]"
-                :key="src.key"
-                class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors text-left"
-                @click="startFetchLyrics(src.key)"
-              ><span class="text-base">🎵</span>{{ src.label }}</button>
-            </div>
-          </div>
+          <button
+            class="btn-toolbar !bg-purple-100 !text-purple-700 hover:!bg-purple-200 dark:!bg-purple-900/30 dark:!text-purple-400 disabled:opacity-40 shrink-0"
+            :disabled="fetchingLyrics || (browserStore.checkedPaths.size === 0 && browserStore.files.length === 0)"
+            @click="showLrcDialog = true"
+          >🎵 LRC</button>
           <button
             class="btn-toolbar !bg-red-100 !text-red-700 hover:!bg-red-200 dark:!bg-red-900/30 dark:!text-red-400 shrink-0 disabled:opacity-50"
             :disabled="searchingYoutube"
@@ -223,7 +196,7 @@
                   <button
                     class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors text-left disabled:opacity-50"
                     :disabled="fetchingLyrics"
-                    @click="showLrcSheet = true; browserStore.mobileMenuOpen = false"
+                    @click="showLrcDialog = true; browserStore.mobileMenuOpen = false"
                   >
                     <span class="text-xl">🎵</span>
                     <span class="flex-1">LRC</span>
@@ -271,7 +244,7 @@
       </Transition>
     </Teleport>
 
-    <!-- ── 모바일 LRC 소스 선택 시트 ── -->
+    <!-- ── LRC 소스 선택 다이얼로그 (PC + 모바일 공통) ── -->
     <Teleport to="body">
       <Transition
         enter-active-class="transition duration-200 ease-out"
@@ -279,64 +252,54 @@
         enter-from-class="opacity-0"
         leave-to-class="opacity-0"
       >
-        <div v-if="showLrcSheet" class="lg:hidden fixed inset-0 z-[130] flex flex-col justify-end" @click="showLrcSheet = false">
-          <div class="absolute inset-0 bg-black/50" />
-          <Transition
-            enter-active-class="transition duration-200 ease-out"
-            leave-active-class="transition duration-150 ease-in"
-            enter-from-class="translate-y-full"
-            leave-to-class="translate-y-full"
-          >
-            <div v-if="showLrcSheet" class="relative bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl" @click.stop>
-              <!-- 드래그 핸들 -->
-              <div class="flex justify-center pt-3 pb-2 shrink-0">
-                <div class="w-10 h-1 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-              </div>
-
-              <!-- 타이틀 -->
-              <p class="text-center text-base font-semibold text-gray-900 dark:text-white px-5 pb-4">🎵 LRC 가사 검색</p>
-
-              <!-- 3 아이콘 카드 -->
-              <div class="grid grid-cols-3 gap-3 px-5 pb-4">
-                <!-- 자동 -->
-                <button
-                  class="flex flex-col items-center gap-1.5 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 active:scale-95 rounded-2xl px-2 py-4 transition-all text-center"
-                  @click="startFetchLyrics('auto'); showLrcSheet = false"
-                >
-                  <span class="text-3xl leading-none">⚡</span>
-                  <span class="text-sm font-semibold text-purple-700 dark:text-purple-300">{{ t('browser.lrcAuto') }}</span>
-                  <span class="text-[10px] text-gray-400 dark:text-gray-500 leading-tight line-clamp-2">{{ lrcAutoDesc }}</span>
-                </button>
-
-                <!-- Bugs -->
-                <button
-                  class="flex flex-col items-center gap-1.5 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 active:scale-95 rounded-2xl px-2 py-4 transition-all text-center"
-                  @click="startFetchLyrics('bugs'); showLrcSheet = false"
-                >
-                  <span class="text-3xl leading-none">🎵</span>
-                  <span class="text-sm font-semibold text-purple-700 dark:text-purple-300">{{ t('browser.lrcBugs') }}</span>
-                  <span class="text-[10px] text-gray-400 dark:text-gray-500 leading-tight">벅스 뮤직</span>
-                </button>
-
-                <!-- LRCLIB -->
-                <button
-                  class="flex flex-col items-center gap-1.5 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 active:scale-95 rounded-2xl px-2 py-4 transition-all text-center"
-                  @click="startFetchLyrics('lrclib'); showLrcSheet = false"
-                >
-                  <span class="text-3xl leading-none">📄</span>
-                  <span class="text-sm font-semibold text-purple-700 dark:text-purple-300">{{ t('browser.lrcLrclib') }}</span>
-                  <span class="text-[10px] text-gray-400 dark:text-gray-500 leading-tight">lrclib.net</span>
-                </button>
-              </div>
-
-              <!-- 취소 -->
-              <button
-                class="w-full py-4 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors border-t border-gray-100 dark:border-gray-800"
-                @click="showLrcSheet = false"
-              >{{ t('common.cancel') }}</button>
-              <div class="pb-safe-bottom" style="padding-bottom: env(safe-area-inset-bottom, 12px)"></div>
+        <div v-if="showLrcDialog" class="fixed inset-0 z-[200] flex items-center justify-center px-4" @click.self="showLrcDialog = false">
+          <div class="absolute inset-0 bg-black/50" @click="showLrcDialog = false" />
+          <div class="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm" @click.stop>
+            <!-- 타이틀 -->
+            <div class="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800">
+              <p class="text-base font-semibold text-gray-900 dark:text-white">🎵 LRC 가사 검색</p>
+              <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg leading-none" @click="showLrcDialog = false">✕</button>
             </div>
-          </Transition>
+
+            <!-- 소스 카드 -->
+            <div class="grid grid-cols-3 gap-3 p-5">
+              <!-- 알송 -->
+              <button
+                class="flex flex-col items-center gap-2 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 dark:hover:bg-teal-900/40 active:scale-95 rounded-2xl px-2 py-4 transition-all text-center"
+                @click="startFetchLyrics('alsong'); showLrcDialog = false"
+              >
+                <img src="/logo/alsong.jpg" class="w-10 h-10 rounded-xl object-cover shadow-sm" alt="알송" />
+                <span class="text-xs font-semibold text-teal-700 dark:text-teal-300">알송</span>
+                <span class="text-[10px] text-gray-400 dark:text-gray-500 leading-tight">{{ t('browser.lrcAlsong') }}</span>
+              </button>
+
+              <!-- Bugs -->
+              <button
+                class="flex flex-col items-center gap-2 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 active:scale-95 rounded-2xl px-2 py-4 transition-all text-center"
+                @click="startFetchLyrics('bugs'); showLrcDialog = false"
+              >
+                <img src="/logo/bugs.jpg" class="w-10 h-10 rounded-xl object-cover shadow-sm" alt="Bugs" />
+                <span class="text-xs font-semibold text-purple-700 dark:text-purple-300">Bugs</span>
+                <span class="text-[10px] text-gray-400 dark:text-gray-500 leading-tight">{{ t('browser.lrcBugs') }}</span>
+              </button>
+
+              <!-- LRCLIB -->
+              <button
+                class="flex flex-col items-center gap-2 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 active:scale-95 rounded-2xl px-2 py-4 transition-all text-center"
+                @click="startFetchLyrics('lrclib'); showLrcDialog = false"
+              >
+                <div class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-xl shadow-sm">📄</div>
+                <span class="text-xs font-semibold text-indigo-700 dark:text-indigo-300">LRCLIB</span>
+                <span class="text-[10px] text-gray-400 dark:text-gray-500 leading-tight">{{ t('browser.lrcLrclib') }}</span>
+              </button>
+            </div>
+
+            <!-- 취소 -->
+            <button
+              class="w-full py-3.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors border-t border-gray-100 dark:border-gray-800 rounded-b-2xl"
+              @click="showLrcDialog = false"
+            >{{ t('common.cancel') }}</button>
+          </div>
         </div>
       </Transition>
     </Teleport>
@@ -1008,7 +971,7 @@ watch(() => browserStore.selectedFolder, () => {
   if (jobStore.lrcJob?.done) jobStore.clearLrcJob()
   browserStore.mobileMenuOpen = false
   mobileAutoTagExpanded.value = false
-  showLrcSheet.value = false
+  showLrcDialog.value = false
 })
 
 // ── 툴바 Teleport 준비 (DOM 커밋 이후에만 활성화) ──
@@ -1016,7 +979,6 @@ const toolbarReady = ref(false)
 
 // ── 모바일 바텀시트 (열림 상태는 browser store에서 관리)
 const mobileAutoTagExpanded = ref(false)
-const showLrcSheet = ref(false)
 
 // ── 자동 태그 드롭다운 ──────────────────────────────
 const showAutoTagMenu = ref(false)
@@ -1065,7 +1027,6 @@ function dropdownPos(ref) {
   return { right: right + 'px' }
 }
 const autoTagMenuPos = computed(() => showAutoTagMenu.value ? dropdownPos(autoTagRef) : {})
-const lrcMenuPos     = computed(() => showLrcMenu.value     ? dropdownPos(lrcMenuRef)  : {})
 
 function openAutoTagSearch(providerKey) {
   selectedAutoProviders.value = [providerKey]
@@ -1337,8 +1298,7 @@ function sortIcon(key) {
 }
 
 // ── LRC 가져오기 ──────────────────────────────────────────
-const showLrcMenu = ref(false)
-const lrcMenuRef = ref(null)
+const showLrcDialog = ref(false)
 const _lrcBrowserJob = computed(() =>
   jobStore.lrcJob?.routePath === '/browser' && jobStore.lrcJob?.folderPath === _currentFolderPath.value
     ? jobStore.lrcJob : null
@@ -1346,31 +1306,15 @@ const _lrcBrowserJob = computed(() =>
 const fetchingLyrics = computed(() => !!_lrcBrowserJob.value?.running)
 const lrcProgress = computed(() => _lrcBrowserJob.value || {})
 
-// LRC 설정 (자동 모드 표시용)
-const lrcPrimarySource = ref('bugs')
-const lrcFallbackSource = ref('lrclib')
-const lrcAutoDesc = computed(() => {
-  const srcLabel = s => s === 'bugs' ? 'Bugs' : s === 'lrclib' ? 'LRCLIB' : ''
-  const primary = srcLabel(lrcPrimarySource.value)
-  const fallback = lrcFallbackSource.value !== 'none' ? srcLabel(lrcFallbackSource.value) : null
-  return fallback ? `${primary} → ${fallback}` : primary
-})
-
+// LRC 설정 (sourceLabel 표시용)
+const lrcPrimarySource = ref('alsong')
 async function loadLrcConfig() {
   try {
     const { data } = await configApi.getAll()
     const c = data.config || {}
-    lrcPrimarySource.value = c.lrc_primary_source?.value ?? 'bugs'
-    lrcFallbackSource.value = c.lrc_fallback_source?.value ?? 'lrclib'
+    lrcPrimarySource.value = c.lrc_primary_source?.value ?? 'alsong'
   } catch { /* ignore */ }
 }
-
-// 드롭다운 외부 클릭 시 닫기
-function onLrcClickOutside(e) {
-  if (lrcMenuRef.value && !lrcMenuRef.value.contains(e.target)) showLrcMenu.value = false
-}
-onMounted(() => document.addEventListener('click', onLrcClickOutside, true))
-onUnmounted(() => document.removeEventListener('click', onLrcClickOutside, true))
 
 // ── 폴더 이동 ─────────────────────────────────────────────
 const showMoveModal = ref(false)
@@ -1471,7 +1415,7 @@ async function onRenamed(result) {
 }
 
 async function startFetchLyrics(source) {
-  showLrcMenu.value = false
+  showLrcDialog.value = false
   if (jobStore.lrcJob?.running) return
 
   const allFiles = browserStore.files
@@ -1482,7 +1426,7 @@ async function startFetchLyrics(source) {
       : allFiles
   if (!targetFiles.length) return
 
-  const sourceLabel = source === 'auto' ? `⚡ ${lrcAutoDesc.value}` : source === 'bugs' ? 'Bugs' : 'LRCLIB'
+  const sourceLabel = source === 'alsong' ? '알송' : source === 'bugs' ? 'Bugs' : 'LRCLIB'
   const folderPath = browserStore.selectedFolder?.path || ''
   const folderName = browserStore.selectedFolder?.name || ''
   // 백그라운드 실행 (await 없음 - 다른 페이지 이동해도 계속 실행)

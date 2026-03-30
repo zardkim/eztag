@@ -28,7 +28,7 @@
           <div class="flex-1 min-w-0">
             <p class="text-xs font-semibold text-gray-900 dark:text-white truncate leading-tight">{{ file.title || file.filename }}</p>
             <p class="text-[10px] text-gray-400 truncate leading-tight">{{ file.artist || '—' }}</p>
-            <p class="text-[9px] text-gray-400 dark:text-gray-500 truncate leading-tight mt-0.5 flex gap-1 flex-wrap">
+            <p class="text-[9px] text-gray-400 dark:text-gray-500 leading-tight mt-0.5 flex gap-1 overflow-hidden whitespace-nowrap">
               <span v-if="file.year">{{ file.year }}</span>
               <span v-if="file.year && (file.genre || file.track_no || file.bitrate || file.file_format)" class="opacity-40">·</span>
               <span v-if="file.genre" class="truncate max-w-[5rem]">{{ file.genre }}</span>
