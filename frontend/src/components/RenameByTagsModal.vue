@@ -64,15 +64,106 @@
             </div>
           </div>
 
-          <!-- 프리셋 선택 -->
-          <select
-            v-model="selectedPreset"
-            @change="applyPreset"
-            class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="">{{ t('renameModal.presetPlaceholder') }}</option>
-            <option v-for="p in presets" :key="p.pattern" :value="p.pattern">{{ p.label }}</option>
-          </select>
+          <!-- 프리셋 드롭다운 -->
+          <div class="relative" ref="presetContainerRef">
+            <button
+              type="button"
+              class="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors whitespace-nowrap"
+              @click.stop="showPresetDropdown = !showPresetDropdown; showSavePreset = false"
+            >
+              <span>📋</span>
+              <span>{{ t('renameModal.presetPlaceholder') }}</span>
+              <span class="text-[10px] opacity-60 ml-0.5">▾</span>
+            </button>
+
+            <!-- 프리셋 드롭다운 패널 -->
+            <div
+              v-if="showPresetDropdown"
+              class="absolute top-full right-0 mt-1 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-2xl z-50 overflow-hidden"
+            >
+              <!-- 기본 프리셋 -->
+              <div class="px-3 py-1.5 border-b border-gray-100 dark:border-gray-700">
+                <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ t('renameModal.builtinPresets') }}</span>
+              </div>
+              <div class="py-1">
+                <button
+                  v-for="p in builtinPresets"
+                  :key="p.pattern"
+                  type="button"
+                  class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  @click.stop="applyPresetItem(p.pattern)"
+                >
+                  <span class="flex-1 text-sm text-gray-700 dark:text-gray-300">{{ p.label }}</span>
+                  <span class="text-[10px] font-mono text-gray-400 truncate max-w-[120px]">{{ p.pattern }}</span>
+                </button>
+              </div>
+
+              <!-- 내 프리셋 -->
+              <template v-if="customPresets.length > 0">
+                <div class="px-3 py-1.5 border-t border-gray-100 dark:border-gray-700">
+                  <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ t('renameModal.myPresets') }}</span>
+                </div>
+                <div class="py-1 max-h-40 overflow-y-auto">
+                  <div
+                    v-for="(p, i) in customPresets"
+                    :key="i"
+                    class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 group transition-colors"
+                  >
+                    <button
+                      type="button"
+                      class="flex-1 flex flex-col items-start text-left min-w-0"
+                      @click.stop="applyPresetItem(p.pattern)"
+                    >
+                      <span class="text-sm font-medium text-gray-800 dark:text-gray-200 truncate w-full">{{ p.label }}</span>
+                      <span class="text-[10px] font-mono text-gray-400 truncate w-full">{{ p.pattern }}</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="shrink-0 text-gray-300 hover:text-red-500 text-xs opacity-0 group-hover:opacity-100 transition-all px-1"
+                      @click.stop="removeCustomPreset(i)"
+                      :title="t('renameModal.deletePreset')"
+                    >✕</button>
+                  </div>
+                </div>
+              </template>
+
+              <!-- 현재 패턴 저장 -->
+              <div class="border-t border-gray-100 dark:border-gray-700 p-2">
+                <button
+                  v-if="!showSavePreset"
+                  type="button"
+                  class="w-full flex items-center gap-2 px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                  :disabled="!pattern.trim()"
+                  @click.stop="showSavePreset = true; savePresetName = ''; nextTick(() => savePresetInputRef?.focus())"
+                >
+                  <span>💾</span>
+                  <span>{{ t('renameModal.saveAsPreset') }}</span>
+                </button>
+                <div v-else class="flex gap-1.5" @click.stop>
+                  <input
+                    ref="savePresetInputRef"
+                    v-model="savePresetName"
+                    type="text"
+                    class="flex-1 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    :placeholder="t('renameModal.presetNamePlaceholder')"
+                    @keydown.enter="confirmSavePreset"
+                    @keydown.escape="showSavePreset = false"
+                  />
+                  <button
+                    type="button"
+                    class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    :disabled="!savePresetName.trim()"
+                    @click.stop="confirmSavePreset"
+                  >{{ t('common.save') }}</button>
+                  <button
+                    type="button"
+                    class="px-2 py-1.5 text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-lg transition-colors"
+                    @click.stop="showSavePreset = false"
+                  >✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 변수 버튼 -->
@@ -147,7 +238,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { browseApi } from '../api/index.js'
 
@@ -158,13 +249,41 @@ const props = defineProps({
 })
 const emit = defineEmits(['close', 'renamed'])
 
-const presets = computed(() => [
+const builtinPresets = computed(() => [
   { label: t('renameModal.presetTrackTitle'),            pattern: '%track% - %title%' },
   { label: t('renameModal.presetArtistTitle'),           pattern: '%artist% - %title%' },
   { label: t('renameModal.presetTrackArtistTitle'),      pattern: '%track% - %artist% - %title%' },
   { label: t('renameModal.presetArtistAlbumTrackTitle'), pattern: '%artist% - %album% - %track% - %title%' },
   { label: t('renameModal.presetDiscTrackTitle'),        pattern: '%disc%-%track% - %title%' },
 ])
+
+// ── 사용자 정의 프리셋 ────────────────────────────────────
+const CUSTOM_PRESETS_KEY = 'eztag-rename-custom-presets'
+const customPresets = ref(JSON.parse(localStorage.getItem(CUSTOM_PRESETS_KEY) || '[]'))
+
+function saveCustomPresets() {
+  localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(customPresets.value))
+}
+
+function removeCustomPreset(i) {
+  customPresets.value.splice(i, 1)
+  saveCustomPresets()
+}
+
+function confirmSavePreset() {
+  const name = savePresetName.value.trim()
+  if (!name || !pattern.value.trim()) return
+  // 중복 이름이면 덮어쓰기
+  const existing = customPresets.value.findIndex(p => p.label === name)
+  if (existing !== -1) {
+    customPresets.value[existing].pattern = pattern.value
+  } else {
+    customPresets.value.push({ label: name, pattern: pattern.value })
+  }
+  saveCustomPresets()
+  showSavePreset.value = false
+  savePresetName.value = ''
+}
 
 const variables = computed(() => [
   { var: '%title%',             desc: t('renameModal.varTitle') },
@@ -222,12 +341,37 @@ function onDocClick(e) {
   }
 }
 
-onMounted(() => document.addEventListener('click', onDocClick, true))
-onUnmounted(() => document.removeEventListener('click', onDocClick, true))
+onMounted(() => {
+  document.addEventListener('click', onDocClick, true)
+  document.addEventListener('click', onDocClickPreset, true)
+})
+onUnmounted(() => {
+  document.removeEventListener('click', onDocClick, true)
+  document.removeEventListener('click', onDocClickPreset, true)
+})
+
+// ── 프리셋 드롭다운 상태 ──────────────────────────────────
+const showPresetDropdown = ref(false)
+const showSavePreset = ref(false)
+const savePresetName = ref('')
+const savePresetInputRef = ref(null)
+const presetContainerRef = ref(null)
+
+function applyPresetItem(pat) {
+  pattern.value = pat
+  showPresetDropdown.value = false
+  showSavePreset.value = false
+}
+
+function onDocClickPreset(e) {
+  if (presetContainerRef.value && !presetContainerRef.value.contains(e.target)) {
+    showPresetDropdown.value = false
+    showSavePreset.value = false
+  }
+}
 
 // ── 패턴 상태 ─────────────────────────────────────────────
 const pattern = ref(patternHistory.value[0] || '%track% - %title%')
-const selectedPreset = ref('')
 const patternInputRef = ref(null)
 const applying = ref(false)
 
@@ -316,13 +460,6 @@ const okCount = computed(() => previewRows.value.filter(r => !r.error && !r.conf
 const conflictCount = computed(() => previewRows.value.filter(r => r.conflict).length)
 const skipCount = computed(() => previewRows.value.filter(r => r.error).length)
 const sameCount = computed(() => previewRows.value.filter(r => r.same).length)
-
-function applyPreset() {
-  if (selectedPreset.value) {
-    pattern.value = selectedPreset.value
-    selectedPreset.value = ''
-  }
-}
 
 function insertVar(v) {
   const el = patternInputRef.value

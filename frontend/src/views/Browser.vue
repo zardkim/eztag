@@ -536,26 +536,22 @@
           <!-- 폴더별 그룹 목록 -->
           <div v-for="group in filteredGroups" :key="group.folder_path" class="mb-1">
             <!-- 폴더 헤더 -->
-            <div
-              class="sticky top-0 z-[5] px-4 py-1.5 bg-gray-50 dark:bg-gray-800/80 border-y border-gray-200 dark:border-gray-700/60 backdrop-blur flex items-center gap-2 cursor-pointer select-none"
-              @click="selectFolderGroup(group)"
-            >
-              <!-- 폴더 체크박스 -->
-              <div class="shrink-0 w-5 h-5 rounded flex items-center justify-center transition-colors"
-                :class="groupCheckState(group) === 'all'
-                  ? 'bg-blue-500'
-                  : groupCheckState(group) === 'some'
-                  ? 'bg-blue-200 dark:bg-blue-700'
-                  : 'border-2 border-gray-300 dark:border-gray-600'"
+            <div class="sticky top-0 z-[5] px-4 py-1.5 bg-gray-50 dark:bg-gray-800/80 border-y border-gray-200 dark:border-gray-700/60 backdrop-blur flex items-center gap-2 select-none">
+              <span class="text-yellow-400 text-sm shrink-0">📁</span>
+              <span class="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">{{ group.relative_path || group.folder_name }}</span>
+              <span class="text-[10px] text-gray-400 shrink-0">{{ group.files.length }}곡</span>
+              <button
+                class="ml-auto shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors"
+                :class="groupCheckState(group) === 'none'
+                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60'
+                  : 'bg-blue-500 text-white hover:bg-blue-400'"
+                @click="selectFolderGroup(group)"
               >
-                <svg v-if="groupCheckState(group) === 'all'" viewBox="0 0 24 24" fill="none" class="w-3.5 h-3.5 text-white" stroke="currentColor" stroke-width="3">
+                <svg v-if="groupCheckState(group) !== 'none'" viewBox="0 0 24 24" fill="none" class="w-3 h-3" stroke="currentColor" stroke-width="3">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                 </svg>
-                <div v-else-if="groupCheckState(group) === 'some'" class="w-2 h-0.5 bg-blue-600 dark:bg-blue-300 rounded"></div>
-              </div>
-              <span class="text-yellow-400 text-sm">📁</span>
-              <span class="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">{{ group.relative_path || group.folder_name }}</span>
-              <span class="ml-auto text-[10px] text-gray-400 shrink-0">{{ group.files.length }}곡</span>
+                <span>{{ groupCheckState(group) === 'none' ? t('browser.selectGroup') : t('browser.deselectGroup') }}</span>
+              </button>
             </div>
             <!-- 모바일 카드 -->
             <div class="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
@@ -1307,6 +1303,7 @@ function selectFolderGroup(group) {
     paths.forEach(p => next.delete(p))
   } else {
     paths.forEach(p => next.add(p))
+    mobileSelectMode.value = true  // 모바일 선택 모드 활성화
   }
   browserStore.setCheckedPaths(next)
   browserStore.selectFile(null)
@@ -1729,12 +1726,28 @@ async function runWizard() {
       }
 
     } else if (step.id === 'rename') {
-      // 인터랙티브: RenameByTagsModal 열기 → 닫힐 때까지 대기
       wizardStepStatus.value = t('wizard.statusRunning')
-      showRenameModal.value = true
-      wizardWaitingNext.value = true
-      await new Promise(resolve => { _wizardRenameResolve = resolve; _wizardCurrentResolve = resolve })
-      _wizardCurrentResolve = null
+      if (step.renamePattern) {
+        // 자동: 선택한 프리셋으로 바로 API 호출
+        const files = browserStore.files
+        if (files.length) {
+          try {
+            const paths = files.map(f => f.path)
+            await browseApi.renameByTags(paths, step.renamePattern)
+            const folderPath = browserStore.selectedFolder?.path
+            if (folderPath) {
+              browserStore.invalidateFilesCache(folderPath)
+              await browserStore.loadFiles(folderPath, true)
+            }
+          } catch { /* ignore */ }
+        }
+      } else {
+        // 인터랙티브: RenameByTagsModal 열기 → 닫힐 때까지 대기
+        showRenameModal.value = true
+        wizardWaitingNext.value = true
+        await new Promise(resolve => { _wizardRenameResolve = resolve; _wizardCurrentResolve = resolve })
+        _wizardCurrentResolve = null
+      }
 
     } else if (step.id === 'albumCard') {
       // 자동: HTML 내보내기

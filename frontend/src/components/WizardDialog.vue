@@ -63,6 +63,18 @@
                       @click="step.lrcSource = src.key"
                     >{{ src.label }}</button>
                   </div>
+                  <!-- 파일명변경: 프리셋 선택 -->
+                  <div v-if="step.id === 'rename' && step.enabled !== false" class="mt-1.5 flex flex-wrap gap-1">
+                    <button
+                      v-for="p in renamePresets"
+                      :key="p.pattern"
+                      class="px-2 py-0.5 rounded-full text-[11px] transition-colors"
+                      :class="step.renamePattern === p.pattern
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'"
+                      @click="step.renamePattern = p.pattern"
+                    >{{ p.label }}</button>
+                  </div>
                 </div>
                 <!-- 활성/비활성 토글 -->
                 <button
@@ -197,13 +209,22 @@ const lrcSources = [
   { key: 'lrclib', label: 'LRCLIB' },
 ]
 
+const renamePresets = computed(() => [
+  { label: t('wizard.renameManual'),                     pattern: '' },
+  { label: t('renameModal.presetTrackTitle'),            pattern: '%track% - %title%' },
+  { label: t('renameModal.presetArtistTitle'),           pattern: '%artist% - %title%' },
+  { label: t('renameModal.presetTrackArtistTitle'),      pattern: '%track% - %artist% - %title%' },
+  { label: t('renameModal.presetArtistAlbumTrackTitle'), pattern: '%artist% - %album% - %track% - %title%' },
+  { label: t('renameModal.presetDiscTrackTitle'),        pattern: '%disc%-%track% - %title%' },
+])
+
 const STORAGE_KEY = 'eztag-wizard-steps'
 
 const DEFAULT_STEPS = [
   { id: 'autoTag',   icon: '🏷',  providerKey: '', enabled: true },
   { id: 'lrc',       icon: '🎵',  lrcSource: 'alsong', enabled: true },
   { id: 'youtube',   icon: '▶️',  enabled: true },
-  { id: 'rename',    icon: '🔤',  enabled: true },
+  { id: 'rename',    icon: '🔤',  renamePattern: '', enabled: true },
   { id: 'albumCard', icon: '🎴',  enabled: true },
 ]
 
@@ -216,7 +237,7 @@ function loadSteps() {
     const result = []
     for (const s of saved) {
       const def = DEFAULT_STEPS.find(d => d.id === s.id)
-      if (def) result.push({ ...def, enabled: s.enabled ?? true, providerKey: s.providerKey ?? def.providerKey, lrcSource: s.lrcSource ?? def.lrcSource })
+      if (def) result.push({ ...def, enabled: s.enabled ?? true, providerKey: s.providerKey ?? def.providerKey, lrcSource: s.lrcSource ?? def.lrcSource, renamePattern: s.renamePattern ?? def.renamePattern })
     }
     for (const def of DEFAULT_STEPS) {
       if (!result.find(r => r.id === def.id)) result.push({ ...def })
@@ -227,7 +248,7 @@ function loadSteps() {
 
 function saveSteps(stepList) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(
-    stepList.map(s => ({ id: s.id, enabled: s.enabled ?? true, providerKey: s.providerKey, lrcSource: s.lrcSource }))
+    stepList.map(s => ({ id: s.id, enabled: s.enabled ?? true, providerKey: s.providerKey, lrcSource: s.lrcSource, renamePattern: s.renamePattern }))
   ))
 }
 

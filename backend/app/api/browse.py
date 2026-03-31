@@ -2114,6 +2114,7 @@ def recursive_count(
 @router.post("/recursive-files")
 def recursive_files(
     data: dict,
+    background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -2147,6 +2148,9 @@ def recursive_files(
         t.file_path: t
         for t in db.query(Track).filter(Track.file_path.in_(all_paths)).all()
     }
+
+    # DB에 없는 파일(미스캔) 수집
+    untracked_paths = [fp for fp in all_paths if fp not in tracks_map]
 
     # 3단계: 그룹별 파일 정보 구성 (get_files 엔드포인트와 동일한 형식)
     groups = []
@@ -2213,6 +2217,10 @@ def recursive_files(
                 "relative_path": g["relative_path"],
                 "files": file_entries,
             })
+
+    # 미스캔 파일 백그라운드 태그 읽기 (get_files와 동일한 패턴)
+    if untracked_paths and background_tasks is not None:
+        background_tasks.add_task(_scan_untracked_files, str(p), untracked_paths)
 
     return {
         "groups": groups,

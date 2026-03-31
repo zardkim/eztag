@@ -115,12 +115,11 @@
         </div>
       </div>
 
-      <!-- 하위폴더 포함 열기 확인 다이얼로그 -->
+      <!-- 경고 확인 다이얼로그 (폴더/파일 수 초과 시) -->
       <Teleport to="body">
         <div v-if="showRecursiveConfirm" class="fixed inset-0 bg-black/60 z-[400] flex items-center justify-center p-4" @click="showRecursiveConfirm = false">
           <div class="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl p-5" @click.stop>
             <p class="text-base font-semibold text-gray-900 dark:text-white mb-1">📂 {{ pendingFolder?.name }}</p>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">{{ $t('picker.recursiveQuestion') }}</p>
 
             <!-- 통계 -->
             <div v-if="recursiveCountData" class="mb-3 px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm space-y-1">
@@ -136,23 +135,20 @@
             <div v-else-if="countLoading" class="mb-3 text-center text-xs text-gray-400 py-2">{{ $t('common.loading') }}</div>
 
             <!-- 경고 -->
-            <div
-              v-if="recursiveCountData && (recursiveCountData.folder_count > 50 || recursiveCountData.file_count > 500)"
-              class="mb-3 px-3 py-2 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 text-xs text-yellow-700 dark:text-yellow-400"
-            >
+            <div class="mb-4 px-3 py-2.5 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 text-xs text-yellow-700 dark:text-yellow-400">
               ⚠️ {{ $t('picker.recursiveWarning') }}
             </div>
 
-            <div class="flex gap-2 mt-1">
+            <div class="flex gap-2">
               <button
                 class="flex-1 py-2.5 text-sm rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                @click="confirmRecursive(false)"
-              >{{ $t('picker.openThisOnly') }}</button>
+                @click="showRecursiveConfirm = false"
+              >{{ $t('common.cancel') }}</button>
               <button
                 class="flex-[1.5] py-2.5 text-sm rounded-xl bg-blue-600 text-white hover:bg-blue-500 transition-colors font-medium"
                 :disabled="countLoading"
-                @click="confirmRecursive(true)"
-              >{{ $t('picker.openWithSubfolders') }}</button>
+                @click="confirmOpen"
+              >{{ $t('picker.openAnyway') }}</button>
             </div>
           </div>
         </div>
@@ -202,29 +198,25 @@ async function onOpenFolder(folder) {
   try {
     const { data } = await browseApi.recursiveCount(folder.path)
     recursiveCountData.value = data
-    // 하위폴더 10개 미만 & 파일 500개 미만이면 다이얼로그 없이 바로 열기
-    if (data.folder_count < 10 && data.file_count < 500) {
+    // 폴더 20개 이하 & 파일 500개 이하면 경고 없이 바로 하위폴더 포함 열기
+    if (data.folder_count <= 20 && data.file_count <= 500) {
       pendingFolder.value = null
       recursiveCountData.value = null
-      emit('select-folder', folder)
+      emit('select-folder-recursive', folder)
       return
     }
   } catch {
-    // 카운트 실패 시 다이얼로그 표시 (안전하게 사용자에게 확인)
+    // 카운트 실패 시 다이얼로그 표시
   } finally {
     countLoading.value = false
   }
   showRecursiveConfirm.value = true
 }
 
-function confirmRecursive(recursive) {
+function confirmOpen() {
   showRecursiveConfirm.value = false
   if (!pendingFolder.value) return
-  if (recursive) {
-    emit('select-folder-recursive', pendingFolder.value)
-  } else {
-    emit('select-folder', pendingFolder.value)
-  }
+  emit('select-folder-recursive', pendingFolder.value)
   pendingFolder.value = null
   recursiveCountData.value = null
 }

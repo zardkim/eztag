@@ -164,22 +164,39 @@ export const useBrowserStore = defineStore('browser', () => {
     }
   }
 
-  async function loadRecursiveFiles(path) {
+  async function loadRecursiveFiles(path, isRetry = false) {
     loading.value = true
     error.value = null
     fileWarning.value = null
-    checkedPaths.value = new Set()
-    files.value = []
-    subfolders.value = []
-    extraFiles.value = []
-    folderGroups.value = []
+    if (!isRetry) {
+      checkedPaths.value = new Set()
+      files.value = []
+      subfolders.value = []
+      extraFiles.value = []
+      folderGroups.value = []
+    }
     try {
       const { data } = await browseApi.recursiveFiles(path)
       folderGroups.value = data.groups
-      // 기존 함수 호환용 flat 목록
-      files.value = data.groups.flatMap(g => g.files)
+      const fileList = data.groups.flatMap(g => g.files)
+      files.value = fileList
       isRecursiveMode.value = true
-      selectedFile.value = null
+      if (!isRetry) selectedFile.value = null
+
+      // 미스캔 파일이 있으면 백그라운드 스캔 완료 후 재조회 (최대 4회)
+      const hasUnscanned = fileList.some(f => f.scanned === false)
+      if (hasUnscanned && _scanRetryCount < 4) {
+        _scanRetryCount++
+        if (_scanPollTimer) clearTimeout(_scanPollTimer)
+        _scanPollTimer = setTimeout(() => {
+          _scanPollTimer = null
+          if (selectedFolder.value?.path === path && isRecursiveMode.value) {
+            loadRecursiveFiles(path, true)
+          }
+        }, 1500)
+        return
+      }
+      _scanRetryCount = 0
     } catch (e) {
       error.value = e.response?.data?.detail || '파일 목록을 불러올 수 없습니다.'
       files.value = []
