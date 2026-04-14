@@ -578,16 +578,16 @@
                       {{ p.label }}
                     </button>
                   </div>
-                  <!-- LRC: 소스 다중선택 -->
+                  <!-- LRC: 소스 단일선택 -->
                   <div v-if="step.id === 'lrc' && step.enabled !== false" class="mt-1.5 flex gap-1">
                     <button
                       v-for="src in wizardLrcSources"
                       :key="src.key"
                       class="px-2 py-0.5 rounded-full text-[11px] transition-colors"
-                      :class="(step.lrcSources || []).includes(src.key)
+                      :class="(step.lrcSources || [])[0] === src.key
                         ? 'bg-purple-500 text-white'
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'"
-                      @click="toggleWizardLrcSource(step, src.key)"
+                      @click="setWizardLrcSource(step, src.key)"
                     >{{ src.label }}</button>
                   </div>
                   <!-- 파일명변경: 프리셋 선택 -->
@@ -669,19 +669,38 @@
             </div>
             <p class="text-[11px] text-gray-400 dark:text-gray-500 mb-4">{{ $t('wizard.preset.desc') }}</p>
 
+            <!-- 수정 중 배너 -->
+            <div v-if="wizardEditingPreset" class="flex items-center gap-2 px-3 py-2 mb-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+              <span class="text-sm flex-1 text-amber-700 dark:text-amber-400">{{ $t('wizard.preset.editingBanner', { name: wizardEditingPreset.name }) }}</span>
+              <button
+                class="px-3 py-1 text-xs bg-amber-600 hover:bg-amber-500 text-white rounded transition-colors"
+                @click="updateWizardPreset()"
+              >{{ $t('wizard.preset.updateSave') }}</button>
+              <button
+                class="px-3 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded transition-colors"
+                @click="wizardEditingPreset = null"
+              >{{ $t('wizard.preset.editCancel') }}</button>
+            </div>
+
             <!-- 저장된 프리셋 목록 -->
             <div v-if="wizardPresets.length === 0" class="text-[11px] text-gray-400 italic mb-3">{{ $t('wizard.preset.empty') }}</div>
             <div v-else class="space-y-2 mb-4">
               <div
                 v-for="preset in wizardPresets"
                 :key="preset.id"
-                class="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2"
+                class="flex items-center gap-2 rounded-lg px-3 py-2 transition-colors"
+                :class="wizardEditingPreset?.id === preset.id
+                  ? 'bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-300 dark:ring-amber-700'
+                  : 'bg-gray-50 dark:bg-gray-800'"
               >
                 <span class="flex-1 text-sm text-gray-800 dark:text-gray-200 truncate">{{ preset.name }}</span>
                 <button
-                  class="text-[11px] px-2 py-1 rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/70 transition-colors"
-                  @click="loadWizardPresetToSteps(preset)"
-                >{{ $t('wizard.preset.load') }}</button>
+                  class="text-[11px] px-2 py-1 rounded transition-colors"
+                  :class="wizardEditingPreset?.id === preset.id
+                    ? 'bg-amber-200 dark:bg-amber-800 text-amber-700 dark:text-amber-300'
+                    : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/70'"
+                  @click="editWizardPreset(preset)"
+                >{{ $t('wizard.preset.edit') }}</button>
                 <button
                   class="text-[11px] px-2 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-500 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
                   @click="deleteWizardPreset(preset.id)"
@@ -1238,9 +1257,8 @@ function toggleWizardProviderKey(step, key) {
   saveWizardSteps()
 }
 
-function toggleWizardLrcSource(step, key) {
-  const srcs = step.lrcSources || []
-  step.lrcSources = srcs.includes(key) ? srcs.filter(s => s !== key) : [...srcs, key]
+function setWizardLrcSource(step, key) {
+  step.lrcSources = [key]
   saveWizardSteps()
 }
 
@@ -1376,21 +1394,21 @@ function insertWizardRenameVar(step, varStr) {
 }
 
 // ── 마법사 프리셋 ──────────────────────────────────────────────
-const WIZARD_PRESET_KEY = 'eztag-wizard-presets'
 const WIZARD_PRESET_MAX = 10
 
 const wizardPresets = ref([])
 const wizardShowPresetSave = ref(false)
 const wizardNewPresetName = ref('')
+const wizardEditingPreset = ref(null)  // 현재 수정 중인 프리셋
 
-function loadWizardPresets() {
+async function loadWizardPresets() {
   try {
-    const data = JSON.parse(localStorage.getItem(WIZARD_PRESET_KEY) || '[]')
-    wizardPresets.value = Array.isArray(data) ? data : []
+    const { data } = await configApi.getWizardPresets()
+    wizardPresets.value = Array.isArray(data.presets) ? data.presets : []
   } catch { wizardPresets.value = [] }
 }
 
-function saveWizardPreset() {
+async function saveWizardPreset() {
   const name = wizardNewPresetName.value.trim()
   if (!name) return
   if (wizardPresets.value.length >= WIZARD_PRESET_MAX) return
@@ -1399,18 +1417,25 @@ function saveWizardPreset() {
     name,
     steps: wizardSteps.value.map(s => ({ id: s.id, enabled: s.enabled ?? true, providerKeys: s.providerKeys ?? [], lrcSources: s.lrcSources ?? [], renamePattern: s.renamePattern })),
   }
-  wizardPresets.value = [...wizardPresets.value, preset]
-  localStorage.setItem(WIZARD_PRESET_KEY, JSON.stringify(wizardPresets.value))
+  const newList = [...wizardPresets.value, preset]
+  try {
+    await configApi.saveWizardPresets(newList)
+    wizardPresets.value = newList
+  } catch { /* ignore */ }
   wizardNewPresetName.value = ''
   wizardShowPresetSave.value = false
 }
 
-function deleteWizardPreset(id) {
-  wizardPresets.value = wizardPresets.value.filter(p => p.id !== id)
-  localStorage.setItem(WIZARD_PRESET_KEY, JSON.stringify(wizardPresets.value))
+async function deleteWizardPreset(id) {
+  const newList = wizardPresets.value.filter(p => p.id !== id)
+  try {
+    await configApi.saveWizardPresets(newList)
+    wizardPresets.value = newList
+    if (wizardEditingPreset.value?.id === id) wizardEditingPreset.value = null
+  } catch { /* ignore */ }
 }
 
-function loadWizardPresetToSteps(preset) {
+function _applyPresetToSteps(preset) {
   const result = []
   for (const s of preset.steps) {
     const def = WIZARD_DEFAULT_STEPS.find(d => d.id === s.id)
@@ -1421,6 +1446,25 @@ function loadWizardPresetToSteps(preset) {
   }
   wizardSteps.value = result
   saveWizardSteps()
+}
+
+function editWizardPreset(preset) {
+  wizardEditingPreset.value = preset
+  _applyPresetToSteps(preset)
+}
+
+async function updateWizardPreset() {
+  if (!wizardEditingPreset.value) return
+  const updatedPreset = {
+    ...wizardEditingPreset.value,
+    steps: wizardSteps.value.map(s => ({ id: s.id, enabled: s.enabled ?? true, providerKeys: s.providerKeys ?? [], lrcSources: s.lrcSources ?? [], renamePattern: s.renamePattern })),
+  }
+  const newList = wizardPresets.value.map(p => p.id === updatedPreset.id ? updatedPreset : p)
+  try {
+    await configApi.saveWizardPresets(newList)
+    wizardPresets.value = newList
+    wizardEditingPreset.value = null
+  } catch { /* ignore */ }
 }
 
 async function loadServerVersion() {

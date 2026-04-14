@@ -51,16 +51,16 @@
                       {{ p.label }}
                     </button>
                   </div>
-                  <!-- LRC: 소스 다중선택 -->
+                  <!-- LRC: 소스 단일선택 -->
                   <div v-if="step.id === 'lrc' && step.enabled !== false" class="mt-1.5 flex gap-1">
                     <button
                       v-for="src in lrcSources"
                       :key="src.key"
                       class="px-2 py-0.5 rounded-full text-[11px] transition-colors"
-                      :class="(step.lrcSources || []).includes(src.key)
+                      :class="(step.lrcSources || [])[0] === src.key
                         ? 'bg-purple-500 text-white'
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'"
-                      @click="toggleLrcSource(step, src.key); saveSteps()"
+                      @click="setLrcSource(step, src.key); saveSteps()"
                     >{{ src.label }}</button>
                   </div>
                   <!-- 파일명변경: 프리셋 선택 -->
@@ -250,9 +250,8 @@ function toggleProviderKey(step, key) {
   step.providerKeys = keys.includes(key) ? keys.filter(k => k !== key) : [...keys, key]
 }
 
-function toggleLrcSource(step, key) {
-  const srcs = step.lrcSources || []
-  step.lrcSources = srcs.includes(key) ? srcs.filter(s => s !== key) : [...srcs, key]
+function setLrcSource(step, key) {
+  step.lrcSources = [key]
 }
 
 function isCustomRename(step) {

@@ -6,4 +6,6 @@ export const configApi = {
   getDestinations: () => client.get('/config/destinations'),
   addDestination: (data) => client.post('/config/destinations', data),
   deleteDestination: (index) => client.delete(`/config/destinations/${index}`),
+  getWizardPresets: () => client.get('/config/wizard-presets'),
+  saveWizardPresets: (presets) => client.post('/config/wizard-presets', { presets }),
 }

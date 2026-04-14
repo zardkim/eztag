@@ -40,6 +40,8 @@ DEFAULTS: dict[str, tuple] = {
     # YouTube MV 검색
     "youtube_enabled": ("false", "YouTube 뮤직비디오 자동 검색 활성화"),
     "youtube_api_key": ("", "YouTube Data API v3 키"),
+    # 마법사
+    "wizard_presets": ("[]", "마법사 프리셋 목록 (JSON)"),
     # AI 커버아트 생성 (개발 중단)
     # "ai_cover_enabled": ("false", "AI 커버아트 생성 기능 활성화"),
     # "ai_cover_gemini_api_key": ("", "Google AI Studio API 키"),

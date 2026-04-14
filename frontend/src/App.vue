@@ -510,12 +510,14 @@ const mobileShowWorkspacePicker = ref(false)
 const mobileShowLibraryPicker = ref(false)
 const mobileWizardMenuOpen = ref(false)
 
-const WIZARD_PRESET_KEY = 'eztag-wizard-presets'
 const mobileWizardPresets = ref([])
 
-function toggleMobileWizardMenu() {
+async function toggleMobileWizardMenu() {
   if (!mobileWizardMenuOpen.value) {
-    try { mobileWizardPresets.value = JSON.parse(localStorage.getItem(WIZARD_PRESET_KEY) || '[]') } catch { mobileWizardPresets.value = [] }
+    try {
+      const { data } = await configApi.getWizardPresets()
+      mobileWizardPresets.value = Array.isArray(data.presets) ? data.presets : []
+    } catch { mobileWizardPresets.value = [] }
   }
   mobileWizardMenuOpen.value = !mobileWizardMenuOpen.value
 }

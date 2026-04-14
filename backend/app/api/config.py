@@ -1,12 +1,13 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Any, List
 
 from app.database import get_db
 from app.core.auth import get_current_user
 from app.schemas.config import ConfigResponse, ConfigUpdate, ConfigItem
-from app.core.config_store import get_all_config, set_bulk_config, DEFAULTS, get_destination_folders, set_destination_folders
+from app.core.config_store import get_all_config, get_config, set_config, set_bulk_config, DEFAULTS, get_destination_folders, set_destination_folders
 
 router = APIRouter(prefix="/api/config", tags=["config"])
 
@@ -69,6 +70,39 @@ def add_destination(
     folders.append({"path": path, "label": (body.label or "").strip()})
     set_destination_folders(db, folders)
     return {"ok": True, "destinations": folders}
+
+
+# ── 마법사 프리셋 관리 ──────────────────────────────────────
+
+class WizardPresetsBody(BaseModel):
+    presets: List[Any]
+
+
+@router.get("/wizard-presets")
+def get_wizard_presets(
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """마법사 프리셋 목록 반환."""
+    raw = get_config(db, "wizard_presets")
+    try:
+        presets = json.loads(raw or "[]")
+        if not isinstance(presets, list):
+            presets = []
+    except Exception:
+        presets = []
+    return {"presets": presets}
+
+
+@router.post("/wizard-presets")
+def save_wizard_presets(
+    body: WizardPresetsBody,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """마법사 프리셋 목록 저장 (전체 교체)."""
+    set_config(db, "wizard_presets", json.dumps(body.presets, ensure_ascii=False))
+    return {"ok": True, "presets": body.presets}
 
 
 @router.delete("/destinations/{index}")

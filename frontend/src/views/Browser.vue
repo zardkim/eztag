@@ -386,9 +386,9 @@
       </div>
     </div>
 
-    <!-- LRC 진행 패널 -->
+    <!-- LRC 진행 패널 (마법사 실행 중에는 숨김) -->
     <Transition enter-from-class="opacity-0 -translate-y-1" leave-to-class="opacity-0 -translate-y-1" enter-active-class="transition duration-200" leave-active-class="transition duration-150">
-      <div v-if="fetchingLyrics || lrcProgress.done" class="shrink-0 bg-purple-50 dark:bg-purple-900/20 border-b border-purple-100 dark:border-purple-800 px-4 py-2 flex items-center gap-3">
+      <div v-if="(fetchingLyrics || lrcProgress.done) && wizardPhase !== 'running'" class="shrink-0 bg-purple-50 dark:bg-purple-900/20 border-b border-purple-100 dark:border-purple-800 px-4 py-2 flex items-center gap-3">
         <!-- 프로그레스 -->
         <span class="text-sm">🎵</span>
         <div class="flex-1 min-w-0">
@@ -414,9 +414,9 @@
       </div>
     </Transition>
 
-    <!-- YouTube MV 검색 진행 패널 -->
+    <!-- YouTube MV 검색 진행 패널 (마법사 실행 중에는 숨김) -->
     <Transition enter-from-class="opacity-0 -translate-y-1" leave-to-class="opacity-0 -translate-y-1" enter-active-class="transition duration-200" leave-active-class="transition duration-150">
-      <div v-if="searchingYoutube || ytProgress.done" class="shrink-0 bg-red-50 dark:bg-red-900/20 border-b border-red-100 dark:border-red-800">
+      <div v-if="(searchingYoutube || ytProgress.done) && wizardPhase !== 'running'" class="shrink-0 bg-red-50 dark:bg-red-900/20 border-b border-red-100 dark:border-red-800">
         <!-- 진행 표시 -->
         <div class="px-4 py-2 flex items-center gap-3">
           <svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-red-500 shrink-0">
@@ -1667,22 +1667,24 @@ const wizardWaitingNext = ref(false)
 const wizardIsFinished = ref(false)
 
 // 마법사 프리셋 드롭다운
-const WIZARD_PRESET_KEY = 'eztag-wizard-presets'
-const WIZARD_STEPS_KEY  = 'eztag-wizard-steps'
+const WIZARD_STEPS_KEY = 'eztag-wizard-steps'
 
 const wizardMenuRef = ref(null)
 const showWizardMenu = ref(false)
 
 const wizardSavedPresets = ref([])
 
-function refreshWizardPresets() {
-  try { wizardSavedPresets.value = JSON.parse(localStorage.getItem(WIZARD_PRESET_KEY) || '[]') } catch { wizardSavedPresets.value = [] }
+async function refreshWizardPresets() {
+  try {
+    const { data } = await configApi.getWizardPresets()
+    wizardSavedPresets.value = Array.isArray(data.presets) ? data.presets : []
+  } catch { wizardSavedPresets.value = [] }
 }
 
 const wizardMenuPos = computed(() => showWizardMenu.value ? dropdownPos(wizardMenuRef) : {})
 
-function toggleWizardMenu() {
-  if (!showWizardMenu.value) refreshWizardPresets()
+async function toggleWizardMenu() {
+  if (!showWizardMenu.value) await refreshWizardPresets()
   showWizardMenu.value = !showWizardMenu.value
 }
 
