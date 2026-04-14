@@ -149,15 +149,70 @@
                 <div
                   v-for="(step, i) in activeSteps"
                   :key="step.id"
-                  class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors"
+                  class="flex items-start gap-2.5 px-3 py-2 rounded-xl transition-colors"
                   :class="stepStateClass(i)"
                 >
-                  <span class="text-base shrink-0">{{ stepStateIcon(i) }}</span>
+                  <span class="text-base shrink-0 mt-0.5">{{ stepStateIcon(i) }}</span>
                   <div class="flex-1 min-w-0">
+                    <!-- 단계 이름 -->
                     <p class="text-sm font-medium" :class="currentStep === i ? 'text-indigo-700 dark:text-indigo-300' : stepsDone[i] ? 'text-gray-500 dark:text-gray-400 line-through' : 'text-gray-700 dark:text-gray-300'">
                       {{ i + 1 }}. {{ t('wizard.step.' + step.id) }}
                     </p>
-                    <p v-if="currentStep === i && stepStatus" class="text-xs text-indigo-500 dark:text-indigo-400 truncate mt-0.5">{{ stepStatus }}</p>
+
+                    <!-- 현재 실행 중인 단계 -->
+                    <template v-if="currentStep === i">
+                      <!-- 상세 진행 (LRC/YouTube: 미니 진행바 + 통계) -->
+                      <template v-if="stepProgress && stepProgress.total > 0">
+                        <p class="text-[11px] text-indigo-500 dark:text-indigo-400 mt-0.5">{{ stepStatus }}</p>
+                        <div class="mt-1.5 space-y-1">
+                          <!-- 미니 진행바 -->
+                          <div class="h-1 bg-indigo-100 dark:bg-indigo-900/40 rounded-full overflow-hidden">
+                            <div
+                              class="h-full bg-indigo-400 rounded-full transition-all duration-200"
+                              :style="{ width: (stepProgress.current / stepProgress.total * 100) + '%' }"
+                            />
+                          </div>
+                          <!-- 통계 행 -->
+                          <div class="flex items-center justify-between">
+                            <span class="text-[10px] text-indigo-500 dark:text-indigo-400 font-mono tabular-nums">{{ stepProgress.current }}/{{ stepProgress.total }}</span>
+                            <!-- LRC 통계 -->
+                            <div v-if="stepProgress.type === 'lrc'" class="flex gap-2 text-[10px]">
+                              <span class="text-green-600 dark:text-green-400">✅ {{ stepProgress.ok }}</span>
+                              <span class="text-red-400 dark:text-red-400">❌ {{ stepProgress.notFound }}</span>
+                              <span v-if="stepProgress.noSync" class="text-amber-500">⚠️ {{ stepProgress.noSync }}</span>
+                            </div>
+                            <!-- YouTube 통계 -->
+                            <div v-if="stepProgress.type === 'youtube'" class="flex gap-2 text-[10px]">
+                              <span class="text-green-600 dark:text-green-400">✅ {{ stepProgress.found }}</span>
+                              <span v-if="stepProgress.current - stepProgress.found > 0" class="text-red-400">❌ {{ stepProgress.current - stepProgress.found }}</span>
+                            </div>
+                          </div>
+                          <!-- 현재 파일명 -->
+                          <p v-if="stepProgress.currentFile" class="text-[10px] text-gray-400 dark:text-gray-500 truncate">{{ stepProgress.currentFile }}</p>
+                        </div>
+                      </template>
+                      <!-- 단순 상태 텍스트 (autoTag/rename/albumCard) -->
+                      <p v-else-if="stepStatus" class="text-xs text-indigo-500 dark:text-indigo-400 truncate mt-0.5">{{ stepStatus }}</p>
+                    </template>
+
+                    <!-- 완료된 단계 결과 -->
+                    <div v-if="stepsDone[i] && stepsResults[i]" class="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
+                      <!-- LRC 완료 결과 -->
+                      <template v-if="stepsResults[i].type === 'lrc'">
+                        <span class="text-[10px] text-green-600 dark:text-green-400">✅ {{ stepsResults[i].ok }}</span>
+                        <span v-if="stepsResults[i].notFound" class="text-[10px] text-red-400">❌ {{ stepsResults[i].notFound }}</span>
+                        <span v-if="stepsResults[i].noSync" class="text-[10px] text-amber-500">⚠️ {{ stepsResults[i].noSync }}</span>
+                      </template>
+                      <!-- YouTube 완료 결과 -->
+                      <template v-if="stepsResults[i].type === 'youtube'">
+                        <span class="text-[10px] text-green-600 dark:text-green-400">✅ {{ stepsResults[i].found }}</span>
+                        <span v-if="stepsResults[i].total - stepsResults[i].found > 0" class="text-[10px] text-red-400">❌ {{ stepsResults[i].total - stepsResults[i].found }}</span>
+                      </template>
+                      <!-- rename 완료 결과 -->
+                      <template v-if="stepsResults[i].type === 'rename'">
+                        <span class="text-[10px] text-green-600 dark:text-green-400">✅ {{ stepsResults[i].total }}개</span>
+                      </template>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -223,6 +278,8 @@ const props = defineProps({
   currentStep: { type: Number, default: -1 },
   stepsDone: { type: Array, default: () => [] },
   stepStatus: { type: String, default: '' },
+  stepProgress: { type: Object, default: null },   // { type, current, total, ok, notFound, noSync, errors, found, currentFile }
+  stepsResults: { type: Array, default: () => [] }, // 완료된 단계별 최종 결과
   waitingNext: Boolean,
   isFinished: Boolean,
   phase: { type: String, default: 'setup' },  // 'setup' | 'running'

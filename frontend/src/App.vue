@@ -532,8 +532,7 @@ function runMobileWizardPreset(preset) {
 function openMobileWizardSetup() {
   mobileWizardMenuOpen.value = false
   browserStore.wizardPendingPreset = null
-  if (route.path !== '/browser') router.push('/browser')
-  browserStore.wizardOpen = true
+  router.push('/settings?tab=wizard')
 }
 
 function onMobileSelectFolder(folder) {

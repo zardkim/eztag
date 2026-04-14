@@ -1342,7 +1342,7 @@ watch(activeTab, (tab) => {
     wizardSteps.value = loadWizardSteps()
     loadWizardPresets()
   }
-})
+}, { immediate: true })
 
 function saveWizardSteps() {
   localStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify(

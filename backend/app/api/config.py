@@ -7,7 +7,7 @@ from typing import Optional, Any, List
 from app.database import get_db
 from app.core.auth import get_current_user
 from app.schemas.config import ConfigResponse, ConfigUpdate, ConfigItem
-from app.core.config_store import get_all_config, get_config, set_config, set_bulk_config, DEFAULTS, get_destination_folders, set_destination_folders
+from app.core.config_store import get_all_config, get_config as _cfg_get, set_config as _cfg_set, set_bulk_config, DEFAULTS, get_destination_folders, set_destination_folders
 
 router = APIRouter(prefix="/api/config", tags=["config"])
 
@@ -84,7 +84,7 @@ def get_wizard_presets(
     _=Depends(get_current_user),
 ):
     """마법사 프리셋 목록 반환."""
-    raw = get_config(db, "wizard_presets")
+    raw = _cfg_get(db, "wizard_presets")
     try:
         presets = json.loads(raw or "[]")
         if not isinstance(presets, list):
@@ -101,7 +101,7 @@ def save_wizard_presets(
     _=Depends(get_current_user),
 ):
     """마법사 프리셋 목록 저장 (전체 교체)."""
-    set_config(db, "wizard_presets", json.dumps(body.presets, ensure_ascii=False))
+    _cfg_set(db, "wizard_presets", json.dumps(body.presets, ensure_ascii=False))
     return {"ok": True, "presets": body.presets}
 
 

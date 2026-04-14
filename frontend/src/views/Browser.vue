@@ -516,7 +516,7 @@
         <iframe
           :src="`/api/browse/extra-file?path=${encodeURIComponent(browserStore.selectedExtraFile.path)}`"
           class="flex-1 w-full border-none bg-white"
-          sandbox="allow-scripts"
+          sandbox="allow-scripts allow-popups"
         ></iframe>
       </div>
 
@@ -1008,6 +1008,8 @@
       :current-step="wizardCurrentStep"
       :steps-done="wizardStepsDone"
       :step-status="wizardStepStatus"
+      :step-progress="wizardStepProgress"
+      :steps-results="wizardStepsResults"
       :waiting-next="wizardWaitingNext"
       :is-finished="wizardIsFinished"
       :phase="wizardPhase"
@@ -1022,6 +1024,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import BatchTagPanel from '../components/BatchTagPanel.vue'
 import SpotifySearchDialog from '../components/SpotifySearchDialog.vue'
@@ -1040,6 +1043,7 @@ import { browseApi, workspaceApi } from '../api/index.js'
 import { downloadBlob } from '../utils/download.js'
 
 const { t, locale } = useI18n()
+const router = useRouter()
 const browserStore = useBrowserStore()
 const historyStore = useHistoryStore()
 const toastStore = useToastStore()
@@ -1662,6 +1666,8 @@ const wizardSteps = ref([])             // 실행할 단계 배열
 const wizardCurrentStep = ref(-1)
 const wizardStepsDone = ref([])
 const wizardStepStatus = ref('')
+const wizardStepProgress = ref(null)    // 현재 단계 실시간 진행 { type, current, total, ... }
+const wizardStepsResults = ref([])      // 완료된 단계별 최종 결과
 const wizardHidden = ref(false)         // SpotifyDialog 열릴 때 마법사 숨김
 const wizardWaitingNext = ref(false)
 const wizardIsFinished = ref(false)
@@ -1690,7 +1696,7 @@ async function toggleWizardMenu() {
 
 function openWizardSetup() {
   showWizardMenu.value = false
-  browserStore.wizardOpen = true
+  router.push('/settings?tab=wizard')
 }
 
 const WIZARD_DEFAULT_STEPS_BROWSER = [
@@ -1796,6 +1802,8 @@ function onWizardClose() {
 function onWizardStart(steps) {
   wizardSteps.value = steps
   wizardStepsDone.value = steps.map(() => false)
+  wizardStepsResults.value = steps.map(() => null)
+  wizardStepProgress.value = null
   wizardCurrentStep.value = 0
   wizardPhase.value = 'running'
   wizardWaitingNext.value = false
@@ -1804,10 +1812,13 @@ function onWizardStart(steps) {
 }
 
 async function runWizard() {
+  const SOURCE_LABELS = { alsong: '알송', bugs: 'Bugs', lrclib: 'LRCLIB' }
+
   for (let i = 0; i < wizardSteps.value.length; i++) {
     wizardCurrentStep.value = i
     wizardWaitingNext.value = false
     wizardStepStatus.value = ''
+    wizardStepProgress.value = null
     const step = wizardSteps.value[i]
 
     if (step.id === 'autoTag') {
@@ -1825,55 +1836,108 @@ async function runWizard() {
     } else if (step.id === 'lrc') {
       // 자동: LRC 백그라운드 작업 → 선택한 소스 순서대로 순차 실행
       const sources = (step.lrcSources && step.lrcSources.length > 0) ? step.lrcSources : ['alsong']
-      const SOURCE_LABELS = { alsong: '알송', bugs: 'Bugs', lrclib: 'LRCLIB' }
       const folderPath = browserStore.selectedFolder?.path || ''
       const folderName = browserStore.selectedFolder?.name || ''
+      const cumulativeResult = { type: 'lrc', ok: 0, notFound: 0, noSync: 0, errors: 0, total: 0 }
+
       for (const source of sources) {
-        wizardStepStatus.value = `${SOURCE_LABELS[source] || source} ${t('wizard.statusRunning')}`
+        const sourceLabel = SOURCE_LABELS[source] || source
         const targetFiles = browserStore.files
         if (!targetFiles.length) break
+
+        wizardStepStatus.value = `${sourceLabel} ${t('wizard.statusRunning')}`
+        wizardStepProgress.value = { type: 'lrc', source: sourceLabel, current: 0, total: targetFiles.length, ok: 0, notFound: 0, noSync: 0, errors: 0, currentFile: '' }
+
+        // 실시간 진행 감시
+        const stopProgressWatch = watch(() => jobStore.lrcJob, (job) => {
+          if (!job || job.folderPath !== folderPath) return
+          wizardStepProgress.value = {
+            type: 'lrc', source: sourceLabel,
+            current: job.current, total: job.total,
+            ok: job.ok, notFound: job.notFound, noSync: job.noSync, errors: job.errors,
+            currentFile: job.currentFile,
+          }
+          if (job.total > 0) {
+            wizardStepStatus.value = `${sourceLabel} ${job.current}/${job.total}`
+          }
+        }, { deep: true })
+
         await new Promise(resolve => {
           _wizardCurrentResolve = resolve
-          jobStore.startLrcJob({ files: targetFiles, source, apiMode: 'browser', routePath: '/browser', routeLabel: folderName, folderPath, sourceLabel: SOURCE_LABELS[source] || source })
+          jobStore.startLrcJob({ files: targetFiles, source, apiMode: 'browser', routePath: '/browser', routeLabel: folderName, folderPath, sourceLabel })
           const unwatch = watch(() => jobStore.lrcJob?.done, (done) => {
             if (done && jobStore.lrcJob?.folderPath === folderPath) {
               unwatch()
+              stopProgressWatch()
+              // 누적 결과 합산
+              const job = jobStore.lrcJob
+              if (job) {
+                cumulativeResult.ok += job.ok
+                cumulativeResult.notFound += job.notFound
+                cumulativeResult.noSync += job.noSync
+                cumulativeResult.errors += job.errors
+                cumulativeResult.total += job.total
+              }
               _wizardCurrentResolve = null
               resolve()
             }
           })
         })
       }
+      wizardStepProgress.value = null
+      wizardStepsResults.value[i] = cumulativeResult
 
     } else if (step.id === 'youtube') {
       // 자동: YouTube 백그라운드 작업 시작 → 완료 대기
       const allFiles = browserStore.files.filter(f => f.scanned !== false)
       if (allFiles.length) {
         wizardStepStatus.value = t('wizard.statusRunning')
+        wizardStepProgress.value = { type: 'youtube', current: 0, total: allFiles.length, found: 0, currentFile: '' }
         const folderPath = browserStore.selectedFolder?.path || ''
         const folderName = browserStore.selectedFolder?.name || ''
+
+        // 실시간 진행 감시
+        const stopProgressWatch = watch(() => jobStore.youtubeJob, (job) => {
+          if (!job || job.folderPath !== folderPath) return
+          wizardStepProgress.value = {
+            type: 'youtube',
+            current: job.current, total: job.total,
+            found: job.found, currentFile: job.currentFile,
+          }
+          if (job.total > 0) {
+            wizardStepStatus.value = `YouTube MV ${job.current}/${job.total}`
+          }
+        }, { deep: true })
+
         await new Promise(resolve => {
           _wizardCurrentResolve = resolve
           jobStore.startYoutubeJob({ files: allFiles, routePath: '/browser', routeLabel: folderName, folderPath })
           const unwatch = watch(() => jobStore.youtubeJob?.done, (done) => {
             if (done && jobStore.youtubeJob?.folderPath === folderPath) {
               unwatch()
+              stopProgressWatch()
+              const job = jobStore.youtubeJob
+              if (job) {
+                wizardStepsResults.value[i] = { type: 'youtube', found: job.found, total: job.current }
+              }
               _wizardCurrentResolve = null
               resolve()
             }
           })
         })
+        wizardStepProgress.value = null
       }
 
     } else if (step.id === 'rename') {
-      wizardStepStatus.value = t('wizard.statusRunning')
       if (step.renamePattern) {
         // 자동: 선택한 프리셋으로 바로 API 호출
         const files = browserStore.files
         if (files.length) {
+          wizardStepStatus.value = `${files.length}개 ${t('wizard.statusRunning')}`
           try {
             const paths = files.map(f => f.path)
             await browseApi.renameByTags(paths, step.renamePattern)
+            wizardStepsResults.value[i] = { type: 'rename', total: files.length }
             const folderPath = browserStore.selectedFolder?.path
             if (folderPath) {
               browserStore.invalidateFilesCache(folderPath)
@@ -1883,6 +1947,7 @@ async function runWizard() {
         }
       } else {
         // 인터랙티브: RenameByTagsModal 열기 → 닫힐 때까지 대기
+        wizardStepStatus.value = t('wizard.statusRunning')
         showRenameModal.value = true
         wizardWaitingNext.value = true
         await new Promise(resolve => { _wizardRenameResolve = resolve; _wizardCurrentResolve = resolve })
@@ -1907,9 +1972,11 @@ async function runWizard() {
 
     wizardStepsDone.value[i] = true
     wizardStepsDone.value = [...wizardStepsDone.value]
+    wizardStepsResults.value = [...wizardStepsResults.value]
   }
 
   wizardCurrentStep.value = -1
+  wizardStepProgress.value = null
   wizardIsFinished.value = true
   wizardWaitingNext.value = false
 }

@@ -422,6 +422,7 @@ details.desc-details .desc-box {
   background: none; border: none; padding: 0; cursor: pointer;
   display: inline-flex; align-items: center; color: #ff0000;
   opacity: 0.8; transition: opacity 0.15s, transform 0.1s;
+  text-decoration: none;
 }
 .yt-play-btn:hover { opacity: 1; transform: scale(1.15); }
 
@@ -478,26 +479,6 @@ details.tc-details[open] summary::before { transform: rotate(90deg); }
 .tc-tech-label { color: var(--text3); font-weight: 500; white-space: nowrap; }
 .tc-tech-val { color: var(--text2); word-break: break-all; }
 
-/* ── YouTube 다이얼로그 ── */
-.yt-overlay {
-  display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,0.88); z-index: 9000;
-  align-items: center; justify-content: center;
-}
-.yt-overlay.open { display: flex; }
-.yt-dialog {
-  position: relative; width: min(854px, 95vw);
-  aspect-ratio: 16/9; background: #000;
-  border-radius: 10px; overflow: hidden;
-  box-shadow: 0 30px 80px rgba(0,0,0,0.6);
-}
-.yt-dialog iframe { width: 100%; height: 100%; border: none; display: block; }
-.yt-close {
-  position: absolute; top: -40px; right: 0;
-  background: none; border: none; color: rgba(255,255,255,0.85);
-  font-size: 28px; line-height: 1; cursor: pointer; padding: 4px 8px;
-}
-.yt-close:hover { color: #fff; }
 
 /* ── eztag 배지 ── */
 .eztag-badge {
@@ -558,55 +539,7 @@ details.tc-details[open] summary::before { transform: rotate(90deg); }
   details.desc-details { display: none; }
 }
 
-/* ── YouTube 모달 ── */
-#yt-modal {
-  display: none;
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.88);
-  z-index: 9999;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-#yt-modal.open { display: flex; }
-#yt-modal-inner {
-  position: relative;
-  width: min(900px, 94vw);
-  cursor: default;
-}
-#yt-close {
-  position: absolute;
-  top: -38px; right: 0;
-  background: none; border: none;
-  color: rgba(255,255,255,0.8); font-size: 22px;
-  cursor: pointer; padding: 4px 10px;
-  line-height: 1;
-}
-#yt-close:hover { color: #fff; }
-#yt-frame-wrap {
-  position: relative;
-  padding-bottom: 56.25%;
-  height: 0;
-  overflow: hidden;
-  border-radius: 12px;
-  background: #000;
-  box-shadow: 0 24px 80px rgba(0,0,0,0.7);
-}
-#yt-frame {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  border: none;
-}
-#yt-open-link {
-  display: block;
-  text-align: center;
-  margin-top: 10px;
-  font-size: 12px;
-  color: rgba(255,255,255,0.55);
-  text-decoration: none;
-}
-#yt-open-link:hover { color: rgba(255,255,255,0.85); }
+/* ── YouTube 버튼 (새 탭으로 열기) ── */
 
 /* ── 인쇄 최적화 ── */
 @media print {
@@ -620,7 +553,6 @@ details.tc-details[open] summary::before { transform: rotate(90deg); }
   details.desc-details { display: block !important; }
   details.desc-details summary { display: none; }
   details.tc-details[open] { display: block; }
-  #yt-modal { display: none !important; }
 }
 """
 
@@ -927,9 +859,9 @@ def build_html(
         yt_vid = _extract_youtube_id(t.get("youtube_url") or "")
         if yt_vid:
             yt_btn = (
-                f'<button class="yt-play-btn" onclick="openYT(\'{yt_vid}\')" title="{i18n["play_mv"]}">'
+                f'<a class="yt-play-btn" href="https://www.youtube.com/watch?v={yt_vid}" target="_blank" rel="noopener noreferrer" title="{i18n["play_mv"]}">'
                 + _YT_SVG
-                + '</button>'
+                + '</a>'
             )
         else:
             yt_btn = ""
@@ -1156,47 +1088,6 @@ def build_html(
     <span>Generated · {now_str}{(' · ' + source_note) if source_note else ''}</span>
   </div>
 </div>
-
-
-<!-- YouTube 모달 -->
-<div id="yt-modal" role="dialog" aria-modal="true" onclick="closeYT(event)">
-  <div id="yt-modal-inner">
-    <button id="yt-close" onclick="closeYT()" aria-label="Close">✕</button>
-    <div id="yt-frame-wrap">
-      <iframe id="yt-frame" src="" frameborder="0"
-        allow="autoplay; encrypted-media; picture-in-picture"
-        allowfullscreen></iframe>
-    </div>
-    <a id="yt-open-link" href="#" target="_blank" rel="noopener noreferrer">YouTube에서 열기 ↗</a>
-  </div>
-</div>
-
-<script>
-function openYT(id) {{
-  var modal = document.getElementById('yt-modal');
-  var frame = document.getElementById('yt-frame');
-  var link  = document.getElementById('yt-open-link');
-  var ytUrl = 'https://www.youtube.com/watch?v=' + id;
-  frame.src = 'https://www.youtube.com/embed/' + id + '?autoplay=1';
-  link.href = ytUrl;
-  modal.classList.add('open');
-  document.body.style.overflow = 'hidden';
-}}
-function closeYT(e) {{
-  if (e && e.type === 'click') {{
-    var inner = document.getElementById('yt-modal-inner');
-    if (inner && inner.contains(e.target) && e.target !== document.getElementById('yt-close')) return;
-  }}
-  var modal = document.getElementById('yt-modal');
-  var frame = document.getElementById('yt-frame');
-  modal.classList.remove('open');
-  frame.src = '';
-  document.body.style.overflow = '';
-}}
-document.addEventListener('keydown', function(e) {{
-  if (e.key === 'Escape') closeYT();
-}});
-</script>
 </body>
 </html>"""
 
