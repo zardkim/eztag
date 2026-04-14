@@ -6,6 +6,7 @@ data/backup/
 data/db/
 data/library/*
 !data/library/.gitkeep
+data/workspace/
 
 # ── Python ─────────────────────────────────────────────────
 __pycache__/

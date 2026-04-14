@@ -540,6 +540,185 @@
           <p class="text-center text-xs text-gray-400 mt-2">{{ $t('settings.activityLog.total', { n: logTotal }) }}</p>
         </template>
 
+        <!-- ── 마법사 설정 ── -->
+        <template v-if="activeTab === 'wizard'">
+          <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-2">🪄 {{ $t('wizard.title') }}</h2>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-5">{{ $t('settings.wizard.desc') }}</p>
+
+          <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm">
+            <p class="text-xs text-gray-400 mb-4">{{ $t('wizard.setupHint') }}</p>
+
+            <!-- 단계 목록 -->
+            <div class="space-y-2">
+              <div
+                v-for="(step, i) in wizardSteps"
+                :key="step.id"
+                class="flex items-center gap-2 rounded-xl px-3 py-2.5 transition-colors"
+                :class="step.enabled !== false ? 'bg-gray-50 dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-800/30 opacity-50'"
+              >
+                <!-- 순번 -->
+                <span class="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-[11px] font-bold flex items-center justify-center shrink-0">{{ i + 1 }}</span>
+                <!-- 아이콘 -->
+                <span class="text-lg shrink-0">{{ wizardStepIcon(step.id) }}</span>
+                <!-- 이름 + 서브옵션 -->
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ $t('wizard.step.' + step.id) }}</p>
+                  <!-- 자동태그: 소스 다중선택 -->
+                  <div v-if="step.id === 'autoTag' && step.enabled !== false" class="mt-1.5 flex flex-wrap gap-1">
+                    <button
+                      v-for="p in wizardAvailableProviders"
+                      :key="p.key"
+                      class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] transition-colors"
+                      :class="(step.providerKeys || []).includes(p.key)
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'"
+                      @click="toggleWizardProviderKey(step, p.key)"
+                    >
+                      <img :src="p.logo" :alt="p.label" class="w-3.5 h-3.5 rounded-full object-cover" />
+                      {{ p.label }}
+                    </button>
+                  </div>
+                  <!-- LRC: 소스 다중선택 -->
+                  <div v-if="step.id === 'lrc' && step.enabled !== false" class="mt-1.5 flex gap-1">
+                    <button
+                      v-for="src in wizardLrcSources"
+                      :key="src.key"
+                      class="px-2 py-0.5 rounded-full text-[11px] transition-colors"
+                      :class="(step.lrcSources || []).includes(src.key)
+                        ? 'bg-purple-500 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'"
+                      @click="toggleWizardLrcSource(step, src.key)"
+                    >{{ src.label }}</button>
+                  </div>
+                  <!-- 파일명변경: 프리셋 선택 -->
+                  <div v-if="step.id === 'rename' && step.enabled !== false" class="mt-1.5 flex flex-wrap gap-1">
+                    <button
+                      v-for="p in wizardRenamePresets"
+                      :key="p.pattern"
+                      class="px-2 py-0.5 rounded-full text-[11px] transition-colors"
+                      :class="!isWizardCustomRename(step) && step.renamePattern === p.pattern
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'"
+                      @click="step.renamePattern = p.pattern; saveWizardSteps()"
+                    >{{ p.label }}</button>
+                    <button
+                      class="px-2 py-0.5 rounded-full text-[11px] transition-colors"
+                      :class="isWizardCustomRename(step)
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'"
+                      @click="toggleWizardCustomRename(step)"
+                    >{{ $t('wizard.renameManual') }}</button>
+                    <div v-if="isWizardCustomRename(step)" class="w-full mt-1 space-y-1">
+                      <input
+                        type="text"
+                        class="w-full text-[11px] px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-orange-400"
+                        :placeholder="$t('wizard.renameCustomPlaceholder')"
+                        v-model="step.renamePattern"
+                        :ref="el => setWizardRenameInputRef(step.id, el)"
+                        @input="saveWizardSteps(); onWizardRenameInputInteract(step.id)"
+                        @click="onWizardRenameInputInteract(step.id)"
+                        @keyup="onWizardRenameInputInteract(step.id)"
+                      />
+                      <div class="flex flex-wrap gap-1">
+                        <button
+                          v-for="v in RENAME_VARS"
+                          :key="v"
+                          class="px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-[10px] rounded font-mono hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors"
+                          @click.prevent="insertWizardRenameVar(step, v)"
+                        >{{ v }}</button>
+                      </div>
+                      <p class="text-[10px] text-gray-400">{{ $t('wizard.renameCustomHint') }}</p>
+                    </div>
+                  </div>
+                </div>
+                <!-- 활성/비활성 토글 -->
+                <button
+                  class="shrink-0 w-9 h-5 rounded-full transition-colors relative"
+                  :class="step.enabled !== false ? 'bg-indigo-500' : 'bg-gray-300 dark:bg-gray-600'"
+                  @click="step.enabled = step.enabled === false ? true : false; saveWizardSteps()"
+                >
+                  <span
+                    class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all"
+                    :class="step.enabled !== false ? 'left-[18px]' : 'left-0.5'"
+                  />
+                </button>
+                <!-- 위/아래 버튼 -->
+                <div class="flex flex-col gap-0.5 shrink-0">
+                  <button
+                    class="w-6 h-5 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-20"
+                    :disabled="i === 0"
+                    @click="moveWizardStep(i, -1)"
+                  >▲</button>
+                  <button
+                    class="w-6 h-5 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-20"
+                    :disabled="i === wizardSteps.length - 1"
+                    @click="moveWizardStep(i, 1)"
+                  >▼</button>
+                </div>
+              </div>
+            </div>
+
+            <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-4">{{ $t('settings.wizard.autoSave') }}</p>
+          </section>
+
+          <!-- 마법사 프리셋 -->
+          <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm mt-4">
+            <div class="flex items-center justify-between mb-1">
+              <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">{{ $t('wizard.preset.section') }}</h3>
+              <span v-if="wizardPresets.length >= 10" class="text-[11px] text-orange-500">{{ $t('wizard.preset.maxWarn') }}</span>
+            </div>
+            <p class="text-[11px] text-gray-400 dark:text-gray-500 mb-4">{{ $t('wizard.preset.desc') }}</p>
+
+            <!-- 저장된 프리셋 목록 -->
+            <div v-if="wizardPresets.length === 0" class="text-[11px] text-gray-400 italic mb-3">{{ $t('wizard.preset.empty') }}</div>
+            <div v-else class="space-y-2 mb-4">
+              <div
+                v-for="preset in wizardPresets"
+                :key="preset.id"
+                class="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2"
+              >
+                <span class="flex-1 text-sm text-gray-800 dark:text-gray-200 truncate">{{ preset.name }}</span>
+                <button
+                  class="text-[11px] px-2 py-1 rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/70 transition-colors"
+                  @click="loadWizardPresetToSteps(preset)"
+                >{{ $t('wizard.preset.load') }}</button>
+                <button
+                  class="text-[11px] px-2 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-500 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
+                  @click="deleteWizardPreset(preset.id)"
+                >{{ $t('wizard.preset.delete') }}</button>
+              </div>
+            </div>
+
+            <!-- 새 프리셋 저장 -->
+            <div v-if="wizardShowPresetSave" class="flex gap-2 mb-2">
+              <input
+                v-model="wizardNewPresetName"
+                type="text"
+                class="flex-1 text-xs px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-indigo-400"
+                :placeholder="$t('wizard.preset.namePlaceholder')"
+                @keydown.enter="saveWizardPreset()"
+                @keydown.esc="wizardShowPresetSave = false; wizardNewPresetName = ''"
+                autofocus
+              />
+              <button
+                class="px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors disabled:opacity-40"
+                :disabled="!wizardNewPresetName.trim()"
+                @click="saveWizardPreset()"
+              >{{ $t('common.save') }}</button>
+              <button
+                class="px-3 py-1.5 text-xs bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded transition-colors"
+                @click="wizardShowPresetSave = false; wizardNewPresetName = ''"
+              >{{ $t('common.cancel') }}</button>
+            </div>
+            <button
+              v-else
+              class="w-full py-2 text-xs rounded-lg border border-dashed border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors disabled:opacity-40"
+              :disabled="wizardPresets.length >= 10"
+              @click="wizardShowPresetSave = true"
+            >+ {{ $t('wizard.preset.save') }}</button>
+          </section>
+        </template>
+
         <!-- ── 시스템 정보 ── -->
         <template v-if="activeTab === 'system'">
           <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-5">{{ $t('settings.version.title') }}</h2>
@@ -701,7 +880,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { configApi } from '../api/config.js'
@@ -724,6 +903,7 @@ const tabs = computed(() => [
   { key: 'general',     icon: '⚙️',  label: t('settings.general') },
   { key: 'folders',     icon: '📁',  label: t('settings.excludedFolders.tabLabel') },
   { key: 'metadata',    icon: '🏷',  label: t('settings.metadata.title') },
+  { key: 'wizard',      icon: '🪄',  label: t('wizard.title') },
   { key: 'data',        icon: '💾',  label: t('settings.backup.title') },
   { key: 'logs',        icon: '📋',  label: t('settings.activityLog.title') },
   { key: 'system',      icon: '🖥',  label: t('settings.version.title') },
@@ -1026,6 +1206,222 @@ const renamePresets = computed(() => [
   { name: isKo.value ? '트랙 - 아티스트 - 제목' : 'Track - Artist - Title', pattern: '%track% - %artist% - %title%' },
   { name: isKo.value ? '디스크-트랙 - 제목' : 'Disc-Track - Title',         pattern: '%disc%-%track% - %title%' },
 ])
+
+// ── 마법사 설정 탭 ──────────────────────────────────────────
+const WIZARD_STORAGE_KEY = 'eztag-wizard-steps'
+
+const WIZARD_DEFAULT_STEPS = [
+  { id: 'autoTag',   icon: '🏷️', providerKeys: [], enabled: true },
+  { id: 'rename',    icon: '🔤',  renamePattern: '', enabled: true },
+  { id: 'lrc',       icon: '🎵',  lrcSources: ['alsong'], enabled: true },
+  { id: 'youtube',   icon: '▶️',  enabled: true },
+  { id: 'albumCard', icon: '🎴',  enabled: true },
+]
+
+const wizardLrcSources = [
+  { key: 'alsong', label: '알송' },
+  { key: 'bugs',   label: 'Bugs' },
+  { key: 'lrclib', label: 'LRCLIB' },
+]
+
+const wizardRenamePresets = computed(() => [
+  { label: t('renameModal.presetTrackTitle'),            pattern: '%track% - %title%' },
+  { label: t('renameModal.presetArtistTitle'),           pattern: '%artist% - %title%' },
+  { label: t('renameModal.presetTrackArtistTitle'),      pattern: '%track% - %artist% - %title%' },
+  { label: t('renameModal.presetArtistAlbumTrackTitle'), pattern: '%artist% - %album% - %track% - %title%' },
+  { label: t('renameModal.presetDiscTrackTitle'),        pattern: '%disc%-%track% - %title%' },
+])
+
+function toggleWizardProviderKey(step, key) {
+  const keys = step.providerKeys || []
+  step.providerKeys = keys.includes(key) ? keys.filter(k => k !== key) : [...keys, key]
+  saveWizardSteps()
+}
+
+function toggleWizardLrcSource(step, key) {
+  const srcs = step.lrcSources || []
+  step.lrcSources = srcs.includes(key) ? srcs.filter(s => s !== key) : [...srcs, key]
+  saveWizardSteps()
+}
+
+function isWizardCustomRename(step) {
+  return !wizardRenamePresets.value.some(p => p.pattern === step.renamePattern)
+}
+
+function toggleWizardCustomRename(step) {
+  if (!isWizardCustomRename(step)) {
+    step.renamePattern = ''
+  }
+  saveWizardSteps()
+}
+
+// 아이콘 맵 (emoji 렌더링 안정화)
+function wizardStepIcon(id) {
+  const icons = {
+    autoTag:   '🏷️',
+    lrc:       '🎵',
+    rename:    '🔤',
+    youtube:   '▶️',
+    albumCard: '🎴',
+  }
+  return icons[id] || '•'
+}
+
+// 활성화된 공급자 목록 (form에서 계산)
+const WIZARD_PROVIDER_META = {
+  spotify:               { label: 'Spotify',               logo: '/logo/spotify.jpg' },
+  bugs:                  { label: 'Bugs',                  logo: '/logo/bugs.jpg' },
+  melon:                 { label: 'Melon',                 logo: '/logo/melon.jpg' },
+  apple_music:           { label: 'Apple Music',           logo: '/logo/apple%20music.jpg' },
+  apple_music_classical: { label: 'Apple Music Classical', logo: '/logo/Apple%20Music%20Classical.jpg' },
+}
+
+const wizardAvailableProviders = computed(() => {
+  return Object.entries({
+    spotify:               form.spotify_enabled,
+    bugs:                  form.bugs_enabled,
+    melon:                 form.melon_enabled,
+    apple_music:           form.apple_music_enabled,
+    apple_music_classical: form.apple_music_classical_enabled,
+  })
+    .filter(([, enabled]) => enabled)
+    .map(([key]) => ({ key, ...WIZARD_PROVIDER_META[key] }))
+})
+
+// providerKey(구버전 단일) → providerKeys(배열) 변환 헬퍼
+function _toProviderKeys(s, def) {
+  if (Array.isArray(s.providerKeys)) return s.providerKeys
+  if (s.providerKey) return [s.providerKey]
+  return def.providerKeys ? [...def.providerKeys] : []
+}
+// lrcSource(구버전 단일) → lrcSources(배열) 변환 헬퍼
+function _toLrcSources(s, def) {
+  if (Array.isArray(s.lrcSources)) return s.lrcSources
+  if (s.lrcSource) return [s.lrcSource]
+  return def.lrcSources ? [...def.lrcSources] : ['alsong']
+}
+
+function loadWizardSteps() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(WIZARD_STORAGE_KEY) || 'null')
+    if (!Array.isArray(saved)) return WIZARD_DEFAULT_STEPS.map(s => ({ ...s, providerKeys: [...(s.providerKeys || [])], lrcSources: [...(s.lrcSources || [])] }))
+    const result = []
+    for (const s of saved) {
+      const def = WIZARD_DEFAULT_STEPS.find(d => d.id === s.id)
+      if (def) result.push({ ...def, enabled: s.enabled ?? true, providerKeys: _toProviderKeys(s, def), lrcSources: _toLrcSources(s, def), renamePattern: s.renamePattern ?? def.renamePattern })
+    }
+    for (const def of WIZARD_DEFAULT_STEPS) {
+      if (!result.find(r => r.id === def.id)) result.push({ ...def, providerKeys: [...(def.providerKeys || [])], lrcSources: [...(def.lrcSources || [])] })
+    }
+    return result
+  } catch { return WIZARD_DEFAULT_STEPS.map(s => ({ ...s, providerKeys: [...(s.providerKeys || [])], lrcSources: [...(s.lrcSources || [])] })) }
+}
+
+const wizardSteps = ref(loadWizardSteps())
+
+watch(activeTab, (tab) => {
+  if (tab === 'wizard') {
+    wizardSteps.value = loadWizardSteps()
+    loadWizardPresets()
+  }
+})
+
+function saveWizardSteps() {
+  localStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify(
+    wizardSteps.value.map(s => ({ id: s.id, enabled: s.enabled ?? true, providerKeys: s.providerKeys ?? [], lrcSources: s.lrcSources ?? [], renamePattern: s.renamePattern }))
+  ))
+}
+
+function moveWizardStep(i, dir) {
+  const j = i + dir
+  if (j < 0 || j >= wizardSteps.value.length) return
+  const arr = [...wizardSteps.value]
+  ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  wizardSteps.value = arr
+  saveWizardSteps()
+}
+
+// 파일명 변경 변수 삽입
+const RENAME_VARS = ['%title%', '%artist%', '%albumartist%', '%album%', '%track%', '%disc%', '%year%']
+
+const _wizardRenameInputRefs = {}
+const _wizardRenameInputCursor = reactive({})
+
+function setWizardRenameInputRef(stepId, el) {
+  if (el) _wizardRenameInputRefs[stepId] = el
+  else delete _wizardRenameInputRefs[stepId]
+}
+
+function onWizardRenameInputInteract(stepId) {
+  const el = _wizardRenameInputRefs[stepId]
+  if (el) _wizardRenameInputCursor[stepId] = { start: el.selectionStart, end: el.selectionEnd }
+}
+
+function insertWizardRenameVar(step, varStr) {
+  const cursor = _wizardRenameInputCursor[step.id]
+  if (cursor !== undefined) {
+    const start = cursor.start ?? (step.renamePattern || '').length
+    const end = cursor.end ?? start
+    const old = step.renamePattern || ''
+    step.renamePattern = old.slice(0, start) + varStr + old.slice(end)
+    _wizardRenameInputCursor[step.id] = { start: start + varStr.length, end: start + varStr.length }
+    nextTick(() => {
+      const el = _wizardRenameInputRefs[step.id]
+      if (el) { el.focus(); el.setSelectionRange(start + varStr.length, start + varStr.length) }
+    })
+  } else {
+    step.renamePattern = (step.renamePattern || '') + varStr
+  }
+  saveWizardSteps()
+}
+
+// ── 마법사 프리셋 ──────────────────────────────────────────────
+const WIZARD_PRESET_KEY = 'eztag-wizard-presets'
+const WIZARD_PRESET_MAX = 10
+
+const wizardPresets = ref([])
+const wizardShowPresetSave = ref(false)
+const wizardNewPresetName = ref('')
+
+function loadWizardPresets() {
+  try {
+    const data = JSON.parse(localStorage.getItem(WIZARD_PRESET_KEY) || '[]')
+    wizardPresets.value = Array.isArray(data) ? data : []
+  } catch { wizardPresets.value = [] }
+}
+
+function saveWizardPreset() {
+  const name = wizardNewPresetName.value.trim()
+  if (!name) return
+  if (wizardPresets.value.length >= WIZARD_PRESET_MAX) return
+  const preset = {
+    id: Date.now().toString(),
+    name,
+    steps: wizardSteps.value.map(s => ({ id: s.id, enabled: s.enabled ?? true, providerKeys: s.providerKeys ?? [], lrcSources: s.lrcSources ?? [], renamePattern: s.renamePattern })),
+  }
+  wizardPresets.value = [...wizardPresets.value, preset]
+  localStorage.setItem(WIZARD_PRESET_KEY, JSON.stringify(wizardPresets.value))
+  wizardNewPresetName.value = ''
+  wizardShowPresetSave.value = false
+}
+
+function deleteWizardPreset(id) {
+  wizardPresets.value = wizardPresets.value.filter(p => p.id !== id)
+  localStorage.setItem(WIZARD_PRESET_KEY, JSON.stringify(wizardPresets.value))
+}
+
+function loadWizardPresetToSteps(preset) {
+  const result = []
+  for (const s of preset.steps) {
+    const def = WIZARD_DEFAULT_STEPS.find(d => d.id === s.id)
+    if (def) result.push({ ...def, enabled: s.enabled ?? true, providerKeys: _toProviderKeys(s, def), lrcSources: _toLrcSources(s, def), renamePattern: s.renamePattern ?? def.renamePattern })
+  }
+  for (const def of WIZARD_DEFAULT_STEPS) {
+    if (!result.find(r => r.id === def.id)) result.push({ ...def, providerKeys: [...(def.providerKeys || [])], lrcSources: [...(def.lrcSources || [])] })
+  }
+  wizardSteps.value = result
+  saveWizardSteps()
+}
 
 async function loadServerVersion() {
   try {

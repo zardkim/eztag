@@ -21,6 +21,7 @@ from app.core.tag_writer import write_tags, write_cover, remove_cover
 from app.core.tag_reader import read_tags, extract_cover, extract_cover_at, list_covers
 from app.core.config_store import get_destination_folders, get_excluded_folders
 import app.core.cache as _cache
+from app.core.cue_parser import parse_cue_file, CUE_SEP
 
 router = APIRouter(prefix="/api/browse", tags=["browse"])
 
@@ -304,10 +305,23 @@ def get_files(
         lrc_set = set()
 
     try:
-        # 오디오 파일 목록
+        all_items = list(p.iterdir())
+
+        # CUE 파일과 페어링된 오디오 파일 경로 수집 (CUE 트랙으로 대체할 파일들)
+        cue_paired_paths: set[str] = set()
+        cue_tracks: list[dict] = []
+        for item in sorted(all_items):
+            if item.is_file() and item.suffix.lower() == ".cue":
+                tracks = parse_cue_file(item)
+                if tracks:
+                    cue_tracks.extend(tracks)
+                    cue_paired_paths.add(tracks[0]["flac_path"])
+
+        # 오디오 파일 목록 (CUE 페어링 파일 제외)
         audio_items = sorted(
-            item for item in p.iterdir()
+            item for item in all_items
             if item.is_file() and item.suffix.lower() in AUDIO_EXTS
+            and str(item) not in cue_paired_paths
         )
 
         # DB 한 번에 조회
@@ -395,6 +409,11 @@ def get_files(
                     "scanned": False,
                 })
                 untracked_paths.append(str(item))
+
+        # CUE 트랙 추가 (track_no 기준 정렬)
+        if cue_tracks:
+            cue_tracks_sorted = sorted(cue_tracks, key=lambda t: (t.get("flac_path", ""), t.get("track_no", 0)))
+            files.extend(cue_tracks_sorted)
 
     except PermissionError:
         warning = "일부 항목에 접근 권한이 없습니다."
@@ -655,8 +674,17 @@ def rename_file(
     if not p.is_file():
         raise HTTPException(status_code=400, detail="Not a file")
 
-    new_name = req.new_name.strip()
-    if not new_name or "/" in new_name or "\\" in new_name:
+    from pathlib import PurePosixPath
+    from app.core.pattern_rename import sanitize_filename
+    raw = req.new_name.strip()
+    if not raw:
+        raise HTTPException(status_code=422, detail="Invalid filename")
+    # 확장자 분리 후 이름 부분만 sanitize
+    _p = PurePosixPath(raw)
+    stem = sanitize_filename(_p.stem)
+    ext = _p.suffix  # 확장자는 그대로 유지
+    new_name = f"{stem}{ext}" if ext else stem
+    if not new_name or new_name == ext:
         raise HTTPException(status_code=422, detail="Invalid filename")
 
     new_path = p.parent / new_name
@@ -740,6 +768,18 @@ def get_file_cover(
         if etag:
             headers["ETag"] = etag
         return Response(content=data, media_type=mime, headers=headers)
+
+    # CUE 가상 트랙 경로 처리 — 폴더의 커버 이미지 반환
+    if CUE_SEP in path:
+        flac_path = path.split(CUE_SEP)[0]
+        folder = Path(flac_path).parent
+        for ext in ("jpg", "jpeg", "png", "webp"):
+            for name in (f"cover.{ext}", f"folder.{ext}", f"front.{ext}"):
+                img = folder / name
+                if img.exists():
+                    return FileResponse(str(img), media_type=f"image/{ext if ext != 'jpg' else 'jpeg'}")
+        # 폴더 커버 없으면 FLAC 자체 커버 시도
+        path = flac_path
 
     # 캐시 미스: 경로 검증 + 파일에서 커버 추출
     p = _validate_path(path, db, allow_workspace=True)
@@ -1105,14 +1145,18 @@ def get_lrc_content(
     if not p.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 
-    # 1) .lrc 사이드카 파일 우선
+    # 1) .lrc 사이드카 파일 우선 (UTF-8 BOM 자동 처리)
     lrc_path = p.with_suffix(".lrc")
     if lrc_path.exists():
         try:
-            content = lrc_path.read_text(encoding="utf-8", errors="replace")
+            content = lrc_path.read_text(encoding="utf-8-sig", errors="replace")
             return {"source": "lrc_file", "content": content}
         except Exception:
-            pass
+            try:
+                content = lrc_path.read_text(encoding="cp949", errors="replace")
+                return {"source": "lrc_file", "content": content}
+            except Exception:
+                pass
 
     # 2) 파일 내장 가사 (DB 또는 태그 직접 읽기)
     track = db.query(Track).filter(Track.file_path == str(p)).first()
@@ -1236,6 +1280,16 @@ def fetch_lyrics_endpoint(
     notfound_count = sum(1 for r in results if r.get("status") == "not_found")
     error_count = sum(1 for r in results if r.get("status") == "error")
     source_label = f"{primary}" + (f"→{fallback}" if fallback != "none" else "")
+
+    # LRC 저장 완료 시 해당 폴더 캐시 무효화 (force=True 없이 getFiles 호출 시에도 최신 반영)
+    if saved_count > 0:
+        saved_folders = set()
+        for r in results:
+            if r.get("status") == "ok":
+                from pathlib import Path as _Path
+                saved_folders.add(str(_Path(r["path"]).parent))
+        for folder in saved_folders:
+            _cache.invalidate_files(folder)
 
     # 활동 로그
     from app.core.log_writer import write_activity_log
@@ -1541,6 +1595,191 @@ def rename_by_tags(
     return {"ok": failed == 0, "results": results, "success": success, "failed": failed}
 
 
+# ── 파일명 분석 → 태그 입력 ────────────────────────────────
+
+_TAG_FROM_NAME_VARS = [
+    "%title%", "%artist%", "%album_artist%", "%album%",
+    "%track%", "%disc%", "%year%", "%genre%", "%label%",
+]
+
+# 각 변수에 대한 정규식 캡처 그룹 패턴
+_VAR_REGEX = {
+    "%track%":        r"(\d+)",
+    "%disc%":         r"(\d+)",
+    "%year%":         r"(\d{4})",
+    "%title%":        r"(.+?)",
+    "%artist%":       r"(.+?)",
+    "%album_artist%": r"(.+?)",
+    "%album%":        r"(.+?)",
+    "%genre%":        r"(.+?)",
+    "%label%":        r"(.+?)",
+}
+
+# 변수명 → DB 필드명 매핑
+_VAR_TO_FIELD = {
+    "%title%":        "title",
+    "%artist%":       "artist",
+    "%album_artist%": "album_artist",
+    "%album%":        "album_title",
+    "%track%":        "track_no",
+    "%disc%":         "disc_no",
+    "%year%":         "year",
+    "%genre%":        "genre",
+    "%label%":        "label",
+}
+
+
+def _pattern_to_regex(pattern: str):
+    """패턴 → 정규식 + 필드 순서 반환."""
+    fields = []
+    # 패턴에서 변수 위치 순서 추출
+    remaining = pattern
+    regex_str = ""
+    i = 0
+    while i < len(pattern):
+        matched = False
+        for var in _TAG_FROM_NAME_VARS:
+            if pattern[i:].startswith(var):
+                regex_str += _VAR_REGEX[var]
+                fields.append(var)
+                i += len(var)
+                matched = True
+                break
+        if not matched:
+            regex_str += re.escape(pattern[i])
+            i += 1
+    return re.compile(f"^{regex_str}$", re.IGNORECASE), fields
+
+
+def _parse_filename_by_pattern(filename: str, pattern: str) -> dict:
+    """파일명을 패턴으로 파싱하여 태그 dict 반환. 매칭 실패 시 빈 dict."""
+    rx, fields = _pattern_to_regex(pattern)
+    m = rx.match(filename)
+    if not m:
+        return {}
+    result = {}
+    for i, var in enumerate(fields):
+        val = m.group(i + 1).strip()
+        field = _VAR_TO_FIELD[var]
+        if field in ("track_no", "disc_no", "year"):
+            try:
+                result[field] = int(val)
+            except ValueError:
+                result[field] = None
+        else:
+            result[field] = val
+    return result
+
+
+class TagFromNameRequest(BaseModel):
+    paths: list[str]
+    pattern: str
+    fields: list[str] = []   # 적용할 필드 (빈 목록 = 파싱된 전체)
+
+
+@router.post("/tag-from-name/preview")
+def tag_from_name_preview(
+    req: TagFromNameRequest,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """파일명 패턴 파싱 미리보기 — 파일 변경 없음."""
+    results = []
+    for path_str in req.paths:
+        try:
+            p = _validate_path(path_str, db, allow_workspace=True)
+            if not p.is_file():
+                results.append({"path": path_str, "filename": p.name, "parsed": {}, "error": "파일이 아닙니다"})
+                continue
+            parsed = _parse_filename_by_pattern(p.stem, req.pattern)
+            if not parsed:
+                results.append({"path": path_str, "filename": p.name, "parsed": {}, "error": "패턴 불일치"})
+            else:
+                results.append({"path": path_str, "filename": p.name, "parsed": parsed, "error": None})
+        except HTTPException:
+            results.append({"path": path_str, "filename": Path(path_str).name, "parsed": {}, "error": "허용되지 않는 경로"})
+        except Exception as e:
+            results.append({"path": path_str, "filename": Path(path_str).name, "parsed": {}, "error": str(e)})
+    return {"results": results}
+
+
+@router.post("/tag-from-name/apply")
+def tag_from_name_apply(
+    req: TagFromNameRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """파일명 패턴으로 태그를 추출하여 파일에 적용."""
+    success = 0
+    failed = 0
+    results = []
+
+    for path_str in req.paths:
+        try:
+            p = _validate_path(path_str, db, allow_workspace=True)
+            if not p.is_file():
+                results.append({"path": path_str, "ok": False, "error": "파일이 아닙니다"})
+                failed += 1
+                continue
+
+            parsed = _parse_filename_by_pattern(p.stem, req.pattern)
+            if not parsed:
+                results.append({"path": path_str, "ok": False, "error": "패턴 불일치"})
+                failed += 1
+                continue
+
+            # 적용할 필드 필터링
+            if req.fields:
+                updates = {k: v for k, v in parsed.items() if k in req.fields}
+            else:
+                updates = parsed
+
+            if not updates:
+                results.append({"path": path_str, "ok": True, "error": None})
+                success += 1
+                continue
+
+            # 파일에 태그 쓰기
+            ok = write_tags(str(p), updates)
+            if not ok:
+                results.append({"path": path_str, "ok": False, "error": "태그 쓰기 실패"})
+                failed += 1
+                continue
+
+            # DB 업데이트
+            track = db.query(Track).filter(Track.file_path == str(p)).first()
+            if track:
+                for field, val in updates.items():
+                    if hasattr(track, field):
+                        setattr(track, field, val)
+                db.commit()
+
+            # 캐시 무효화
+            _cache.invalidate_files(str(p.parent))
+
+            results.append({"path": path_str, "ok": True, "error": None})
+            success += 1
+
+        except HTTPException:
+            results.append({"path": path_str, "ok": False, "error": "허용되지 않는 경로"})
+            failed += 1
+        except Exception as e:
+            _log.error(f"[tag-from-name] error for {path_str}: {e}")
+            results.append({"path": path_str, "ok": False, "error": str(e)})
+            failed += 1
+
+    # 활동 로그
+    from app.core.log_writer import write_activity_log
+    write_activity_log(db, "tag",
+                       f"파일명 → 태그 적용: {success}개 성공, {failed}개 실패 (패턴: {req.pattern})",
+                       action="tag_from_name",
+                       file_path=req.paths[0] if req.paths else None,
+                       username=getattr(current_user, "username", None),
+                       detail=f"pattern={req.pattern}, total={len(req.paths)}, success={success}, failed={failed}")
+
+    return {"ok": failed == 0, "results": results, "success": success, "failed": failed}
+
+
 # ── 이동 대상 폴더 탐색 ─────────────────────────────────────
 
 def _is_under_destination(p: Path, destinations: list) -> bool:
@@ -1625,9 +1864,29 @@ def dest_mkdir(
     destinations = get_destination_folders(db)
     parent = Path(body.parent_path).resolve()
 
-    if not _is_under_destination(parent, destinations) and not any(
-        Path(d["path"]).resolve() == parent for d in destinations
-    ):
+    # destination_folders + ScanFolder(library roots) + library_path + workspace 모두 허용
+    from app.core.config_store import get_library_path as _get_lib, get_workspace_path as _get_ws
+    scan_roots = [Path(f.path).resolve() for f in db.query(ScanFolder).all()]
+    all_roots = [Path(d["path"]).resolve() for d in destinations] + scan_roots
+    lib_path = _get_lib(db)
+    if lib_path and lib_path not in all_roots:
+        all_roots.append(lib_path)
+    ws_path = _get_ws(db)
+    if ws_path and ws_path not in all_roots:
+        all_roots.append(ws_path)
+
+    def _is_allowed(p: Path) -> bool:
+        for root in all_roots:
+            if p == root:
+                return True
+            try:
+                p.relative_to(root)
+                return True
+            except ValueError:
+                continue
+        return False
+
+    if not _is_allowed(parent):
         raise HTTPException(status_code=403, detail="Parent not under any registered destination folder")
 
     name = body.name.strip()
@@ -1855,13 +2114,67 @@ def export_folder_html_save(
     if not p.is_dir():
         raise HTTPException(status_code=400, detail="Not a directory")
 
-    # 오디오 파일 목록
-    audio_items = sorted(
-        item for item in p.iterdir()
-        if item.is_file() and item.suffix.lower() in AUDIO_EXTS
-    )
-    if not audio_items:
-        raise HTTPException(status_code=404, detail="No audio files found in folder")
+    def _read_lrc(audio_path: Path) -> str | None:
+        """오디오 파일과 같은 이름의 .lrc 파일 내용을 반환."""
+        lrc_path = audio_path.with_suffix(".lrc")
+        if not lrc_path.exists():
+            return None
+        try:
+            return lrc_path.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            return None
+
+    def _scan_dir_for_audio(scan_path: Path) -> tuple[list[Path], list[dict]]:
+        """단일 디렉토리에서 CUE 트랙 + 일반 오디오 파일 수집."""
+        _cue_files = sorted(
+            item for item in scan_path.iterdir()
+            if item.is_file() and item.suffix.lower() == ".cue"
+        )
+        _cue_paired: set[str] = set()
+        _cue_tracks: list[dict] = []
+        for cue_file in _cue_files:
+            parsed = parse_cue_file(cue_file)
+            if parsed:
+                _cue_paired.add(parsed[0]["flac_path"])
+                for ct in parsed:
+                    _cue_tracks.append({
+                        "title": ct.get("title") or ct.get("filename", ""),
+                        "artist": ct.get("artist"),
+                        "album_artist": ct.get("album_artist"),
+                        "album_title": ct.get("album_title"),
+                        "track_no": ct.get("track_no"),
+                        "disc_no": ct.get("disc_no"),
+                        "year": ct.get("year"),
+                        "genre": ct.get("genre"),
+                        "label": None,
+                        "isrc": ct.get("isrc"),
+                        "comment": None,
+                        "release_date": None,
+                        "duration": ct.get("duration"),
+                        "file_path": ct["path"],
+                        "has_lyrics": False,
+                        "has_cover": ct.get("has_cover", False),
+                        "lrc_content": None,
+                    })
+        _audio = sorted(
+            item for item in scan_path.iterdir()
+            if item.is_file() and item.suffix.lower() in AUDIO_EXTS
+            and str(item) not in _cue_paired
+        )
+        return _audio, _cue_tracks
+
+    # 1단계: 직접 하위 오디오 파일 탐색
+    audio_items, cue_track_dicts = _scan_dir_for_audio(p)
+
+    # 2단계: 직접 오디오 없으면 하위폴더 재귀 탐색 (disc1/disc2 등 멀티디스크 구조)
+    if not audio_items and not cue_track_dicts:
+        subdirs = sorted(d for d in p.iterdir() if d.is_dir() and not d.name.startswith("."))
+        for subdir in subdirs:
+            sub_audio, sub_cue = _scan_dir_for_audio(subdir)
+            audio_items.extend(sub_audio)
+            cue_track_dicts.extend(sub_cue)
+        if not audio_items and not cue_track_dicts:
+            raise HTTPException(status_code=404, detail="No audio files found in folder")
 
     str_paths = [str(item) for item in audio_items]
 
@@ -1872,10 +2185,16 @@ def export_folder_html_save(
     }
 
     track_dicts = []
+    # CUE 트랙 먼저 추가
+    track_dicts.extend(cue_track_dicts)
+    # 일반 오디오 파일 추가
     for item in audio_items:
         track = tracks_map.get(str(item))
+        lrc_content = _read_lrc(item)
         if track:
-            track_dicts.append(track_model_to_dict(track))
+            d = track_model_to_dict(track)
+            d["lrc_content"] = lrc_content
+            track_dicts.append(d)
         else:
             # DB 미등록 파일은 직접 read_tags
             try:
@@ -1897,6 +2216,7 @@ def export_folder_html_save(
                     "file_path": str(item),
                     "has_lyrics": bool(tags.get("has_lyrics")),
                     "has_cover": bool(tags.get("has_cover")),
+                    "lrc_content": lrc_content,
                 })
             except Exception:
                 continue
@@ -1951,9 +2271,29 @@ def export_folder_html_save(
     if not album_description:
         album_description = _find_desc_by_title(album_title, album_artist)
 
-    # 커버아트
-    cover_paths = [t["file_path"] for t in track_dicts if t.get("has_cover")]
-    cover_b64 = _cover_to_b64(track_paths=cover_paths[:3])
+    # 커버아트: 폴더 내 cover.jpg 우선, 없으면 파일 내장 커버
+    import base64 as _b64
+    cover_b64 = None
+    # 탐색 경로: 현재 폴더 + 하위폴더 (멀티디스크 구조 대응)
+    _cover_search_dirs = [p] + sorted(d for d in p.iterdir() if d.is_dir() and not d.name.startswith("."))
+    for _cd in _cover_search_dirs:
+        for ext in ("jpg", "jpeg", "png"):
+            for name in ("cover", "folder", "front"):
+                img = _cd / f"{name}.{ext}"
+                if img.exists():
+                    try:
+                        mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
+                        cover_b64 = f"data:{mime};base64,{_b64.b64encode(img.read_bytes()).decode()}"
+                        break
+                    except Exception:
+                        pass
+            if cover_b64:
+                break
+        if cover_b64:
+            break
+    if not cover_b64:
+        cover_paths = [t["file_path"] for t in track_dicts if t.get("has_cover") and CUE_SEP not in t.get("file_path", "")]
+        cover_b64 = _cover_to_b64(track_paths=cover_paths[:3])
 
     # 타이틀곡 & YouTube URL
     title_track = next((t for t in track_dicts if t.get("is_title_track")), None)
@@ -1993,9 +2333,10 @@ def rename_folder(
     _=Depends(get_current_user),
 ):
     """폴더 이름 변경."""
+    from app.core.pattern_rename import sanitize_foldername
     path = data.get("path", "")
-    new_name = (data.get("new_name") or "").strip()
-    if not new_name or "/" in new_name or "\\" in new_name:
+    new_name = sanitize_foldername((data.get("new_name") or "").strip())
+    if not new_name:
         raise HTTPException(status_code=422, detail="유효하지 않은 폴더명")
 
     p = _validate_path(path, db, allow_workspace=True)
@@ -2129,18 +2470,34 @@ def recursive_files(
     group_structure = []
     for root, dirs, files in os.walk(str(p)):
         dirs[:] = sorted(d for d in dirs if not d.startswith(".") and d not in excluded)
-        audio_files = sorted(f for f in files if Path(f).suffix.lower() in AUDIO_EXTS)
-        if audio_files:
+        root_path = Path(root)
+
+        # CUE 파일 처리: 페어링된 FLAC 제외, CUE 트랙 추가
+        cue_paired: set[str] = set()
+        cue_virtual: list[dict] = []
+        for fname in sorted(f for f in files if Path(f).suffix.lower() == ".cue"):
+            parsed = parse_cue_file(root_path / fname)
+            if parsed:
+                cue_virtual.extend(parsed)
+                cue_paired.add(parsed[0]["flac_path"])
+
+        audio_files = sorted(f for f in files
+                             if Path(f).suffix.lower() in AUDIO_EXTS
+                             and os.path.join(root, f) not in cue_paired)
+
+        if audio_files or cue_virtual:
             rel = os.path.relpath(root, str(p))
             group_structure.append({
                 "folder_path": root,
-                "folder_name": Path(root).name,
+                "folder_name": root_path.name,
                 "relative_path": "" if rel == "." else rel,
                 "file_paths": [os.path.join(root, f) for f in audio_files],
+                "cue_tracks": cue_virtual,
             })
 
     all_paths = [fp for g in group_structure for fp in g["file_paths"]]
-    if not all_paths:
+    has_any = all_paths or any(g["cue_tracks"] for g in group_structure)
+    if not has_any:
         return {"groups": [], "total_files": 0, "total_folders": 0}
 
     # 2단계: DB 한 번에 조회
@@ -2210,6 +2567,12 @@ def recursive_files(
                     "file_size": stat.st_size, "modified_time": stat.st_mtime,
                     "scanned": False,
                 })
+        # CUE 가상 트랙 추가
+        for ct in g.get("cue_tracks", []):
+            file_entries.append(ct)
+        # track_no 기준 정렬
+        file_entries.sort(key=lambda e: (e.get("flac_path", e.get("path", "")), e.get("track_no") or 0, e.get("path", "")))
+
         if file_entries:
             groups.append({
                 "folder_path": g["folder_path"],
@@ -2222,8 +2585,50 @@ def recursive_files(
     if untracked_paths and background_tasks is not None:
         background_tasks.add_task(_scan_untracked_files, str(p), untracked_paths)
 
+    # 루트 폴더의 extra files (이미지, HTML) 수집 — 사이드바 표시용
+    root_extra_files = []
+    try:
+        for item in sorted(p.iterdir()):
+            if not item.is_file():
+                continue
+            ext = item.suffix.lower()
+            if ext in IMAGE_EXTS:
+                stat = item.stat()
+                root_extra_files.append({
+                    "filename": item.name,
+                    "path": str(item),
+                    "file_type": "image",
+                    "file_size": stat.st_size,
+                    "modified_time": stat.st_mtime,
+                })
+            elif ext == ".html":
+                stat = item.stat()
+                is_eztag = (
+                    item.name.startswith("[Info]")
+                    or item.name.startswith("[앨범카드]")
+                    or item.name.startswith("[AlbumCard]")
+                )
+                if not is_eztag:
+                    try:
+                        with item.open("r", encoding="utf-8", errors="ignore") as _hf:
+                            head = _hf.read(2048)
+                        is_eztag = 'content="eztag"' in head
+                    except Exception:
+                        pass
+                root_extra_files.append({
+                    "filename": item.name,
+                    "path": str(item),
+                    "file_type": "html",
+                    "is_eztag": is_eztag,
+                    "file_size": stat.st_size,
+                    "modified_time": stat.st_mtime,
+                })
+    except Exception:
+        pass
+
     return {
         "groups": groups,
+        "extra_files": root_extra_files,
         "total_files": sum(len(g["files"]) for g in groups),
         "total_folders": len(groups),
     }

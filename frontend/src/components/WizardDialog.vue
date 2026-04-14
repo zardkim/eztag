@@ -33,34 +33,34 @@
                 <!-- 번호 -->
                 <span class="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-[11px] font-bold flex items-center justify-center shrink-0">{{ i + 1 }}</span>
                 <!-- 아이콘 + 이름 -->
-                <span class="text-lg shrink-0">{{ step.icon }}</span>
+                <span class="text-lg shrink-0">{{ stepIcon(step.id) }}</span>
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ t('wizard.step.' + step.id) }}</p>
-                  <!-- 자동태그: 소스 선택 -->
+                  <!-- 자동태그: 소스 다중선택 -->
                   <div v-if="step.id === 'autoTag' && step.enabled !== false" class="mt-1.5 flex flex-wrap gap-1">
                     <button
                       v-for="p in availableProviders"
                       :key="p.key"
                       class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] transition-colors"
-                      :class="step.providerKey === p.key
+                      :class="(step.providerKeys || []).includes(p.key)
                         ? 'bg-green-500 text-white'
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'"
-                      @click="step.providerKey = p.key"
+                      @click="toggleProviderKey(step, p.key); saveSteps()"
                     >
                       <img :src="p.logo" :alt="p.label" class="w-3.5 h-3.5 rounded-full object-cover" />
                       {{ p.label }}
                     </button>
                   </div>
-                  <!-- LRC: 소스 선택 -->
+                  <!-- LRC: 소스 다중선택 -->
                   <div v-if="step.id === 'lrc' && step.enabled !== false" class="mt-1.5 flex gap-1">
                     <button
                       v-for="src in lrcSources"
                       :key="src.key"
                       class="px-2 py-0.5 rounded-full text-[11px] transition-colors"
-                      :class="step.lrcSource === src.key
+                      :class="(step.lrcSources || []).includes(src.key)
                         ? 'bg-purple-500 text-white'
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'"
-                      @click="step.lrcSource = src.key"
+                      @click="toggleLrcSource(step, src.key); saveSteps()"
                     >{{ src.label }}</button>
                   </div>
                   <!-- 파일명변경: 프리셋 선택 -->
@@ -69,11 +69,39 @@
                       v-for="p in renamePresets"
                       :key="p.pattern"
                       class="px-2 py-0.5 rounded-full text-[11px] transition-colors"
-                      :class="step.renamePattern === p.pattern
+                      :class="!isCustomRename(step) && step.renamePattern === p.pattern
                         ? 'bg-orange-500 text-white'
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'"
-                      @click="step.renamePattern = p.pattern"
+                      @click="step.renamePattern = p.pattern; saveSteps()"
                     >{{ p.label }}</button>
+                    <button
+                      class="px-2 py-0.5 rounded-full text-[11px] transition-colors"
+                      :class="isCustomRename(step)
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'"
+                      @click="toggleCustomRename(step)"
+                    >{{ $t('wizard.renameManual') }}</button>
+                    <div v-if="isCustomRename(step)" class="w-full mt-1 space-y-1">
+                      <input
+                        type="text"
+                        class="w-full text-[11px] px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-orange-400"
+                        :placeholder="$t('wizard.renameCustomPlaceholder')"
+                        v-model="step.renamePattern"
+                        :ref="el => setRenameInputRef(step.id, el)"
+                        @input="saveSteps(); onRenameInputInteract(step.id)"
+                        @click="onRenameInputInteract(step.id)"
+                        @keyup="onRenameInputInteract(step.id)"
+                      />
+                      <div class="flex flex-wrap gap-1">
+                        <button
+                          v-for="v in RENAME_VARS"
+                          :key="v"
+                          class="px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-[10px] rounded font-mono hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors"
+                          @click.prevent="insertRenameVar(step, v)"
+                        >{{ v }}</button>
+                      </div>
+                      <p class="text-[10px] text-gray-400">{{ $t('wizard.renameCustomHint') }}</p>
+                    </div>
                   </div>
                 </div>
                 <!-- 활성/비활성 토글 -->
@@ -184,7 +212,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -210,7 +238,6 @@ const lrcSources = [
 ]
 
 const renamePresets = computed(() => [
-  { label: t('wizard.renameManual'),                     pattern: '' },
   { label: t('renameModal.presetTrackTitle'),            pattern: '%track% - %title%' },
   { label: t('renameModal.presetArtistTitle'),           pattern: '%artist% - %title%' },
   { label: t('renameModal.presetTrackArtistTitle'),      pattern: '%track% - %artist% - %title%' },
@@ -218,37 +245,115 @@ const renamePresets = computed(() => [
   { label: t('renameModal.presetDiscTrackTitle'),        pattern: '%disc%-%track% - %title%' },
 ])
 
+function toggleProviderKey(step, key) {
+  const keys = step.providerKeys || []
+  step.providerKeys = keys.includes(key) ? keys.filter(k => k !== key) : [...keys, key]
+}
+
+function toggleLrcSource(step, key) {
+  const srcs = step.lrcSources || []
+  step.lrcSources = srcs.includes(key) ? srcs.filter(s => s !== key) : [...srcs, key]
+}
+
+function isCustomRename(step) {
+  return !renamePresets.value.some(p => p.pattern === step.renamePattern)
+}
+
+function toggleCustomRename(step) {
+  if (!isCustomRename(step)) {
+    step.renamePattern = ''
+  }
+  saveSteps()
+}
+
+// 아이콘 맵 (emoji 렌더링 안정화)
+function stepIcon(id) {
+  const icons = {
+    autoTag:   '🏷️',
+    lrc:       '🎵',
+    rename:    '🔤',
+    youtube:   '▶️',
+    albumCard: '🎴',
+  }
+  return icons[id] || '•'
+}
+
+// 파일명 변수 삽입
+const RENAME_VARS = ['%title%', '%artist%', '%albumartist%', '%album%', '%track%', '%disc%', '%year%']
+
+const _renameInputRefs = {}
+const _renameInputCursor = reactive({})
+
+function setRenameInputRef(stepId, el) {
+  if (el) _renameInputRefs[stepId] = el
+  else delete _renameInputRefs[stepId]
+}
+
+function onRenameInputInteract(stepId) {
+  const el = _renameInputRefs[stepId]
+  if (el) _renameInputCursor[stepId] = { start: el.selectionStart, end: el.selectionEnd }
+}
+
+function insertRenameVar(step, varStr) {
+  const cursor = _renameInputCursor[step.id]
+  if (cursor !== undefined) {
+    const start = cursor.start ?? (step.renamePattern || '').length
+    const end = cursor.end ?? start
+    const old = step.renamePattern || ''
+    step.renamePattern = old.slice(0, start) + varStr + old.slice(end)
+    _renameInputCursor[step.id] = { start: start + varStr.length, end: start + varStr.length }
+    nextTick(() => {
+      const el = _renameInputRefs[step.id]
+      if (el) { el.focus(); el.setSelectionRange(start + varStr.length, start + varStr.length) }
+    })
+  } else {
+    step.renamePattern = (step.renamePattern || '') + varStr
+  }
+  saveSteps()
+}
+
 const STORAGE_KEY = 'eztag-wizard-steps'
 
 const DEFAULT_STEPS = [
-  { id: 'autoTag',   icon: '🏷',  providerKey: '', enabled: true },
-  { id: 'lrc',       icon: '🎵',  lrcSource: 'alsong', enabled: true },
+  { id: 'autoTag',   icon: '🏷️', providerKeys: [], enabled: true },
+  { id: 'lrc',       icon: '🎵',  lrcSources: ['alsong'], enabled: true },
   { id: 'youtube',   icon: '▶️',  enabled: true },
   { id: 'rename',    icon: '🔤',  renamePattern: '', enabled: true },
   { id: 'albumCard', icon: '🎴',  enabled: true },
 ]
 
+function _toProviderKeys(s, def) {
+  if (Array.isArray(s.providerKeys)) return s.providerKeys
+  if (s.providerKey) return [s.providerKey]
+  return def.providerKeys ? [...def.providerKeys] : []
+}
+function _toLrcSources(s, def) {
+  if (Array.isArray(s.lrcSources)) return s.lrcSources
+  if (s.lrcSource) return [s.lrcSource]
+  return def.lrcSources ? [...def.lrcSources] : ['alsong']
+}
+
 // localStorage에서 저장된 단계 순서/설정 로드 (없으면 DEFAULT_STEPS)
 function loadSteps() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
-    if (!Array.isArray(saved)) return DEFAULT_STEPS.map(s => ({ ...s }))
-    // 저장된 순서 기준으로 재조합, DEFAULT에 없는 id 제거, DEFAULT에만 있는 id 뒤에 추가
+    if (!Array.isArray(saved)) return DEFAULT_STEPS.map(s => ({ ...s, providerKeys: [...(s.providerKeys || [])], lrcSources: [...(s.lrcSources || [])] }))
     const result = []
     for (const s of saved) {
       const def = DEFAULT_STEPS.find(d => d.id === s.id)
-      if (def) result.push({ ...def, enabled: s.enabled ?? true, providerKey: s.providerKey ?? def.providerKey, lrcSource: s.lrcSource ?? def.lrcSource, renamePattern: s.renamePattern ?? def.renamePattern })
+      if (def) result.push({ ...def, enabled: s.enabled ?? true, providerKeys: _toProviderKeys(s, def), lrcSources: _toLrcSources(s, def), renamePattern: s.renamePattern ?? def.renamePattern })
     }
     for (const def of DEFAULT_STEPS) {
-      if (!result.find(r => r.id === def.id)) result.push({ ...def })
+      if (!result.find(r => r.id === def.id)) result.push({ ...def, providerKeys: [...(def.providerKeys || [])], lrcSources: [...(def.lrcSources || [])] })
     }
     return result
-  } catch { return DEFAULT_STEPS.map(s => ({ ...s })) }
+  } catch { return DEFAULT_STEPS.map(s => ({ ...s, providerKeys: [...(s.providerKeys || [])], lrcSources: [...(s.lrcSources || [])] })) }
 }
 
 function saveSteps(stepList) {
+  const list = stepList ?? steps.value
   localStorage.setItem(STORAGE_KEY, JSON.stringify(
-    stepList.map(s => ({ id: s.id, enabled: s.enabled ?? true, providerKey: s.providerKey, lrcSource: s.lrcSource, renamePattern: s.renamePattern }))
+    list.map(s => ({ id: s.id, enabled: s.enabled ?? true, providerKeys: s.providerKeys ?? [], lrcSources: s.lrcSources ?? [], renamePattern: s.renamePattern }))
   ))
 }
 
@@ -256,16 +361,6 @@ const steps = ref(loadSteps())
 const activeSteps = ref([])  // 실행 중인 단계 (enabled만)
 
 const enabledCount = computed(() => steps.value.filter(s => s.enabled !== false).length)
-
-// 공급자 목록 업데이트 시 기본 providerKey 설정
-watch(() => props.availableProviders, (providers) => {
-  if (providers.length > 0) {
-    const autoTagStep = steps.value.find(s => s.id === 'autoTag')
-    if (autoTagStep && !autoTagStep.providerKey) {
-      autoTagStep.providerKey = providers[0].key
-    }
-  }
-}, { immediate: true })
 
 // 다이얼로그가 열릴 때 저장된 설정 불러오기 (실행 중이면 유지)
 watch(() => props.modelValue, (v) => {

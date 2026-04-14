@@ -807,7 +807,11 @@ async function applyAll() {
     const folderPath = browserStore.selectedFolder?.path
     if (folderPath) {
       browserStore.invalidateFilesCache(folderPath)
-      browserStore.loadFiles(folderPath, true)
+      if (browserStore.folderGroups.length > 0) {
+        await browserStore.loadRecursiveFiles(folderPath)
+      } else {
+        await browserStore.loadFiles(folderPath, true)
+      }
     }
 
     emit('applied')

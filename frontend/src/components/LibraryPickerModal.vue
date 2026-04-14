@@ -10,16 +10,6 @@
 
       <!-- Breadcrumb -->
       <div class="px-3 py-2 flex items-center gap-1 text-xs text-gray-500 border-b border-gray-100 dark:border-gray-800 shrink-0 overflow-x-auto scrollbar-none">
-        <!-- 상위 폴더 이동 버튼 -->
-        <button
-          v-if="breadcrumb.length > 0"
-          class="shrink-0 flex items-center justify-center px-1.5 h-6 gap-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors mr-1 font-medium"
-          :title="$t('picker.parentFolder')"
-          @click="goUp"
-        >
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7M12 3v18"/></svg>
-          <span>{{ $t('picker.parentFolder') }}</span>
-        </button>
         <template v-for="(crumb, i) in breadcrumb" :key="crumb.path">
           <span v-if="i > 0" class="text-gray-300 dark:text-gray-700 shrink-0">/</span>
           <button
@@ -52,30 +42,26 @@
         <div v-if="breadcrumb.length > 0 || filteredFolders.length > 0" class="px-4 pt-3 pb-1">
           <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">{{ $t('picker.folderSection') }}</p>
           <div class="space-y-0.5">
-            <!-- 상위폴더 항목 -->
+            <!-- 상위폴더 -->
             <div
               v-if="breadcrumb.length > 0"
-              class="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+              class="flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400"
               @click="goUp"
             >
-              <span class="text-gray-400 shrink-0 text-base">↩</span>
-              <span class="text-sm text-gray-500 dark:text-gray-400">.. {{ $t('picker.parentFolder') }}</span>
+              <span class="shrink-0">↩</span>
+              <span class="text-sm">{{ $t('picker.parentFolder') }}</span>
             </div>
             <div
               v-for="folder in filteredFolders"
               :key="folder.path"
-              class="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 group transition-colors"
+              class="flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-pointer transition-colors"
+              :class="selectedFolder?.path === folder.path
+                ? 'bg-blue-50 dark:bg-blue-900/20'
+                : 'hover:bg-gray-50 dark:hover:bg-gray-800'"
+              @click="selectFolder(folder)"
             >
-              <button class="flex-1 flex items-center gap-2 text-left min-w-0" @click="enterFolder(folder)">
-                <span class="text-yellow-400 shrink-0">{{ folder.has_children ? '📂' : '📁' }}</span>
-                <span class="text-sm text-gray-700 dark:text-gray-300 truncate">{{ folder.name }}</span>
-              </button>
-              <!-- 폴더 모드: 이 폴더 열기 버튼 -->
-              <button
-                v-if="folderMode"
-                class="shrink-0 text-xs px-2 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors opacity-0 group-hover:opacity-100"
-                @click.stop="onOpenFolder(folder)"
-              >{{ $t('picker.open') }}</button>
+              <span class="text-yellow-400 shrink-0">{{ folder.has_children ? '📂' : '📁' }}</span>
+              <span class="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">{{ folder.name }}</span>
             </div>
           </div>
         </div>
@@ -115,56 +101,28 @@
         </div>
       </div>
 
-      <!-- 경고 확인 다이얼로그 (폴더/파일 수 초과 시) -->
-      <Teleport to="body">
-        <div v-if="showRecursiveConfirm" class="fixed inset-0 bg-black/60 z-[400] flex items-center justify-center p-4" @click="showRecursiveConfirm = false">
-          <div class="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl p-5" @click.stop>
-            <p class="text-base font-semibold text-gray-900 dark:text-white mb-1">📂 {{ pendingFolder?.name }}</p>
-
-            <!-- 통계 -->
-            <div v-if="recursiveCountData" class="mb-3 px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-sm space-y-1">
-              <div class="flex items-center justify-between">
-                <span class="text-gray-500 dark:text-gray-400">{{ $t('picker.subfolderCount') }}</span>
-                <span class="font-medium text-gray-800 dark:text-gray-200">{{ recursiveCountData.folder_count }}개</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-gray-500 dark:text-gray-400">{{ $t('picker.fileCount') }}</span>
-                <span class="font-medium text-gray-800 dark:text-gray-200">{{ recursiveCountData.file_count }}개</span>
-              </div>
-            </div>
-            <div v-else-if="countLoading" class="mb-3 text-center text-xs text-gray-400 py-2">{{ $t('common.loading') }}</div>
-
-            <!-- 경고 -->
-            <div class="mb-4 px-3 py-2.5 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 text-xs text-yellow-700 dark:text-yellow-400">
-              ⚠️ {{ $t('picker.recursiveWarning') }}
-            </div>
-
-            <div class="flex gap-2">
-              <button
-                class="flex-1 py-2.5 text-sm rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                @click="showRecursiveConfirm = false"
-              >{{ $t('common.cancel') }}</button>
-              <button
-                class="flex-[1.5] py-2.5 text-sm rounded-xl bg-blue-600 text-white hover:bg-blue-500 transition-colors font-medium"
-                :disabled="countLoading"
-                @click="confirmOpen"
-              >{{ $t('picker.openAnyway') }}</button>
-            </div>
-          </div>
-        </div>
-      </Teleport>
 
       <!-- Footer -->
       <div class="px-5 py-3 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0">
-        <p v-if="folderMode" class="text-xs text-gray-400">{{ $t('picker.folderHint') }}</p>
-        <template v-else>
-          <p v-if="lastAdded" class="text-xs text-green-600 dark:text-green-400">✓ {{ lastAdded }}</p>
-          <p v-else class="text-xs text-gray-400">{{ $t('picker.fileHint') }}</p>
-        </template>
-        <button
-          class="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-lg transition-colors"
-          @click="$emit('close')"
-        >{{ $t('common.close') }}</button>
+        <div class="flex-1 min-w-0 mr-3">
+          <p v-if="folderMode && selectedFolder" class="text-xs text-blue-600 dark:text-blue-400 truncate font-medium">📁 {{ selectedFolder.name }}</p>
+          <p v-else-if="folderMode" class="text-xs text-gray-400">{{ $t('picker.folderHint') }}</p>
+          <template v-else>
+            <p v-if="lastAdded" class="text-xs text-green-600 dark:text-green-400">✓ {{ lastAdded }}</p>
+            <p v-else class="text-xs text-gray-400">{{ $t('picker.fileHint') }}</p>
+          </template>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button
+            v-if="folderMode && selectedFolder"
+            class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors font-medium"
+            @click="onOpenFolder(selectedFolder)"
+          >{{ $t('picker.selectFolder') }}</button>
+          <button
+            class="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-lg transition-colors"
+            @click="$emit('close')"
+          >{{ $t('common.close') }}</button>
+        </div>
       </div>
     </div>
   </div>
@@ -182,43 +140,11 @@ const props = defineProps({
   folderMode: { type: Boolean, default: false },
   area: { type: String, default: 'library' },  // 'library' | 'workspace'
 })
-const emit = defineEmits(['close', 'added', 'select-folder', 'select-folder-recursive'])
+const emit = defineEmits(['close', 'added', 'select-folder'])
 const toastStore = useToastStore()
 
-// ── 하위폴더 포함 열기 확인 ──────────────────────────────────
-const showRecursiveConfirm = ref(false)
-const pendingFolder = ref(null)
-const recursiveCountData = ref(null)
-const countLoading = ref(false)
-
-async function onOpenFolder(folder) {
-  pendingFolder.value = folder
-  recursiveCountData.value = null
-  countLoading.value = true
-  try {
-    const { data } = await browseApi.recursiveCount(folder.path)
-    recursiveCountData.value = data
-    // 폴더 20개 이하 & 파일 500개 이하면 경고 없이 바로 하위폴더 포함 열기
-    if (data.folder_count <= 20 && data.file_count <= 500) {
-      pendingFolder.value = null
-      recursiveCountData.value = null
-      emit('select-folder-recursive', folder)
-      return
-    }
-  } catch {
-    // 카운트 실패 시 다이얼로그 표시
-  } finally {
-    countLoading.value = false
-  }
-  showRecursiveConfirm.value = true
-}
-
-function confirmOpen() {
-  showRecursiveConfirm.value = false
-  if (!pendingFolder.value) return
-  emit('select-folder-recursive', pendingFolder.value)
-  pendingFolder.value = null
-  recursiveCountData.value = null
+function onOpenFolder(folder) {
+  emit('select-folder', folder)
 }
 
 const loading = ref(false)
@@ -226,6 +152,7 @@ const folders = ref([])
 const files = ref([])
 const breadcrumb = ref([])
 const searchQuery = ref('')
+const selectedFolder = ref(null)  // 클릭으로 선택된 폴더
 
 const lastPathKey = `eztag-lastpicker-${props.area}`
 
@@ -272,25 +199,40 @@ async function loadRoots() {
 
 function enterFolder(folder) {
   breadcrumb.value.push({ name: folder.name, path: folder.path })
+  selectedFolder.value = { name: folder.name, path: folder.path }
   loadChildren(folder.path).then(() => { searchQuery.value = '' })
   saveLastPath()
+}
+
+// 폴더 클릭: 선택 → 하위 폴더 표시
+function selectFolder(folder) {
+  if (selectedFolder.value?.path === folder.path) {
+    // 같은 폴더 재클릭 시 진입 (하위폴더 표시)
+    enterFolder(folder)
+  } else {
+    selectedFolder.value = folder
+  }
 }
 
 function navigateTo(crumb, index) {
   if (index === breadcrumb.value.length - 1) return
   breadcrumb.value = breadcrumb.value.slice(0, index + 1)
+  selectedFolder.value = null
   loadChildren(crumb.path)
   saveLastPath()
 }
 
 function goUp() {
   if (breadcrumb.value.length === 0) return
+  const current = breadcrumb.value[breadcrumb.value.length - 1]
   if (breadcrumb.value.length === 1) {
     breadcrumb.value = []
+    selectedFolder.value = null
     loadRoots()
   } else {
     const parent = breadcrumb.value[breadcrumb.value.length - 2]
     breadcrumb.value = breadcrumb.value.slice(0, -1)
+    selectedFolder.value = { name: current.name, path: current.path }
     loadChildren(parent.path)
   }
   saveLastPath()

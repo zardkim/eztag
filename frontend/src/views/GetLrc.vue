@@ -211,7 +211,7 @@ async function startFolderLrc(folderPath, source) {
   if (!files.length) { toastStore.success('LRC가 이미 모두 있습니다.'); return }
 
   const paths = files.map(f => f.path)
-  const sourceLabel = source === 'bugs' ? 'Bugs' : source === 'alsong' ? '알송' : 'LRCLIB'
+  const sourceLabel = source === 'alsong' ? '알송' : source === 'bugs' ? 'Bugs' : 'LRCLIB'
   // 백그라운드 실행 (await 없음 - 다른 페이지 이동해도 계속 실행)
   jobStore.startLrcJob({
     files: paths,

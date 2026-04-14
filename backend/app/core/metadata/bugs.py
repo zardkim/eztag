@@ -117,6 +117,24 @@ def _album_id_from_href(href: str) -> str:
 
 # ── 검색 (HTML 파싱) ─────────────────────────────────────────────────────────
 
+def _clean_artists(links) -> str:
+    """아티스트 <a> 태그 목록에서 'CONNECT 아티스트' 등 비아티스트 텍스트를 제거하고 이름 반환."""
+    result = []
+    for a in links:
+        # href에 connect가 있으면 비아티스트 링크로 판단하여 전체 제외
+        if "connect" in (a.get("href") or "").lower():
+            continue
+        text = a.get_text(strip=True)
+        # 링크 텍스트 내의 'CONNECT 아티스트' 등 불필요 텍스트 제거
+        text = re.sub(r'CONNECT\s*아티스트?', '', text, flags=re.IGNORECASE).strip()
+        # Bugs UI 안내 텍스트 (스크린리더용 숨김 span) 제거
+        text = re.sub(r'아티스트명\s*공간\s*초과시\s*더보기\s*버튼\s*노출', '', text).strip()
+        text = re.sub(r'더보기\s*버튼\s*노출', '', text).strip()
+        if text:
+            result.append(text)
+    return ", ".join(result)
+
+
 def search_albums(query: str, limit: int = 10, **kwargs) -> list[dict]:
     """앨범명으로 Bugs 앨범 검색 — HTML 파싱 방식."""
     url = _SEARCH_ALBUM_URL.format(query=quote(query))
@@ -143,9 +161,12 @@ def search_albums(query: str, limit: int = 10, **kwargs) -> list[dict]:
         title_el = li.select_one(".albumTitle a, a.albumTitle")
         title = title_el.get_text(strip=True) if title_el else ""
 
-        # 아티스트
-        artist_el = li.select_one(".artistName a, p.artist a, a.artist")
-        artist = artist_el.get_text(strip=True) if artist_el else ""
+        # 아티스트 (CONNECT 아티스트 링크 제외)
+        artist_links = li.select(".artistName a, p.artist a, a.artist")
+        artist = _clean_artists(artist_links) if artist_links else ""
+        if not artist:
+            artist_el = li.select_one(".artistName a, p.artist a, a.artist")
+            artist = artist_el.get_text(strip=True) if artist_el else ""
 
         # 앨범 타입
         type_el = li.select_one(".albumType, span.albumType")
@@ -211,9 +232,12 @@ def search_tracks(query: str, limit: int = 10, **kwargs) -> list[dict]:
         if not title:
             continue
 
-        # 아티스트
-        artist_a = tr.select_one("p.artist a")
-        artist = artist_a.get_text(strip=True) if artist_a else ""
+        # 아티스트 (CONNECT 아티스트 링크 제외)
+        artist_p = tr.select_one("p.artist")
+        if artist_p:
+            artist = _clean_artists(artist_p.select("a")) or artist_p.get_text(strip=True)
+        else:
+            artist = ""
 
         # 앨범명
         album_a = tr.select_one("a.album, td.info a.album")
@@ -274,8 +298,8 @@ def _parse_album_info(soup: BeautifulSoup, album_id: str) -> dict:
         val = td.get_text(" ", strip=True)
 
         if key == "아티스트":
-            artists = [a.get_text(strip=True) for a in td.select("a")]
-            artist_str = ", ".join(artists) if artists else val
+            # CONNECT 아티스트 버튼 등 비아티스트 링크 제외
+            artist_str = _clean_artists(td.select("a")) or val
             info["album_artist"] = artist_str
             info["artist"] = artist_str
         elif key in ("유형", "앨범유형"):
@@ -350,11 +374,14 @@ def _parse_track_list(soup: BeautifulSoup, album_info: dict) -> list[dict]:
         if track_id:
             t["provider_id"] = track_id
 
-        title_a = el.select_one("a[title]")
-        if title_a:
-            title = title_a.get("title", "").strip()
-            title = re.sub(r'\s*\([^)]*삽입곡[^)]*\)', '', title).strip()
-            t["title"] = title
+        # 제목: p.title 하위 a 태그 우선 (a[title] 사용 시 아티스트 링크가 선택될 수 있음)
+        title_p = el.select_one("p.title")
+        if title_p:
+            title_a = title_p.select_one("a")
+            if title_a:
+                title = title_a.get_text(strip=True)
+                title = re.sub(r'\s*\([^)]*삽입곡[^)]*\)', '', title).strip()
+                t["title"] = title
 
         em = el.select_one("p.trackIndex em")
         if em:
@@ -363,10 +390,10 @@ def _parse_track_list(soup: BeautifulSoup, album_info: dict) -> list[dict]:
                 t["track_no"] = int(txt)
         t["is_title_track"] = bool(el.select_one("span.albumTitle"))
 
+        # 아티스트: CONNECT 아티스트 링크 제외
         artist_p = el.select_one("p.artist")
         if artist_p:
-            artists = [a.get_text(strip=True) for a in artist_p.select("a")]
-            t["artist"] = ", ".join(artists) if artists else artist_p.get_text(strip=True)
+            t["artist"] = _clean_artists(artist_p.select("a")) or album_artist
         else:
             t["artist"] = album_artist
 

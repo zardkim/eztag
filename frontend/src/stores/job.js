@@ -25,6 +25,7 @@ export const useJobStore = defineStore('job', () => {
       ok: 0, notFound: 0, noSync: 0, errors: 0,
       currentFile: '',
       lastOkPath: null,
+      okPaths: [],
     }
 
     try {
@@ -51,9 +52,14 @@ export const useJobStore = defineStore('job', () => {
         }
 
         const r = (data.results || [])[0]
-        if (!r || r.status === 'ok') {
+        if (r?.status === 'ok') {
+          const filePath = typeof f === 'string' ? f : f.path
           lrcJob.value.ok++
-          lrcJob.value.lastOkPath = typeof f === 'string' ? f : f.path
+          lrcJob.value.lastOkPath = filePath
+          lrcJob.value.okPaths = [...lrcJob.value.okPaths, filePath]
+        } else if (!r) {
+          // 결과 없음 — 오류로 처리
+          lrcJob.value.errors++
         } else if (r.status === 'not_found') {
           lrcJob.value.notFound++
         } else if (r.status === 'no_sync') {

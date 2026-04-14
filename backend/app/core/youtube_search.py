@@ -29,18 +29,26 @@ def _normalize(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def _is_official_mv(video_title: str, channel_title: str) -> bool:
+def _is_official_mv(video_title: str, channel_title: str, artist: str = "") -> bool:
     """제목/채널명 기반으로 공식 뮤직비디오 여부 판별."""
     t_lower = video_title.lower()
+    ch_lower = channel_title.lower()
+
+    # 비공식 키워드가 제목에 있으면 제외
     for kw in _EXCLUDE_KEYWORDS:
         if kw in t_lower:
             return False
-    for kw in _MV_KEYWORDS:
-        if kw in t_lower:
-            return True
-    if "vevo" in channel_title.lower():
-        return True
-    return False
+
+    # 채널 검증: 공식 채널 판별
+    official_channel_words = ["official", "vevo", "labels", "entertainment", "music"]
+    is_official_channel = any(w in ch_lower for w in official_channel_words)
+    if artist:
+        is_official_channel = is_official_channel or (_normalize(artist) in _normalize(channel_title))
+
+    # 제목 검증: MV 키워드 포함 + 티저 아님
+    is_official_video = any(kw in t_lower for kw in _MV_KEYWORDS) and "teaser" not in t_lower
+
+    return is_official_channel or is_official_video
 
 
 def _title_matches(track_title: str, video_title: str, artist: str = "", channel: str = "") -> bool:
@@ -75,12 +83,14 @@ def search_music_video(artist: str, title: str, api_key: str, max_results: int =
     - 공식 MV 우선 정렬 후 최대 5개 반환
     반환: [{"video_id", "title", "url", "thumbnail", "channel"}]
     """
-    query = f"{artist} {title} MV Official"
+    # 정확한 매칭을 위해 따옴표 사용, 비공식 키워드 제외
+    query = f'"{artist}" "{title}" official mv -cover -lyrics -reaction -live'
     params = urllib.parse.urlencode({
         "part": "snippet",
         "q": query,
         "type": "video",
         "videoCategoryId": "10",  # Music
+        "regionCode": "KR",
         "maxResults": max_results,
         "key": api_key,
     })
@@ -112,7 +122,7 @@ def search_music_video(artist: str, title: str, api_key: str, max_results: int =
             _log.debug(f"제목 불일치 제외: '{video_title}' (검색: '{artist} {title}')")
             continue
 
-        is_official = _is_official_mv(video_title, channel)
+        is_official = _is_official_mv(video_title, channel, artist)
         entry = {
             "video_id": vid,
             "title": video_title,
@@ -126,5 +136,5 @@ def search_music_video(artist: str, title: str, api_key: str, max_results: int =
         else:
             others.append(entry)
 
-    # 공식 MV만 반환, 최대 5개
-    return official[:5]
+    # 공식 MV 우선, 없으면 기타 결과로 fallback (최대 5개)
+    return (official if official else others)[:5]

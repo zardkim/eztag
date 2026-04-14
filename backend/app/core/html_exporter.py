@@ -89,6 +89,20 @@ def _total_duration(tracks: list[dict]) -> str:
     return _fmt_duration(total) if total else ""
 
 
+def _parse_lrc_text(lrc: str) -> str:
+    """LRC 내용에서 타임스탬프를 제거하고 가사 텍스트만 추출."""
+    lines = []
+    for line in lrc.splitlines():
+        # [mm:ss.xx] 또는 [mm:ss:xx] 타임스탬프 제거
+        text = re.sub(r'\[\d+:\d+[.:]\d+\]', '', line).strip()
+        # 메타태그 라인([ar:], [ti:], [al:], [by:] 등) 제외
+        if re.match(r'^\[(?:ar|ti|al|by|offset|length|re|ve):', line, re.IGNORECASE):
+            continue
+        if text:
+            lines.append(text)
+    return "\n".join(lines)
+
+
 # ── CSS ───────────────────────────────────────────────────────
 _CSS = """
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -354,6 +368,30 @@ details.desc-details .desc-box {
   .lyrics-badge { background: #1e3a5f; color: #bfdbfe; }
 }
 
+/* ── LRC 가사 섹션 ── */
+.lrc-section {
+  margin-top: 8px; padding: 10px 14px;
+  background: var(--card-bg, #f8fafc); border-radius: 8px;
+  border: 1px solid var(--border, #e2e8f0);
+}
+.lrc-section summary {
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  color: var(--text2, #64748b); user-select: none;
+  list-style: none; display: flex; align-items: center; gap: 4px;
+}
+.lrc-section summary::before { content: "▶"; font-size: 8px; }
+.lrc-section[open] summary::before { content: "▼"; }
+.lrc-lines {
+  margin-top: 8px; font-size: 12px; line-height: 1.9;
+  color: var(--text1, #1e293b); white-space: pre-wrap;
+  word-break: break-word; max-height: 320px; overflow-y: auto;
+  scrollbar-width: thin;
+}
+@media (prefers-color-scheme: dark) {
+  .lrc-section { background: #1e2a3a; border-color: #334155; }
+  .lrc-lines { color: #e2e8f0; }
+}
+
 /* ── 코덱 뱃지 ── */
 .badge {
   display: inline-block; padding: 2px 6px; border-radius: 5px;
@@ -520,6 +558,56 @@ details.tc-details[open] summary::before { transform: rotate(90deg); }
   details.desc-details { display: none; }
 }
 
+/* ── YouTube 모달 ── */
+#yt-modal {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+#yt-modal.open { display: flex; }
+#yt-modal-inner {
+  position: relative;
+  width: min(900px, 94vw);
+  cursor: default;
+}
+#yt-close {
+  position: absolute;
+  top: -38px; right: 0;
+  background: none; border: none;
+  color: rgba(255,255,255,0.8); font-size: 22px;
+  cursor: pointer; padding: 4px 10px;
+  line-height: 1;
+}
+#yt-close:hover { color: #fff; }
+#yt-frame-wrap {
+  position: relative;
+  padding-bottom: 56.25%;
+  height: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #000;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+}
+#yt-frame {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  border: none;
+}
+#yt-open-link {
+  display: block;
+  text-align: center;
+  margin-top: 10px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.55);
+  text-decoration: none;
+}
+#yt-open-link:hover { color: rgba(255,255,255,0.85); }
+
 /* ── 인쇄 최적화 ── */
 @media print {
   body { background: white; color: black; }
@@ -532,6 +620,7 @@ details.tc-details[open] summary::before { transform: rotate(90deg); }
   details.desc-details { display: block !important; }
   details.desc-details summary { display: none; }
   details.tc-details[open] { display: block; }
+  #yt-modal { display: none !important; }
 }
 """
 
@@ -824,7 +913,7 @@ def build_html(
 
         lyrics_badge = (
             f'<span class="lyrics-badge" title="{i18n["has_lyrics"]}">LRC</span>'
-            if t.get("has_lyrics") else ""
+            if t.get("lrc_content") else ""
         )
         title_badge = (
             f'<span class="title-track-badge" title="{i18n["title_track"]}">'
@@ -971,6 +1060,20 @@ def build_html(
                 f'</details>'
             )
 
+        # LRC 가사 섹션
+        lrc_html = ""
+        lrc_raw = t.get("lrc_content") or ""
+        if lrc_raw:
+            lrc_text = _parse_lrc_text(lrc_raw)
+            if lrc_text:
+                lrc_label = "가사" if lang == "ko" else "Lyrics"
+                lrc_html = (
+                    f'<details class="lrc-section">'
+                    f'<summary>{lrc_label}</summary>'
+                    f'<div class="lrc-lines">{_safe(lrc_text)}</div>'
+                    f'</details>'
+                )
+
         card_items.append(
             f'<div class="track-card" data-file="{_safe(file_attr)}">'
             f'<div class="tc-main">'
@@ -988,6 +1091,7 @@ def build_html(
             f'</div>'
             f'</div>'
             + details_html
+            + lrc_html
             + f'</div>'
         )
 
@@ -1054,10 +1158,44 @@ def build_html(
 </div>
 
 
+<!-- YouTube 모달 -->
+<div id="yt-modal" role="dialog" aria-modal="true" onclick="closeYT(event)">
+  <div id="yt-modal-inner">
+    <button id="yt-close" onclick="closeYT()" aria-label="Close">✕</button>
+    <div id="yt-frame-wrap">
+      <iframe id="yt-frame" src="" frameborder="0"
+        allow="autoplay; encrypted-media; picture-in-picture"
+        allowfullscreen></iframe>
+    </div>
+    <a id="yt-open-link" href="#" target="_blank" rel="noopener noreferrer">YouTube에서 열기 ↗</a>
+  </div>
+</div>
+
 <script>
 function openYT(id) {{
-  window.open('https://www.youtube.com/watch?v=' + id, '_blank', 'noopener,noreferrer');
+  var modal = document.getElementById('yt-modal');
+  var frame = document.getElementById('yt-frame');
+  var link  = document.getElementById('yt-open-link');
+  var ytUrl = 'https://www.youtube.com/watch?v=' + id;
+  frame.src = 'https://www.youtube.com/embed/' + id + '?autoplay=1';
+  link.href = ytUrl;
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
 }}
+function closeYT(e) {{
+  if (e && e.type === 'click') {{
+    var inner = document.getElementById('yt-modal-inner');
+    if (inner && inner.contains(e.target) && e.target !== document.getElementById('yt-close')) return;
+  }}
+  var modal = document.getElementById('yt-modal');
+  var frame = document.getElementById('yt-frame');
+  modal.classList.remove('open');
+  frame.src = '';
+  document.body.style.overflow = '';
+}}
+document.addEventListener('keydown', function(e) {{
+  if (e.key === 'Escape') closeYT();
+}});
 </script>
 </body>
 </html>"""

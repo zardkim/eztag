@@ -88,6 +88,8 @@ export const browseApi = {
   lrcContent: (path) => client.get('/browse/lrc-content', { params: { path } }),
   renameByTagsPreview: (paths, pattern) => client.post('/browse/rename-by-tags/preview', { paths, pattern }),
   renameByTags: (paths, pattern) => client.post('/browse/rename-by-tags', { paths, pattern }),
+  tagFromNamePreview: (paths, pattern) => client.post('/browse/tag-from-name/preview', { paths, pattern }),
+  tagFromNameApply: (paths, pattern, fields = []) => client.post('/browse/tag-from-name/apply', { paths, pattern, fields }),
   destChildren: (path) => client.get('/browse/dest-children', { params: { path } }),
   destMkdir: (data) => client.post('/browse/dest-mkdir', data),
   moveFolder: (data) => client.post('/browse/move-folder', data),

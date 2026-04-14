@@ -38,6 +38,15 @@ async def lifespan(app: FastAPI):
         p.mkdir(parents=True, exist_ok=True)
         _log.info(f"[startup] {name} dir: {p}")
 
+    # 앱 시작 시: DB 없으면 자동 생성
+    from sqlalchemy import text
+    from sqlalchemy_utils import database_exists, create_database
+    from app.config import settings
+    if not database_exists(settings.DATABASE_URL):
+        _log.info("[startup] Database not found — creating...")
+        create_database(settings.DATABASE_URL)
+        _log.info("[startup] Database created.")
+
     # 앱 시작 시: DB 마이그레이션
     from alembic.config import Config
     from alembic import command
@@ -48,7 +57,8 @@ async def lifespan(app: FastAPI):
     from app.models.scan_folder import ScanFolder
 
     # data/library 기본 폴더 자동 등록 (browse 경로 검증에 필요)
-    library_path = str(Path(os.getenv("LIBRARY_PATH", "../data/library")).resolve())
+    # MUSIC_BASE_PATH(Docker) 또는 LIBRARY_PATH 또는 기본값 순으로 사용
+    library_path = str(Path(os.getenv("MUSIC_BASE_PATH") or os.getenv("LIBRARY_PATH", "../data/library")).resolve())
     db_lib = SessionLocal()
     try:
         if not db_lib.query(ScanFolder).filter(ScanFolder.path == library_path).first():

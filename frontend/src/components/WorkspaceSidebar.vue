@@ -269,7 +269,7 @@ const relativeFolderPath = computed(() => {
 
 function onSelectWorkspaceFolder(folder) {
   showWorkspacePicker.value = false
-  browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'workspace')
+  browserStore.selectFolderRecursive({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'workspace')
   if (route.path !== '/browser') router.push('/browser')
 }
 
@@ -281,7 +281,7 @@ function onSelectWorkspaceFolderRecursive(folder) {
 
 function onSelectLibraryFolder(folder) {
   showLibraryPicker.value = false
-  browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'library')
+  browserStore.selectFolderRecursive({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'library')
   if (route.path !== '/browser') router.push('/browser')
 }
 

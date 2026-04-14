@@ -25,7 +25,7 @@ DEFAULTS: dict[str, tuple] = {
     "lrc_base_folder": ("", "Get LRC 기본 폴더 경로"),
     "excluded_folders": ("@eaDir,.dav,@Recycle,#recycle,.Spotlight-V100,.Trashes", "파일 목록에서 제외할 폴더명 목록 (콤마 구분)"),
     "lrc_primary_source": ("alsong", "LRC 기본 소스 (alsong/bugs/lrclib)"),
-    "lrc_fallback_source": ("none", "LRC 보조 소스 (bugs/lrclib/alsong/none)"),
+    "lrc_fallback_source": ("bugs", "LRC 보조 소스 (alsong/bugs/lrclib/none)"),
     # Spotify (필수)
     "spotify_client_id": ("", "Spotify API Client ID"),
     "spotify_client_secret": ("", "Spotify API Client Secret"),

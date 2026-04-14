@@ -85,11 +85,31 @@ def render_pattern(pattern: str, fields: dict) -> str:
 def sanitize_filename(name: str) -> str:
     """
     파일명 안전 처리:
-    - 금지 문자 → '_' 치환
+    - 제어 문자(0x00-0x1F, 0x7F) 제거
+    - 금지 문자(\\/:*?"<>|) → '_' 치환
     - 연속 공백 → 단일 공백
     - 앞뒤 공백/점 제거
     - 빈 문자열 → '_'
     """
+    name = re.sub(r'[\x00-\x1f\x7f]', '', name)
+    name = INVALID_CHARS.sub("_", name)
+    name = re.sub(r" {2,}", " ", name)
+    name = name.strip(" .")
+    if not name:
+        name = "_"
+    return name
+
+
+def sanitize_foldername(name: str) -> str:
+    """
+    폴더명 안전 처리:
+    - 제어 문자(0x00-0x1F, 0x7F) 제거
+    - 금지 문자(\\/:*?"<>|) → '_' 치환
+    - 연속 공백 → 단일 공백
+    - 앞뒤 공백/마침표 제거 (Windows 호환)
+    - 빈 문자열 → '_'
+    """
+    name = re.sub(r'[\x00-\x1f\x7f]', '', name)
     name = INVALID_CHARS.sub("_", name)
     name = re.sub(r" {2,}", " ", name)
     name = name.strip(" .")

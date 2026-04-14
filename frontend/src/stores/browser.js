@@ -30,7 +30,7 @@ export const useBrowserStore = defineStore('browser', () => {
   const breadcrumb = ref([])   // [{ name, path }, ...]
 
   // 정렬/필터 상태
-  const sortKey = ref('track_no')   // 정렬 기준 필드명
+  const sortKey = ref('disc_no')     // 정렬 기준 필드명
   const sortOrder = ref('asc')       // 'asc' | 'desc'
   const filterText = ref('')
 
@@ -41,11 +41,42 @@ export const useBrowserStore = defineStore('browser', () => {
     files.value.length > 0 && files.value.every(f => checkedPaths.value.has(f.path))
   )
 
+  // 파일 정렬 비교함수 생성
+  function _makeSorter(key, dir) {
+    const NUMERIC = new Set(['disc_no', 'track_no', 'year', 'bitrate', 'sample_rate', 'duration', 'modified_time', 'file_size'])
+    return (a, b) => {
+      let cmp = 0
+      if (NUMERIC.has(key)) {
+        const av = a[key] ?? (dir > 0 ? Infinity : -Infinity)
+        const bv = b[key] ?? (dir > 0 ? Infinity : -Infinity)
+        cmp = (av - bv) * dir
+      } else if (key === 'title') {
+        const av = (a.title || a.filename || '').toLowerCase()
+        const bv = (b.title || b.filename || '').toLowerCase()
+        cmp = av < bv ? -dir : av > bv ? dir : 0
+      } else {
+        const av = (a[key] || '').toLowerCase()
+        const bv = (b[key] || '').toLowerCase()
+        cmp = av < bv ? -dir : av > bv ? dir : 0
+      }
+      if (cmp === 0 && key === 'disc_no') {
+        const at = a.track_no ?? Infinity
+        const bt = b.track_no ?? Infinity
+        return at - bt
+      }
+      if (cmp === 0 && key === 'track_no') {
+        const ad = a.disc_no ?? Infinity
+        const bd = b.disc_no ?? Infinity
+        return (ad - bd) * dir
+      }
+      return cmp
+    }
+  }
+
   // 필터링 + 정렬된 파일 목록
   const displayFiles = computed(() => {
     let list = files.value
 
-    // 텍스트 필터
     const q = filterText.value.trim().toLowerCase()
     if (q) {
       list = list.filter(f =>
@@ -55,27 +86,26 @@ export const useBrowserStore = defineStore('browser', () => {
       )
     }
 
-    // 정렬
-    const key = sortKey.value
     const dir = sortOrder.value === 'asc' ? 1 : -1
-    const NUMERIC = new Set(['disc_no', 'track_no', 'year', 'bitrate', 'sample_rate', 'duration', 'modified_time', 'file_size'])
-    list = [...list].sort((a, b) => {
-      if (NUMERIC.has(key)) {
-        const av = a[key] ?? (dir > 0 ? Infinity : -Infinity)
-        const bv = b[key] ?? (dir > 0 ? Infinity : -Infinity)
-        return (av - bv) * dir
-      }
-      if (key === 'title') {
-        const av = (a.title || a.filename || '').toLowerCase()
-        const bv = (b.title || b.filename || '').toLowerCase()
-        return av < bv ? -dir : av > bv ? dir : 0
-      }
-      const av = (a[key] || '').toLowerCase()
-      const bv = (b[key] || '').toLowerCase()
-      return av < bv ? -dir : av > bv ? dir : 0
-    })
+    return [...list].sort(_makeSorter(sortKey.value, dir))
+  })
 
-    return list
+  // 폴더 그룹별 필터링 + 정렬 (하위폴더 포함 로드 시)
+  const displayGroups = computed(() => {
+    if (!folderGroups.value.length) return []
+    const q = filterText.value.trim().toLowerCase()
+    const dir = sortOrder.value === 'asc' ? 1 : -1
+    const sorter = _makeSorter(sortKey.value, dir)
+    return folderGroups.value.map(g => {
+      let gfiles = q
+        ? g.files.filter(f =>
+            (f.title || f.filename || '').toLowerCase().includes(q) ||
+            (f.artist || '').toLowerCase().includes(q) ||
+            (f.album_title || '').toLowerCase().includes(q)
+          )
+        : [...g.files]
+      return { ...g, files: gfiles.sort(sorter) }
+    }).filter(g => g.files.length > 0)
   })
 
   async function loadFiles(path, force = false) {
@@ -180,7 +210,8 @@ export const useBrowserStore = defineStore('browser', () => {
       folderGroups.value = data.groups
       const fileList = data.groups.flatMap(g => g.files)
       files.value = fileList
-      isRecursiveMode.value = true
+      extraFiles.value = data.extra_files ?? []
+      isRecursiveMode.value = false
       if (!isRetry) selectedFile.value = null
 
       // 미스캔 파일이 있으면 백그라운드 스캔 완료 후 재조회 (최대 4회)
@@ -310,6 +341,16 @@ export const useBrowserStore = defineStore('browser', () => {
     checkedPaths.value = next
   }
 
+  function _patchInGroups(path, updates) {
+    for (const g of folderGroups.value) {
+      const idx = g.files.findIndex(f => f.path === path)
+      if (idx !== -1) {
+        g.files[idx] = { ...g.files[idx], ...updates }
+        break
+      }
+    }
+  }
+
   function updateFile(updated) {
     const idx = files.value.findIndex(f => f.path === updated.path)
     if (idx !== -1) {
@@ -318,6 +359,7 @@ export const useBrowserStore = defineStore('browser', () => {
         selectedFile.value = files.value[idx]
       }
     }
+    _patchInGroups(updated.path, updated)
   }
 
   function updateFiles(paths, updates) {
@@ -326,11 +368,12 @@ export const useBrowserStore = defineStore('browser', () => {
       if (idx !== -1) {
         files.value[idx] = { ...files.value[idx], ...updates }
       }
+      _patchInGroups(path, updates)
     }
   }
 
   return {
-    selectedFolder, selectedFile, selectedExtraFile, files, extraFiles, albumDescription, hasEztagReport, subfolders, displayFiles,
+    selectedFolder, selectedFile, selectedExtraFile, files, extraFiles, albumDescription, hasEztagReport, subfolders, displayFiles, displayGroups,
     loading, error, fileWarning,
     checkedPaths, checkedFiles, isAllChecked,
     sortKey, sortOrder, filterText, breadcrumb, currentArea, mobileMenuOpen, wizardOpen,
