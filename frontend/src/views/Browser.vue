@@ -1109,8 +1109,30 @@ async function clearYoutubeUrl(file) {
 }
 
 // App.vue 등에서 wizardOpen을 true로 세팅하면 마법사 열림
+// wizardPendingPreset이 설정된 경우 해당 프리셋으로 즉시 실행
 watch(() => browserStore.wizardOpen, (v) => {
-  if (!v) {
+  if (v) {
+    const preset = browserStore.wizardPendingPreset
+    browserStore.wizardPendingPreset = null
+    if (preset) {
+      // 프리셋으로 즉시 실행
+      const presetSteps = preset.steps || []
+      const resolved = []
+      for (const s of presetSteps) {
+        const def = WIZARD_DEFAULT_STEPS_BROWSER.find(d => d.id === s.id)
+        if (def) {
+          const providerKeys = Array.isArray(s.providerKeys) ? s.providerKeys : (s.providerKey ? [s.providerKey] : [])
+          const lrcSources = Array.isArray(s.lrcSources) ? s.lrcSources : (s.lrcSource ? [s.lrcSource] : ['alsong'])
+          resolved.push({ ...def, enabled: s.enabled ?? true, providerKeys, lrcSources, renamePattern: s.renamePattern ?? def.renamePattern })
+        }
+      }
+      for (const def of WIZARD_DEFAULT_STEPS_BROWSER) {
+        if (!resolved.find(r => r.id === def.id)) resolved.push({ ...def })
+      }
+      const enabledSteps = resolved.filter(s => s.enabled !== false)
+      if (enabledSteps.length) onWizardStart(enabledSteps)
+    }
+  } else {
     if (wizardPhase.value === 'running' && !wizardIsFinished.value) return  // 실행 중이면 닫기 무시
     wizardPhase.value = 'setup'
   }

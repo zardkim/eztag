@@ -16,6 +16,7 @@ export const useBrowserStore = defineStore('browser', () => {
   const currentArea = ref(null)  // 'workspace' | 'library' | null
   const mobileMenuOpen = ref(false)  // 모바일 액션 바텀시트 열림 상태
   const wizardOpen = ref(false)      // 마법사 다이얼로그 열림 상태
+  const wizardPendingPreset = ref(null)  // 모바일 하단바에서 선택한 프리셋 (null=설정모드, object=즉시실행)
   const isRecursiveMode = ref(false)  // 하위폴더 전체 보기 모드
   const folderGroups = ref([])         // [{ folder_path, folder_name, relative_path, files }]
   const files = ref([])
@@ -376,7 +377,7 @@ export const useBrowserStore = defineStore('browser', () => {
     selectedFolder, selectedFile, selectedExtraFile, files, extraFiles, albumDescription, hasEztagReport, subfolders, displayFiles, displayGroups,
     loading, error, fileWarning,
     checkedPaths, checkedFiles, isAllChecked,
-    sortKey, sortOrder, filterText, breadcrumb, currentArea, mobileMenuOpen, wizardOpen,
+    sortKey, sortOrder, filterText, breadcrumb, currentArea, mobileMenuOpen, wizardOpen, wizardPendingPreset,
     isRecursiveMode, folderGroups,
     loadFiles, selectFolder, selectFolderRecursive, loadRecursiveFiles,
     selectFile, selectExtraFile, toggleCheck, toggleAll, setCheckedPaths,

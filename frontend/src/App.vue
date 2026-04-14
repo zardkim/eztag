@@ -356,21 +356,48 @@
       </button>
 
       <!-- ④ 마법사 (인디고) -->
-      <button
-        class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
-        :class="browserStore.wizardOpen
-          ? 'text-indigo-500 dark:text-indigo-400'
-          : 'text-gray-400 dark:text-gray-500'"
-        @click="mobileUserOpen = false; mobileFolderMenuOpen = false; if (route.path !== '/browser') router.push('/browser'); browserStore.wizardOpen = true"
-      >
-        <div class="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
-          :class="browserStore.wizardOpen
-            ? 'bg-indigo-50 dark:bg-indigo-900/30'
-            : ''">
-          <span class="text-xl leading-none">🪄</span>
-        </div>
-        <span class="text-[10px] font-medium">{{ $t('wizard.short') }}</span>
-      </button>
+      <div class="flex-1 flex flex-col items-center justify-center relative">
+        <button
+          class="flex flex-col items-center justify-center gap-0.5 w-full transition-colors"
+          :class="browserStore.wizardOpen || mobileWizardMenuOpen
+            ? 'text-indigo-500 dark:text-indigo-400'
+            : 'text-gray-400 dark:text-gray-500'"
+          @click.stop="mobileUserOpen = false; mobileFolderMenuOpen = false; toggleMobileWizardMenu()"
+        >
+          <div class="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
+            :class="browserStore.wizardOpen || mobileWizardMenuOpen
+              ? 'bg-indigo-50 dark:bg-indigo-900/30'
+              : ''">
+            <span class="text-xl leading-none">🪄</span>
+          </div>
+          <span class="text-[10px] font-medium">{{ $t('wizard.short') }}</span>
+        </button>
+        <!-- 프리셋 팝업 -->
+        <Transition enter-from-class="opacity-0 scale-95" leave-to-class="opacity-0 scale-95" enter-active-class="transition duration-150 origin-bottom" leave-active-class="transition duration-100 origin-bottom">
+          <div
+            v-if="mobileWizardMenuOpen"
+            class="absolute bottom-12 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden w-52 z-50 max-h-72 overflow-y-auto"
+            @click.stop
+          >
+            <!-- 저장된 프리셋 -->
+            <template v-if="mobileWizardPresets.length > 0">
+              <p class="px-4 pt-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ $t('wizard.preset.selectTitle') }}</p>
+              <button
+                v-for="preset in mobileWizardPresets"
+                :key="preset.id"
+                class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors text-left"
+                @click="runMobileWizardPreset(preset)"
+              ><span class="text-base shrink-0">🪄</span><span class="truncate">{{ preset.name }}</span></button>
+              <div class="h-px bg-gray-100 dark:bg-gray-700 mx-2"></div>
+            </template>
+            <!-- 설정 변경 -->
+            <button
+              class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+              @click="openMobileWizardSetup()"
+            ><span class="text-base">⚙️</span>{{ $t('wizard.preset.openSetup') }}</button>
+          </div>
+        </Transition>
+      </div>
 
       <!-- ⑤ 설정 (주황색) -->
       <button
@@ -481,6 +508,31 @@ const mobileShowFolderPicker = ref(false)
 const mobileFolderMenuOpen = ref(false)
 const mobileShowWorkspacePicker = ref(false)
 const mobileShowLibraryPicker = ref(false)
+const mobileWizardMenuOpen = ref(false)
+
+const WIZARD_PRESET_KEY = 'eztag-wizard-presets'
+const mobileWizardPresets = ref([])
+
+function toggleMobileWizardMenu() {
+  if (!mobileWizardMenuOpen.value) {
+    try { mobileWizardPresets.value = JSON.parse(localStorage.getItem(WIZARD_PRESET_KEY) || '[]') } catch { mobileWizardPresets.value = [] }
+  }
+  mobileWizardMenuOpen.value = !mobileWizardMenuOpen.value
+}
+
+function runMobileWizardPreset(preset) {
+  mobileWizardMenuOpen.value = false
+  browserStore.wizardPendingPreset = preset
+  if (route.path !== '/browser') router.push('/browser')
+  browserStore.wizardOpen = true
+}
+
+function openMobileWizardSetup() {
+  mobileWizardMenuOpen.value = false
+  browserStore.wizardPendingPreset = null
+  if (route.path !== '/browser') router.push('/browser')
+  browserStore.wizardOpen = true
+}
 
 function onMobileSelectFolder(folder) {
   mobileShowFolderPicker.value = false
@@ -500,15 +552,16 @@ function onMobileSelectLibraryFolder(folder) {
   router.push('/browser')
 }
 
-function closeMobileFolderMenu() {
+function closeMobileMenus() {
   mobileFolderMenuOpen.value = false
+  mobileWizardMenuOpen.value = false
 }
 
 onMounted(() => {
-  document.addEventListener('click', closeMobileFolderMenu)
+  document.addEventListener('click', closeMobileMenus)
 })
 onUnmounted(() => {
-  document.removeEventListener('click', closeMobileFolderMenu)
+  document.removeEventListener('click', closeMobileMenus)
 })
 
 // 최근 폴더 저장
