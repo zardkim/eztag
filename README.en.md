@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.8.19-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.8.24-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -20,6 +20,7 @@ A web application for managing music library metadata and editing audio tags.
 
 ## Features
 
+- **Wizard** — 5-step sequential automation (Auto-tag → Cover → LRC → Rename → Album Card); toggle, skip, or reorder individual steps
 - **File Browser** — Browse music folders across two separate areas: Workspace and Library
 - **Tag Editor** — Individual and batch tag editing, including Description (Comment)
 - **Auto Metadata Search** — Spotify and external tag source integration
@@ -34,6 +35,68 @@ A web application for managing music library metadata and editing audio tags.
 - **Mobile Optimized** — Responsive layout, home screen (recent folders + clear list), bottom tab navigation
 - **Multilingual** — Korean / English (switch directly from login screen)
 - **Dark Mode** support
+
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="screenshot/웹화면/홈화면.JPG" alt="Home" width="480"/><br/>
+      <sub>Home</sub>
+    </td>
+    <td align="center">
+      <img src="screenshot/웹화면/파일목록%20페이지.JPG" alt="File List" width="480"/><br/>
+      <sub>File List (with Wizard button)</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="screenshot/웹화면/태그편집%20페이지.JPG" alt="Tag Editor" width="480"/><br/>
+      <sub>Tag Editor</sub>
+    </td>
+    <td align="center">
+      <img src="screenshot/웹화면/자동태그%20검색.JPG" alt="Auto Tag Search" width="480"/><br/>
+      <sub>Auto Tag Search</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="screenshot/웹화면/앨범카드.JPG" alt="Album Card" width="480"/><br/>
+      <sub>HTML Album Card</sub>
+    </td>
+    <td align="center">
+      <img src="screenshot/웹화면/설정%20-%20마법사.JPG" alt="Wizard Settings" width="480"/><br/>
+      <sub>Wizard Settings</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="screenshot/모바일/홈메뉴.JPG" alt="Mobile Home" width="240"/><br/>
+      <sub>Mobile Home (bottom tab nav)</sub>
+    </td>
+    <td align="center">
+      <img src="screenshot/모바일/태그편집.JPG" alt="Mobile Tag Editor" width="240"/><br/>
+      <sub>Mobile Tag Editor</sub>
+    </td>
+  </tr>
+</table>
+
+## Wizard
+
+Click the **✦ Wizard** button in the top toolbar to automatically run up to 5 steps in sequence.  
+Each step can be **toggled on/off**, **skipped**, or **reordered** — settings are saved automatically.
+
+| Step | Action | Description |
+|:---:|--------|-------------|
+| 1 | Auto Tag | Search and apply metadata from Spotify / Bugs / Melon / Apple Music |
+| 2 | Rename Files | Batch rename files using a saved pattern |
+| 3 | LRC Lyrics | Auto-download LRC lyrics from Alsong, Bugs, LRCLIB, etc. |
+| 4 | YouTube MV | Auto-search and link official YouTube MV for title tracks |
+| 5 | Album Card | Generate an HTML album card with track list, MV, and description |
+
+**Wizard Presets** — Save your current step configuration as a preset and reload it with one click anytime.
+
+<img src="screenshot/웹화면/설정%20-%20마법사.JPG" alt="Wizard Settings Screen" width="800"/>
 
 ## Supported Formats
 
@@ -201,7 +264,8 @@ docker-compose pull && docker-compose up -d
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **v0.8.19** | 2026-03-31 | Wizard step skip, step enable/disable toggle, order persistence, fix WizardDialog hiding during auto-tag album selection |
+| **v0.8.24** | 2026-04-14 | Wizard feature stabilization and overall improvements, latest stable release |
+| v0.8.19 | 2026-03-31 | Wizard step skip, step enable/disable toggle, order persistence, fix WizardDialog hiding during auto-tag album selection |
 | v0.8.18 | 2026-03-31 | Wizard (5-step sequential automation), mobile long-press multi-select, folder-level selection in recursive mode, external tag 403 bypass improvements |
 | v0.8.17 | 2026-03-30 | External tag source LRC search, album card description collapse/expand, card-style LRC source UI in settings, stricter YouTube MV search (official only), mini-player bitrate single-line fix |
 | v0.8.16 | 2026-03-29 | Expanded auto-tag search modes, album description save fix, cover art cache, single-render file list, HTML viewer mobile close button, album card filename format |

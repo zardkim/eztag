@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.8.19-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.8.24-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -20,6 +20,7 @@
 
 ## 주요 기능
 
+- **마법사(Wizard)** — 5단계(자동태그·커버·LRC·파일명 변경·앨범카드) 순차 자동 실행, 단계 활성/비활성 토글·스킵·순서 저장
 - **파일 브라우저** — 작업공간/라이브러리 두 영역으로 음악 폴더 탐색, 오디오 파일 목록 및 태그 조회
 - **태그 편집** — 개별/일괄(배치) 태그 편집, 설명(Comment) 포함
 - **메타데이터 자동 검색** — Spotify 및 외부 태그 지원
@@ -34,6 +35,68 @@
 - **모바일 최적화** — 반응형 레이아웃, 홈(최근 폴더 + 목록 지우기), 하단 탭 내비게이션
 - **다국어** — 한국어 / English (로그인 화면에서 바로 전환)
 - **다크 모드** 지원
+
+## 스크린샷
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="screenshot/웹화면/홈화면.JPG" alt="홈화면" width="480"/><br/>
+      <sub>홈화면</sub>
+    </td>
+    <td align="center">
+      <img src="screenshot/웹화면/파일목록%20페이지.JPG" alt="파일 목록" width="480"/><br/>
+      <sub>파일 목록 (마법사 버튼 포함)</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="screenshot/웹화면/태그편집%20페이지.JPG" alt="태그 편집" width="480"/><br/>
+      <sub>태그 편집</sub>
+    </td>
+    <td align="center">
+      <img src="screenshot/웹화면/자동태그%20검색.JPG" alt="자동태그 검색" width="480"/><br/>
+      <sub>자동태그 검색</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="screenshot/웹화면/앨범카드.JPG" alt="앨범카드" width="480"/><br/>
+      <sub>HTML 앨범카드</sub>
+    </td>
+    <td align="center">
+      <img src="screenshot/웹화면/설정%20-%20마법사.JPG" alt="마법사 설정" width="480"/><br/>
+      <sub>마법사 설정</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="screenshot/모바일/홈메뉴.JPG" alt="모바일 홈" width="240"/><br/>
+      <sub>모바일 홈 (하단 탭 내비게이션)</sub>
+    </td>
+    <td align="center">
+      <img src="screenshot/모바일/태그편집.JPG" alt="모바일 태그편집" width="240"/><br/>
+      <sub>모바일 태그편집</sub>
+    </td>
+  </tr>
+</table>
+
+## 마법사 (Wizard)
+
+상단 툴바의 **✦ 마법사** 버튼 하나로 아래 5단계 작업을 자동으로 순서대로 실행합니다.  
+각 단계는 **활성/비활성 토글**, **스킵**, **순서 변경**이 가능하며 설정은 자동 저장됩니다.
+
+| 단계 | 작업 | 설명 |
+|:---:|------|------|
+| 1 | 자동 태그 | Spotify / Bugs / Melon / Apple Music에서 메타데이터 자동 검색 및 적용 |
+| 2 | 파일명 변경 | 저장된 패턴으로 파일명 일괄 변경 |
+| 3 | LRC 가사 검색 | 알송·Bugs·LRCLIB 등 외부 소스에서 LRC 가사 자동 다운로드 |
+| 4 | YouTube MV 검색 | 타이틀곡 YouTube 공식 MV 자동 검색 및 연결 |
+| 5 | 앨범 카드 생성 | 트랙 목록 + MV + 소개글 포함 HTML 앨범카드 자동 생성 |
+
+**마법사 프리셋** — 현재 단계 구성을 프리셋으로 저장해두면 언제든 원클릭으로 불러올 수 있습니다.
+
+<img src="screenshot/웹화면/설정%20-%20마법사.JPG" alt="마법사 설정 화면" width="800"/>
 
 ## 지원 포맷
 
@@ -201,7 +264,8 @@ docker-compose pull && docker-compose up -d
 
 | 버전 | 날짜 | 주요 변경사항 |
 |------|------|--------------|
-| **v0.8.19** | 2026-03-31 | 마법사 단계 스킵, 단계 활성/비활성 토글, 순서 저장, 자동태그 앨범선택 가능하도록 WizardDialog 임시 숨김 수정 |
+| **v0.8.24** | 2026-04-14 | 마법사 기능 안정화 및 전반 개선, 최신 안정 릴리즈 |
+| v0.8.19 | 2026-03-31 | 마법사 단계 스킵, 단계 활성/비활성 토글, 순서 저장, 자동태그 앨범선택 가능하도록 WizardDialog 임시 숨김 수정 |
 | v0.8.18 | 2026-03-31 | 마법사 기능(5단계 자동 순차 실행), 모바일 롱프레스 다중 선택, 재귀 모드 폴더 단위 선택, 외부 태그 403 우회 개선 |
 | v0.8.17 | 2026-03-30 | 외부 태그 지원 LRC 검색 추가, 앨범카드 소개 접기/펼치기, 설정 LRC 카드형 UI, YouTube MV 검색 정확도 강화, 미니플레이어 비트레이트 1줄 표시 |
 | v0.8.16 | 2026-03-29 | 자동태그 검색모드 확장, 앨범설명 저장 수정, 앨범아트 캐시, 파일목록 단일렌더, HTML뷰어 모바일 닫기버튼, 앨범카드 파일명 형식 변경 |
