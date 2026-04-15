@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.8.24-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.8.25-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -264,7 +264,8 @@ docker-compose pull && docker-compose up -d
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **v0.8.24** | 2026-04-14 | Wizard feature stabilization and overall improvements, latest stable release |
+| **v0.8.25** | 2026-04-15 | Fix: mobile folder selection now auto-loads files from subfolders |
+| v0.8.24 | 2026-04-14 | Wizard feature stabilization and overall improvements |
 | v0.8.19 | 2026-03-31 | Wizard step skip, step enable/disable toggle, order persistence, fix WizardDialog hiding during auto-tag album selection |
 | v0.8.18 | 2026-03-31 | Wizard (5-step sequential automation), mobile long-press multi-select, folder-level selection in recursive mode, external tag 403 bypass improvements |
 | v0.8.17 | 2026-03-30 | External tag source LRC search, album card description collapse/expand, card-style LRC source UI in settings, stricter YouTube MV search (official only), mini-player bitrate single-line fix |

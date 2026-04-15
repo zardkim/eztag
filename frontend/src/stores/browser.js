@@ -174,6 +174,12 @@ export const useBrowserStore = defineStore('browser', () => {
       // 스캔 완료(또는 최대 재시도 초과) — 한 번에 표시
       _scanRetryCount = 0
 
+      // 직접 오디오 파일이 없고 오디오가 있는 하위 폴더가 있으면 자동으로 재귀 로드
+      if (fileList.length === 0 && subs.some(s => s.has_audio)) {
+        loadRecursiveFiles(path)
+        return
+      }
+
       // 캐시 저장 (오류 없을 때만)
       if (!warning) {
         _filesCache.set(path, { files: fileList, extraFiles: extraList, albumDescription: desc, hasEztagReport: hasEztag, subfolders: subs, warning, ts: Date.now() })
@@ -212,7 +218,7 @@ export const useBrowserStore = defineStore('browser', () => {
       const fileList = data.groups.flatMap(g => g.files)
       files.value = fileList
       extraFiles.value = data.extra_files ?? []
-      isRecursiveMode.value = false
+      isRecursiveMode.value = true
       if (!isRetry) selectedFile.value = null
 
       // 미스캔 파일이 있으면 백그라운드 스캔 완료 후 재조회 (최대 4회)

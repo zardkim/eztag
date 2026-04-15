@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.8.24-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.8.25-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -264,7 +264,8 @@ docker-compose pull && docker-compose up -d
 
 | 버전 | 날짜 | 주요 변경사항 |
 |------|------|--------------|
-| **v0.8.24** | 2026-04-14 | 마법사 기능 안정화 및 전반 개선, 최신 안정 릴리즈 |
+| **v0.8.25** | 2026-04-15 | 모바일 폴더 선택 시 하위 폴더 파일 자동 표시 버그 수정 |
+| v0.8.24 | 2026-04-14 | 마법사 기능 안정화 및 전반 개선 |
 | v0.8.19 | 2026-03-31 | 마법사 단계 스킵, 단계 활성/비활성 토글, 순서 저장, 자동태그 앨범선택 가능하도록 WizardDialog 임시 숨김 수정 |
 | v0.8.18 | 2026-03-31 | 마법사 기능(5단계 자동 순차 실행), 모바일 롱프레스 다중 선택, 재귀 모드 폴더 단위 선택, 외부 태그 403 우회 개선 |
 | v0.8.17 | 2026-03-30 | 외부 태그 지원 LRC 검색 추가, 앨범카드 소개 접기/펼치기, 설정 LRC 카드형 UI, YouTube MV 검색 정확도 강화, 미니플레이어 비트레이트 1줄 표시 |
