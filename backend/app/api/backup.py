@@ -1,6 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 import os
+import shutil
+from pathlib import Path
 
 from app.core.backup_manager import (
     create_backup, list_backups, _validate_filename,
@@ -61,6 +63,23 @@ def restore_backup_endpoint(filename: str):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"복원 실패: {e}")
+
+
+@router.post("/upload")
+async def upload_backup_endpoint(file: UploadFile = File(...)):
+    """백업 파일 업로드 (외부에서 다운받은 .tar.gz 복원용)."""
+    original_name = Path(file.filename).name if file.filename else ""
+    if not original_name.endswith(".tar.gz") or "/" in original_name or ".." in original_name:
+        raise HTTPException(status_code=400, detail="올바른 백업 파일(.tar.gz)이 아닙니다")
+    dest_dir = Path(os.environ.get("BACKUP_DIR", "/app/data/backup"))
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / original_name
+    try:
+        with open(dest, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+    finally:
+        await file.close()
+    return {"ok": True, "filename": original_name}
 
 
 @router.delete("/{filename}")

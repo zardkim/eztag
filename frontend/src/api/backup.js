@@ -11,5 +11,13 @@ export const backupApi = {
     link.click()
   },
   restore: (filename) => client.post(`/backup/restore/${encodeURIComponent(filename)}`, {}, { timeout: 300000 }),
+  upload: (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return client.post('/backup/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 300000,
+    })
+  },
   delete: (filename) => client.delete(`/backup/${encodeURIComponent(filename)}`),
 }

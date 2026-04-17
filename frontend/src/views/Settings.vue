@@ -435,12 +435,13 @@
         <!-- ── 데이터 관리 ── -->
         <template v-if="activeTab === 'data'">
           <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-5">{{ $t('settings.backup.title') }}</h2>
-          <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm">
-            <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">{{ $t('settings.backup.title') }}</h3>
+
+          <!-- 백업 생성 + 목록 -->
+          <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm mb-4">
+            <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">{{ $t('settings.backup.backupTitle') }}</h3>
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
               <div>
-                <p class="text-sm text-gray-900 dark:text-white">{{ $t('settings.backup.backupTitle') }}</p>
-                <p class="text-xs text-gray-500 mt-0.5">{{ $t('settings.backup.backupDesc') }}</p>
+                <p class="text-xs text-gray-500">{{ $t('settings.backup.backupDesc') }}</p>
               </div>
               <button
                 class="px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 disabled:opacity-60"
@@ -461,18 +462,48 @@
                 :key="bk.filename"
                 class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2.5"
               >
-                <div>
-                  <p class="text-sm text-gray-900 dark:text-white font-mono">{{ bk.filename }}</p>
+                <div class="min-w-0">
+                  <p class="text-sm text-gray-900 dark:text-white font-mono truncate">{{ bk.filename }}</p>
                   <p class="text-xs text-gray-500 mt-0.5">{{ bk.size_mb }} MB · {{ fmtDatetime(bk.created_at) }}</p>
                 </div>
-                <div class="flex items-center gap-3">
-                  <button class="text-xs text-blue-500 hover:text-blue-400 transition-colors" @click="downloadBackup(bk.filename)">{{ $t('settings.backup.download') }}</button>
-                  <button class="text-xs text-yellow-500 hover:text-yellow-400 transition-colors" @click="restoreBackup(bk.filename)">{{ $t('settings.backup.restore') }}</button>
-                  <button class="text-xs text-red-500 hover:text-red-400 transition-colors" @click="deleteBackup(bk.filename)">{{ $t('settings.backup.delete') }}</button>
+                <div class="flex items-center gap-3 shrink-0">
+                  <button class="text-xs text-blue-500 hover:text-blue-400 transition-colors py-1" @click="downloadBackup(bk.filename)">{{ $t('settings.backup.download') }}</button>
+                  <button class="text-xs text-yellow-600 hover:text-yellow-500 transition-colors py-1 font-medium" @click="restoreBackup(bk.filename)">{{ $t('settings.backup.restore') }}</button>
+                  <button class="text-xs text-red-500 hover:text-red-400 transition-colors py-1" @click="deleteBackup(bk.filename)">{{ $t('settings.backup.delete') }}</button>
                 </div>
               </div>
             </div>
             <p v-else class="text-sm text-gray-400 dark:text-gray-600">{{ $t('settings.backup.empty') }}</p>
+          </section>
+
+          <!-- 파일에서 복원 -->
+          <section class="bg-white dark:bg-gray-900 rounded-xl p-5 shadow-sm">
+            <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">{{ $t('settings.backup.uploadRestoreTitle') }}</h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">{{ $t('settings.backup.uploadRestoreDesc') }}</p>
+            <input
+              ref="uploadRestoreInput"
+              type="file"
+              accept=".tar.gz,application/gzip"
+              class="hidden"
+              @change="onUploadRestoreChange"
+            />
+            <button
+              class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+              :class="uploadRestoreRunning
+                ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+                : 'bg-orange-500 hover:bg-orange-400 text-white'"
+              :disabled="uploadRestoreRunning"
+              @click="uploadRestoreInput?.click()"
+            >
+              <span v-if="uploadRestoreRunning" class="flex items-center gap-2">
+                <span class="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></span>
+                {{ $t('settings.backup.restoring') }}
+              </span>
+              <span v-else class="flex items-center gap-2">
+                <span>📂</span>{{ $t('settings.backup.uploadBtn') }}
+              </span>
+            </button>
+            <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2">*.tar.gz 형식만 지원</p>
           </section>
         </template>
 
@@ -553,37 +584,37 @@
               <div
                 v-for="(step, i) in wizardSteps"
                 :key="step.id"
-                class="flex items-center gap-2 rounded-xl px-3 py-2.5 transition-colors"
+                class="flex items-start gap-2.5 rounded-xl px-3 py-3 transition-colors"
                 :class="step.enabled !== false ? 'bg-gray-50 dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-800/30 opacity-50'"
               >
                 <!-- 순번 -->
-                <span class="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-[11px] font-bold flex items-center justify-center shrink-0">{{ i + 1 }}</span>
+                <span class="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{{ i + 1 }}</span>
                 <!-- 아이콘 -->
-                <span class="text-lg shrink-0">{{ wizardStepIcon(step.id) }}</span>
+                <span class="text-xl shrink-0 leading-6">{{ wizardStepIcon(step.id) }}</span>
                 <!-- 이름 + 서브옵션 -->
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ $t('wizard.step.' + step.id) }}</p>
+                  <p class="text-sm font-medium text-gray-800 dark:text-gray-200 leading-6">{{ $t('wizard.step.' + step.id) }}</p>
                   <!-- 자동태그: 소스 다중선택 -->
-                  <div v-if="step.id === 'autoTag' && step.enabled !== false" class="mt-1.5 flex flex-wrap gap-1">
+                  <div v-if="step.id === 'autoTag' && step.enabled !== false" class="mt-2 flex flex-wrap gap-1.5">
                     <button
                       v-for="p in wizardAvailableProviders"
                       :key="p.key"
-                      class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] transition-colors"
+                      class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors active:scale-95"
                       :class="(step.providerKeys || []).includes(p.key)
                         ? 'bg-green-500 text-white'
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'"
                       @click="toggleWizardProviderKey(step, p.key)"
                     >
-                      <img :src="p.logo" :alt="p.label" class="w-3.5 h-3.5 rounded-full object-cover" />
+                      <img :src="p.logo" :alt="p.label" class="w-4 h-4 rounded-full object-cover" />
                       {{ p.label }}
                     </button>
                   </div>
                   <!-- LRC: 소스 단일선택 -->
-                  <div v-if="step.id === 'lrc' && step.enabled !== false" class="mt-1.5 flex gap-1">
+                  <div v-if="step.id === 'lrc' && step.enabled !== false" class="mt-2 flex flex-wrap gap-1.5">
                     <button
                       v-for="src in wizardLrcSources"
                       :key="src.key"
-                      class="px-2 py-0.5 rounded-full text-[11px] transition-colors"
+                      class="px-2.5 py-1 rounded-full text-xs font-medium transition-colors active:scale-95"
                       :class="(step.lrcSources || [])[0] === src.key
                         ? 'bg-purple-500 text-white'
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'"
@@ -591,27 +622,27 @@
                     >{{ src.label }}</button>
                   </div>
                   <!-- 파일명변경: 프리셋 선택 -->
-                  <div v-if="step.id === 'rename' && step.enabled !== false" class="mt-1.5 flex flex-wrap gap-1">
+                  <div v-if="step.id === 'rename' && step.enabled !== false" class="mt-2 flex flex-wrap gap-1.5">
                     <button
                       v-for="p in wizardRenamePresets"
                       :key="p.pattern"
-                      class="px-2 py-0.5 rounded-full text-[11px] transition-colors"
+                      class="px-2.5 py-1 rounded-full text-xs font-medium transition-colors active:scale-95"
                       :class="!isWizardCustomRename(step) && step.renamePattern === p.pattern
                         ? 'bg-orange-500 text-white'
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'"
                       @click="step.renamePattern = p.pattern; saveWizardSteps()"
                     >{{ p.label }}</button>
                     <button
-                      class="px-2 py-0.5 rounded-full text-[11px] transition-colors"
+                      class="px-2.5 py-1 rounded-full text-xs font-medium transition-colors active:scale-95"
                       :class="isWizardCustomRename(step)
                         ? 'bg-orange-500 text-white'
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'"
                       @click="toggleWizardCustomRename(step)"
                     >{{ $t('wizard.renameManual') }}</button>
-                    <div v-if="isWizardCustomRename(step)" class="w-full mt-1 space-y-1">
+                    <div v-if="isWizardCustomRename(step)" class="w-full mt-2 space-y-1.5">
                       <input
                         type="text"
-                        class="w-full text-[11px] px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-orange-400"
+                        class="w-full text-xs px-2.5 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-orange-400"
                         :placeholder="$t('wizard.renameCustomPlaceholder')"
                         v-model="step.renamePattern"
                         :ref="el => setWizardRenameInputRef(step.id, el)"
@@ -633,24 +664,24 @@
                 </div>
                 <!-- 활성/비활성 토글 -->
                 <button
-                  class="shrink-0 w-9 h-5 rounded-full transition-colors relative"
+                  class="shrink-0 w-11 h-6 rounded-full transition-colors relative mt-0.5"
                   :class="step.enabled !== false ? 'bg-indigo-500' : 'bg-gray-300 dark:bg-gray-600'"
                   @click="step.enabled = step.enabled === false ? true : false; saveWizardSteps()"
                 >
                   <span
-                    class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all"
-                    :class="step.enabled !== false ? 'left-[18px]' : 'left-0.5'"
+                    class="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
+                    :class="step.enabled !== false ? 'left-[22px]' : 'left-0.5'"
                   />
                 </button>
                 <!-- 위/아래 버튼 -->
                 <div class="flex flex-col gap-0.5 shrink-0">
                   <button
-                    class="w-6 h-5 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-20"
+                    class="w-7 h-7 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-20 text-sm"
                     :disabled="i === 0"
                     @click="moveWizardStep(i, -1)"
                   >▲</button>
                   <button
-                    class="w-6 h-5 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-20"
+                    class="w-7 h-7 flex items-center justify-center rounded text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-20 text-sm"
                     :disabled="i === wizardSteps.length - 1"
                     @click="moveWizardStep(i, 1)"
                   >▼</button>
@@ -987,6 +1018,8 @@ async function saveLrcSources() {
 
 const backups = ref([])
 const backupRunning = ref(false)
+const uploadRestoreRunning = ref(false)
+const uploadRestoreInput = ref(null)
 
 function fmtDatetime(iso) {
   if (!iso) return '-'
@@ -1177,6 +1210,25 @@ async function deleteBackup(filename) {
   await backupApi.delete(filename)
   toastStore.success(t('settings.toast.backupDeleted'))
   await loadBackups()
+}
+
+async function onUploadRestoreChange(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  if (uploadRestoreInput.value) uploadRestoreInput.value.value = ''
+
+  if (!await toastStore.confirm(t('settings.confirm.restoreUploaded', { filename: file.name }), '복원 확인')) return
+  uploadRestoreRunning.value = true
+  try {
+    const { data } = await backupApi.upload(file)
+    await loadBackups()
+    await backupApi.restore(data.filename)
+    toastStore.success(t('settings.toast.restoreComplete'))
+  } catch (e) {
+    toastStore.error(t('settings.toast.restoreFailed', { error: e.response?.data?.detail || e.message }))
+  } finally {
+    uploadRestoreRunning.value = false
+  }
 }
 
 // 도움말 탭 데이터 (locale 반응형)

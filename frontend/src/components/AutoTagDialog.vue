@@ -161,8 +161,8 @@
               <span class="text-[11px] text-gray-400">{{ props.files.length }}{{ t('autoTag.filesCount') }}</span>
             </div>
             <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-              <div class="overflow-auto max-h-56">
-                <table class="w-full text-[11px] border-collapse">
+              <div class="overflow-x-auto overflow-y-auto max-h-56">
+                <table class="min-w-[600px] w-full text-[11px] border-collapse">
                   <thead>
                     <tr class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 sticky top-0 z-10">
                       <th class="px-2 py-2 text-left font-medium whitespace-nowrap border-r border-gray-200 dark:border-gray-700" rowspan="2">{{ t('autoTag.colFilename') }}</th>
@@ -256,9 +256,42 @@
               </div>
             </template>
           </div>
-          <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-            <div class="overflow-auto max-h-[400px]">
-              <table class="w-full text-[11px] border-collapse">
+          <!-- 모바일: 카드 리스트, 데스크탑: 테이블 -->
+          <div class="sm:hidden space-y-2">
+            <div
+              v-for="r in fn.results"
+              :key="r.path"
+              class="rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2.5 space-y-1"
+            >
+              <div class="flex items-center gap-2">
+                <span v-if="r.status === 'applied' || r.status === 'reverted'" class="text-green-500 shrink-0">✅</span>
+                <span v-else-if="r.status === 'kept_existing'" class="text-gray-400 shrink-0">⏸</span>
+                <span v-else-if="r.status === 'applied_parsed'" class="text-blue-400 shrink-0">📝</span>
+                <span v-else-if="r.status === 'no_match'" class="text-amber-400 shrink-0">—</span>
+                <span v-else class="text-red-400 shrink-0">✗</span>
+                <p class="text-[11px] font-mono text-gray-500 dark:text-gray-400 truncate">{{ stemOf(r.filename) }}</p>
+              </div>
+              <template v-if="r.status === 'applied' || r.status === 'kept_existing' || r.status === 'applied_parsed'">
+                <div class="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] pl-5">
+                  <span v-if="r.matched_artist" class="text-gray-700 dark:text-gray-300 truncate"><span class="text-gray-400">{{ t('autoTag.colArtist') }}:</span> {{ r.matched_artist }}</span>
+                  <span v-if="r.matched_title" class="text-gray-700 dark:text-gray-300 truncate"><span class="text-gray-400">{{ t('autoTag.colTitle') }}:</span> {{ r.matched_title }}</span>
+                  <span v-if="r.matched_album" class="text-gray-500 truncate"><span class="text-gray-400">{{ t('autoTag.colAlbum') }}:</span> {{ r.matched_album }}</span>
+                  <span v-if="r.matched_year" class="text-gray-500 tabular-nums"><span class="text-gray-400">{{ t('autoTag.colYear') }}:</span> {{ r.matched_year }}</span>
+                  <span v-if="r.matched_provider" class="text-gray-400 text-[10px]">{{ r.matched_provider }}</span>
+                </div>
+              </template>
+              <template v-else-if="r.status === 'reverted'">
+                <p class="text-[11px] text-blue-500 dark:text-blue-400 pl-5">↩ {{ t('autoTag.reverted') }}</p>
+              </template>
+              <template v-else-if="r.status === 'no_match' || r.error">
+                <p class="text-[11px] text-gray-400 pl-5">{{ r.status === 'no_match' ? t('autoTag.noMatch') : r.error }}</p>
+              </template>
+            </div>
+          </div>
+          <!-- 데스크탑 테이블 -->
+          <div class="hidden sm:block border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+            <div class="overflow-x-auto overflow-y-auto max-h-[400px]">
+              <table class="min-w-[520px] w-full text-[11px] border-collapse">
                 <thead>
                   <tr class="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 sticky top-0 z-10">
                     <th class="px-2 py-2 text-left font-medium whitespace-nowrap border-r border-gray-200 dark:border-gray-700">{{ t('autoTag.colFilename') }}</th>
@@ -319,14 +352,14 @@
         ══════════════════════════════════════════════════════════ -->
         <template v-else-if="step === 'alb_search'">
           <!-- 검색바 -->
-          <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0 space-y-2">
+          <div class="px-4 sm:px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0 space-y-2">
             <!-- 검색 방식 칩 -->
             <div class="flex items-center gap-1.5 flex-wrap">
               <span class="text-[10px] text-gray-400 shrink-0">{{ t('tagSearch.searchMode') }}</span>
               <button
                 v-for="sm in searchModes"
                 :key="sm.key"
-                class="px-2 py-0.5 rounded-full border text-[10px] font-medium transition-all"
+                class="px-2.5 py-1 rounded-full border text-xs font-medium transition-all"
                 :class="alb.searchMode === sm.key
                   ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-blue-400'"
@@ -350,7 +383,7 @@
                 ref="albSearchInput"
               />
               <button
-                class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors disabled:opacity-60 shrink-0"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm rounded-lg transition-colors disabled:opacity-60 shrink-0"
                 :disabled="alb.loading"
                 @click="doAlbumSearch"
               >{{ alb.loading ? t('tagSearch.searching') : t('tagSearch.search') }}</button>
@@ -361,7 +394,7 @@
               <button
                 v-for="p in albProviders"
                 :key="p.key"
-                class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-all"
+                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all"
                 :class="alb.selectedSources.includes(p.key)
                   ? `${p.activeBg} ${p.activeText} ${p.activeBorder} shadow-sm`
                   : 'bg-white dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-300'"
@@ -374,35 +407,35 @@
           </div>
 
           <!-- 결과 목록 -->
-          <div class="flex-1 overflow-y-auto px-5 py-4 space-y-2">
+          <div class="flex-1 overflow-y-auto px-3 sm:px-5 py-3 sm:py-4 space-y-2">
             <div v-if="alb.loading" class="flex items-center justify-center py-16 text-sm text-gray-400">{{ t('tagSearch.searching') }}</div>
             <div v-else-if="alb.error" class="text-center py-10 text-sm text-red-500">{{ alb.error }}</div>
             <div v-else-if="alb.results.length === 0 && alb.searched" class="text-center py-10 text-sm text-gray-400">{{ t('tagSearch.noResults') }}</div>
             <div
               v-for="result in alb.results"
               :key="(result.provider || 'sp') + '_' + (result.provider_id || result.spotify_id)"
-              class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer transition-colors group"
+              class="flex items-center gap-3 px-3 py-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 active:bg-blue-50 dark:active:bg-blue-900/10 cursor-pointer transition-colors group"
               @click="selectAlbum(result)"
             >
-              <img v-if="result.cover_url" :src="result.cover_url" class="w-14 h-14 rounded-lg object-cover shrink-0 shadow" />
-              <div v-else class="w-14 h-14 rounded-lg bg-gray-200 dark:bg-gray-700 shrink-0 flex items-center justify-center text-gray-400">🎵</div>
+              <img v-if="result.cover_url" :src="result.cover_url" class="w-12 h-12 sm:w-14 sm:h-14 rounded-lg object-cover shrink-0 shadow" />
+              <div v-else class="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-gray-200 dark:bg-gray-700 shrink-0 flex items-center justify-center text-gray-400 text-xl">🎵</div>
               <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-1.5 flex-wrap">
-                  <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ result.album_title || result.title }}</p>
-                  <span v-if="result.album_type" class="text-[10px] px-1.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 rounded capitalize shrink-0">{{ result.album_type }}</span>
+                <div class="flex items-center gap-1.5 flex-wrap mb-0.5">
                   <span class="inline-flex items-center gap-1 text-[10px] pl-1 pr-1.5 py-0.5 rounded shrink-0" :class="providerBadgeClass(result.provider)">
                     <img v-if="providerLogo(result.provider)" :src="providerLogo(result.provider)" class="w-3.5 h-3.5 rounded object-cover" />
                     {{ providerLabel(result.provider) }}
                   </span>
+                  <span v-if="result.album_type" class="text-[10px] px-1.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 rounded capitalize shrink-0">{{ result.album_type }}</span>
                 </div>
-                <p class="text-xs text-gray-500 truncate">{{ result.album_artist || result.artist }}</p>
-                <div class="flex gap-2 mt-0.5 text-xs text-gray-400 flex-wrap">
+                <p class="text-sm font-medium text-gray-900 dark:text-white truncate leading-tight">{{ result.album_title || result.title }}</p>
+                <p class="text-xs text-gray-500 truncate mt-0.5">{{ result.album_artist || result.artist }}</p>
+                <div class="flex gap-2 mt-0.5 text-[11px] text-gray-400 flex-wrap">
                   <span v-if="result.release_date">{{ result.release_date }}</span>
                   <span v-if="result.total_tracks">· {{ t('tagSearch.trackCount', { n: result.total_tracks }) }}</span>
-                  <span v-if="result.label">· {{ result.label }}</span>
+                  <span v-if="result.label" class="truncate max-w-[100px]">· {{ result.label }}</span>
                 </div>
               </div>
-              <span class="text-xs text-blue-500 group-hover:text-blue-600 dark:text-blue-400 shrink-0 pr-1">{{ t('tagSearch.selectArrow') }}</span>
+              <span class="text-blue-400 group-hover:text-blue-600 dark:text-blue-400 shrink-0 text-base">›</span>
             </div>
           </div>
         </template>
@@ -413,23 +446,23 @@
         <template v-else-if="step === 'alb_compare' && alb.selectedAlbum">
           <div class="flex-1 overflow-y-auto">
             <!-- 앨범 정보 헤더 -->
-            <div class="px-5 py-4 bg-gray-50 dark:bg-gray-800 flex gap-4 items-start border-b border-gray-200 dark:border-gray-700">
-              <img v-if="alb.selectedAlbum.cover_url" :src="alb.selectedAlbum.cover_url" class="w-20 h-20 rounded-xl object-cover shadow shrink-0" />
-              <div v-else class="w-20 h-20 rounded-xl bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-2xl shrink-0">💿</div>
+            <div class="px-4 sm:px-5 py-3 sm:py-4 bg-gray-50 dark:bg-gray-800 flex gap-3 sm:gap-4 items-center border-b border-gray-200 dark:border-gray-700">
+              <img v-if="alb.selectedAlbum.cover_url" :src="alb.selectedAlbum.cover_url" class="w-14 h-14 sm:w-20 sm:h-20 rounded-xl object-cover shadow shrink-0" />
+              <div v-else class="w-14 h-14 sm:w-20 sm:h-20 rounded-xl bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-2xl shrink-0">💿</div>
               <div class="flex-1 min-w-0 text-sm">
-                <div class="flex items-center gap-2 mb-0.5">
-                  <p class="font-bold text-gray-900 dark:text-white text-base truncate">{{ alb.selectedAlbum.album_title || alb.selectedAlbum.title }}</p>
+                <div class="flex items-center gap-2 mb-0.5 flex-wrap">
                   <span class="inline-flex items-center gap-1 text-[10px] pl-1 pr-1.5 py-0.5 rounded shrink-0" :class="providerBadgeClass(alb.selectedAlbum.provider)">
                     <img v-if="providerLogo(alb.selectedAlbum.provider)" :src="providerLogo(alb.selectedAlbum.provider)" class="w-3.5 h-3.5 rounded object-cover" />
                     {{ providerLabel(alb.selectedAlbum.provider) }}
                   </span>
                 </div>
-                <p class="text-gray-500 truncate">{{ alb.selectedAlbum.album_artist || alb.selectedAlbum.artist }}</p>
-                <div class="flex gap-3 mt-1 text-xs text-gray-400 flex-wrap">
+                <p class="font-bold text-gray-900 dark:text-white text-sm sm:text-base truncate">{{ alb.selectedAlbum.album_title || alb.selectedAlbum.title }}</p>
+                <p class="text-xs text-gray-500 truncate mt-0.5">{{ alb.selectedAlbum.album_artist || alb.selectedAlbum.artist }}</p>
+                <div class="flex gap-2 mt-1 text-[11px] text-gray-400 flex-wrap">
                   <span v-if="alb.selectedAlbum.release_date">📅 {{ alb.selectedAlbum.release_date }}</span>
                   <span v-if="alb.selectedAlbum.total_tracks">🎵 {{ t('tagSearch.trackCount', { n: alb.selectedAlbum.total_tracks }) }}</span>
-                  <span v-if="alb.selectedAlbum.label">🏷 {{ alb.selectedAlbum.label }}</span>
-                  <span v-if="alb.selectedAlbum.genres && alb.selectedAlbum.genres.length">🎸 {{ alb.selectedAlbum.genres.join(', ') }}</span>
+                  <span v-if="alb.selectedAlbum.label" class="truncate max-w-[120px]">🏷 {{ alb.selectedAlbum.label }}</span>
+                  <span v-if="alb.selectedAlbum.genres && alb.selectedAlbum.genres.length" class="truncate max-w-[140px]">🎸 {{ alb.selectedAlbum.genres.join(', ') }}</span>
                 </div>
               </div>
             </div>

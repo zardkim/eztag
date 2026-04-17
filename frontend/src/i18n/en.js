@@ -529,6 +529,12 @@ export default {
       download: 'Download',
       restore: 'Restore',
       delete: 'Delete',
+      uploadRestoreTitle: 'Restore from File',
+      uploadRestoreDesc: 'Upload a downloaded backup file (.tar.gz) to restore from it.',
+      uploadBtn: 'Select Backup File',
+      uploading: 'Uploading...',
+      restoring: 'Restoring...',
+      uploadComplete: 'Upload complete',
     },
     version: {
       title: 'Version Info',
@@ -555,6 +561,7 @@ export default {
     confirm: {
       clearLogs: 'Delete all scan history?',
       restoreBackup: "Restore from '{filename}'?\nWarning: All current data will be replaced.",
+      restoreUploaded: "Restore from uploaded '{filename}'?\nWarning: All current data will be replaced.",
       deleteBackup: "Delete backup '{filename}'?",
     },
     help: {

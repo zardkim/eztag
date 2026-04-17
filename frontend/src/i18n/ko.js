@@ -529,6 +529,12 @@ export default {
       download: '다운로드',
       restore: '복원',
       delete: '삭제',
+      uploadRestoreTitle: '파일에서 복원',
+      uploadRestoreDesc: '다운로드한 백업 파일(.tar.gz)을 업로드하여 복원합니다.',
+      uploadBtn: '백업 파일 선택',
+      uploading: '업로드 중...',
+      restoring: '복원 중...',
+      uploadComplete: '업로드 완료',
     },
     version: {
       title: '버전 정보',
@@ -555,6 +561,7 @@ export default {
     confirm: {
       clearLogs: '스캔 이력을 모두 삭제하시겠습니까?',
       restoreBackup: "'{filename}'에서 복원하시겠습니까?\n주의: 현재 데이터가 모두 교체됩니다.",
+      restoreUploaded: "업로드한 '{filename}'에서 복원하시겠습니까?\n주의: 현재 데이터가 모두 교체됩니다.",
       deleteBackup: "'{filename}' 백업을 삭제하시겠습니까?",
     },
     help: {
