@@ -90,6 +90,7 @@ export const browseApi = {
   renameByTags: (paths, pattern) => client.post('/browse/rename-by-tags', { paths, pattern }),
   tagFromNamePreview: (paths, pattern) => client.post('/browse/tag-from-name/preview', { paths, pattern }),
   tagFromNameApply: (paths, pattern, fields = []) => client.post('/browse/tag-from-name/apply', { paths, pattern, fields }),
+  detectFilenamePattern: (paths) => client.post('/browse/detect-filename-pattern', { paths }),
   destChildren: (path) => client.get('/browse/dest-children', { params: { path } }),
   destMkdir: (data) => client.post('/browse/dest-mkdir', data),
   moveFolder: (data) => client.post('/browse/move-folder', data),

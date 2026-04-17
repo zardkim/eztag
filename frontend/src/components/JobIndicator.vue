@@ -69,12 +69,16 @@ const jobStore = useJobStore()
 const router = useRouter()
 const route = useRoute()
 
-// 현재 페이지가 작업 페이지가 아닐 때만 표시
+// 현재 페이지가 작업 페이지가 아닐 때만 표시 (마법사 잡은 다이얼로그에서 표시하므로 제외)
 const showLrc = computed(() =>
-  !!jobStore.lrcJob && route.path !== jobStore.lrcJob.routePath
+  !!jobStore.lrcJob &&
+  jobStore.lrcJob.routePath !== '/wizard' &&
+  route.path !== jobStore.lrcJob.routePath
 )
 const showYt = computed(() =>
-  !!jobStore.youtubeJob && route.path !== jobStore.youtubeJob.routePath
+  !!jobStore.youtubeJob &&
+  jobStore.youtubeJob.routePath !== '/wizard' &&
+  route.path !== jobStore.youtubeJob.routePath
 )
 
 function goTo(job) {

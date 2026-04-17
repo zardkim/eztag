@@ -13,7 +13,7 @@
       <button class="text-gray-400 hover:text-gray-700 dark:hover:text-white p-1 shrink-0 ml-2" @click="$emit('close')">✕</button>
     </div>
 
-    <!-- 저장 / 초기화 버튼 -->
+    <!-- 저장 / 초기화 / 태그검색 버튼 -->
     <div class="px-4 py-2.5 border-b border-gray-200 dark:border-gray-800 flex gap-2">
       <button
         class="flex-1 py-2 text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white rounded-lg transition-colors"
@@ -24,6 +24,26 @@
         class="px-3 py-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 rounded-lg transition-colors"
         @click="reset"
       >{{ $t('batchPanel.reset') }}</button>
+      <button
+        class="px-3 py-2 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700 rounded-lg transition-colors shrink-0"
+        :title="$t('batchPanel.searchTagTitle')"
+        @click="$emit('search-tag', targetPaths)"
+      >🏷</button>
+    </div>
+    <!-- 되돌리기 / 다시 실행 -->
+    <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-800 flex gap-2">
+      <button
+        class="flex-1 py-1.5 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg transition-colors disabled:opacity-30"
+        :disabled="!historyStore.canUndo || historyStore.busy"
+        :title="historyStore.undoLabel || $t('browser.undoEmpty')"
+        @click="historyStore.undo(browserStore)"
+      >↩ {{ $t('browser.undoLabel') }}</button>
+      <button
+        class="flex-1 py-1.5 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg transition-colors disabled:opacity-30"
+        :disabled="!historyStore.canRedo || historyStore.busy"
+        :title="historyStore.redoLabel || $t('browser.redoEmpty')"
+        @click="historyStore.redo(browserStore)"
+      >{{ $t('browser.redoLabel') }} ↪</button>
     </div>
 
     <!-- Content -->
@@ -556,7 +576,7 @@ const COVER_TYPES = computed(() => [
   { id: 19, label: t('batchPanel.coverTypePublisherLogo') },
 ])
 const props = defineProps({})
-const emit = defineEmits(['close', 'saved'])
+const emit = defineEmits(['close', 'saved', 'search-tag'])
 const browserStore = useBrowserStore()
 const toastStore = useToastStore()
 const historyStore = useHistoryStore()
@@ -696,11 +716,8 @@ function fillFromFiles(fileList) {
 
 // ── targetFiles 변경 시 폼 갱신 ───────────────────────────
 watch(targetFiles, async (fileList) => {
-  // 저장 중에는 커버/폼 초기화 생략 (save()에서 직접 처리)
-  if (saving.value) {
-    fillFromFiles(fileList)
-    return
-  }
+  // 저장/자동번호 실행 중에는 폼 덮어쓰기 생략 — 사용자 미저장 입력이 사라지는 버그 방지
+  if (saving.value) return
   coverIdx.value = 0
   coverSize.value = null
   pendingCovers.value = []
@@ -854,6 +871,8 @@ async function save() {
     }
 
     fieldMode.value = {}
+    // 저장 완료 후 폼을 저장된 상태로 명시적 동기화 (watcher가 saving 중 스킵하므로 직접 갱신)
+    fillFromFiles(targetFiles.value)
 
     // 2단계: 커버 저장 (텍스트 태그 이후 마지막으로 — 파일에 마지막 기록 보장)
     const coversToApply = [...pendingCovers.value]
@@ -990,7 +1009,7 @@ async function autoTrackNumber() {
       browserStore.updateFiles([targets[i].path], trackUpdates)
     }
 
-    // form 업데이트
+    // form 업데이트 (watcher가 saving 중 스킵하므로 직접 갱신)
     form.total_tracks = total
     if (browserStore.selectedFile) {
       const idx = targets.findIndex(f => f.path === browserStore.selectedFile.path)
@@ -998,6 +1017,7 @@ async function autoTrackNumber() {
     } else {
       form.track_no = null  // 다중이라 혼재
     }
+    // disc_no 등 기타 필드는 그대로 유지 (사용자 미저장 입력 보존)
 
     // 전역 히스토리에 등록
     historyStore.push({

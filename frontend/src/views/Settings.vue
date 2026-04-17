@@ -1187,7 +1187,9 @@ const tagVarRows = computed(() => [
   { variable: '%artist%',      field: t('common.artist'),      example: 'Ed Sheeran' },
   { variable: '%albumartist%', field: t('common.albumArtist'), example: 'Ed Sheeran' },
   { variable: '%album%',       field: t('common.album'),       example: 'Divide' },
-  { variable: '%track%',       field: isKo.value ? '트랙 번호' : 'Track No.',    example: '03' },
+  { variable: '%track%',            field: isKo.value ? '트랙 번호 (원본)' : 'Track No. (raw)',         example: '3' },
+  { variable: '$num(%track%,2)',    field: isKo.value ? '트랙 번호 (2자리)' : 'Track No. (2 digits)',    example: '03' },
+  { variable: '$num(%track%,3)',    field: isKo.value ? '트랙 번호 (3자리)' : 'Track No. (3 digits)',    example: '003' },
   { variable: '%totaltracks%', field: isKo.value ? '총 트랙 수' : 'Total Tracks', example: '16' },
   { variable: '%disc%',        field: isKo.value ? '디스크 번호' : 'Disc No.',   example: '1' },
   { variable: '%year%',        field: t('common.year'),        example: '2017' },
@@ -1360,7 +1362,7 @@ function moveWizardStep(i, dir) {
 }
 
 // 파일명 변경 변수 삽입
-const RENAME_VARS = ['%title%', '%artist%', '%albumartist%', '%album%', '%track%', '%disc%', '%year%']
+const RENAME_VARS = ['%title%', '%artist%', '%albumartist%', '%album%', '%track%', '%disc%', '%year%', '$num(%track%,2)', '$num(%track%,3)']
 
 const _wizardRenameInputRefs = {}
 const _wizardRenameInputCursor = reactive({})

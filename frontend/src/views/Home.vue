@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full overflow-y-auto bg-gray-50 dark:bg-gray-950">
+  <div ref="homeContainerRef" class="flex flex-col h-full overflow-y-auto bg-gray-50 dark:bg-gray-950">
     <div class="p-4 pb-3 pt-5">
       <h1 class="text-lg font-bold text-gray-900 dark:text-white mb-3">{{ t('home.title') }}</h1>
       <div class="flex gap-2">
@@ -71,6 +71,26 @@
       </div>
     </div>
 
+    <!-- Pull to refresh indicator -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-150 ease-out"
+        leave-active-class="transition duration-200 ease-in"
+        enter-from-class="opacity-0 -translate-y-2"
+        leave-to-class="opacity-0 -translate-y-2"
+      >
+        <div
+          v-if="ptr.pulling.value || ptr.isRefreshing.value"
+          class="fixed top-14 left-1/2 -translate-x-1/2 z-[400] flex items-center gap-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-xs font-medium px-4 py-2 rounded-full shadow-lg pointer-events-none"
+        >
+          <span v-if="ptr.isRefreshing.value" class="w-3.5 h-3.5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+          <span v-else-if="ptr.isReady.value">↑ {{ t('common.releaseToRefresh') }}</span>
+          <span v-else>↓ {{ t('common.pullToRefresh') }}</span>
+          <span v-if="ptr.isRefreshing.value">{{ t('common.refreshing') }}</span>
+        </div>
+      </Transition>
+    </Teleport>
+
     <!-- 최근 폴더 -->
     <div class="px-4 flex-1">
       <div class="flex items-center justify-between mb-2">
@@ -131,11 +151,14 @@ import { useI18n } from 'vue-i18n'
 import { useBrowserStore } from '../stores/browser.js'
 import LibraryPickerModal from '../components/LibraryPickerModal.vue'
 import { configApi } from '../api/config.js'
+import { usePullToRefresh } from '../composables/usePullToRefresh.js'
 
 const { t, locale } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const browserStore = useBrowserStore()
+
+const homeContainerRef = ref(null)
 
 const RECENT_KEY = 'eztag-recent-folders'
 const showWorkspacePicker = ref(false)
@@ -169,6 +192,8 @@ function clearRecent() {
   localStorage.removeItem(RECENT_KEY)
   configApi.update({ recent_folders: '[]' }).catch(() => {})
 }
+
+const ptr = usePullToRefresh(homeContainerRef, loadRecent)
 
 onMounted(loadRecent)
 

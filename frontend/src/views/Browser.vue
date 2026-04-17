@@ -1,22 +1,27 @@
 <template>
-  <div class="flex flex-col h-full">
+  <div class="flex flex-col flex-1 min-h-0">
     <!-- ── Toolbar Row 1: App 상단 바에 Teleport ── -->
     <Teleport v-if="toolbarReady" to="#app-toolbar-slot">
       <div class="flex items-center gap-2 h-full px-3 overflow-x-auto scrollbar-none flex-1 min-w-0">
-        <!-- 그룹1: 되돌리기 / 다시실행 / 새로고침 -->
-        <button
-          class="btn-toolbar shrink-0 gap-1 flex items-center disabled:opacity-30"
-          :disabled="!historyStore.canUndo || historyStore.busy"
-          :title="historyStore.undoLabel ? t('browser.undoTitle', { label: historyStore.undoLabel }) : t('browser.undoEmpty')"
-          @click="historyStore.undo(browserStore)"
-        >↩ {{ t('browser.undoLabel') }}</button>
-        <button
-          class="btn-toolbar shrink-0 gap-1 flex items-center disabled:opacity-30"
-          :disabled="!historyStore.canRedo || historyStore.busy"
-          :title="historyStore.redoLabel ? t('browser.redoTitle', { label: historyStore.redoLabel }) : t('browser.redoEmpty')"
-          @click="historyStore.redo(browserStore)"
-        >{{ t('browser.redoLabel') }} ↪</button>
+        <!-- 그룹1: 새로고침 -->
         <button class="btn-toolbar shrink-0" @click="forceReload" :title="t('browser.reload')">🔄</button>
+
+        <!-- 되돌리기 / 다시 실행 (히스토리 있을 때만 표시) -->
+        <template v-if="historyStore.canUndo || historyStore.canRedo">
+          <div class="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0"></div>
+          <button
+            class="btn-toolbar shrink-0 gap-1 flex items-center disabled:opacity-30"
+            :disabled="!historyStore.canUndo || historyStore.busy"
+            :title="historyStore.undoLabel ? t('browser.undoTitle', { label: historyStore.undoLabel }) : t('browser.undoEmpty')"
+            @click="historyStore.undo(browserStore)"
+          >↩ {{ t('browser.undoLabel') }}</button>
+          <button
+            class="btn-toolbar shrink-0 gap-1 flex items-center disabled:opacity-30"
+            :disabled="!historyStore.canRedo || historyStore.busy"
+            :title="historyStore.redoLabel ? t('browser.redoTitle', { label: historyStore.redoLabel }) : t('browser.redoEmpty')"
+            @click="historyStore.redo(browserStore)"
+          >{{ t('browser.redoLabel') }} ↪</button>
+        </template>
 
         <template v-if="browserStore.selectedFolder && !browserStore.loading && browserStore.files.length > 0">
           <!-- 구분선 -->
@@ -41,25 +46,10 @@
           <div class="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0"></div>
 
           <!-- 자동태그 -->
-          <div class="relative shrink-0" ref="autoTagRef">
-            <button
-              class="btn-toolbar !bg-green-100 !text-green-700 hover:!bg-green-200 dark:!bg-green-900/30 dark:!text-green-400 flex items-center gap-1"
-              @click="toggleAutoTagMenu"
-            >🏷 {{ t('browser.autoTag') }}<span class="text-[10px] opacity-60">▾</span></button>
-            <div
-              v-if="showAutoTagMenu"
-              class="fixed top-10 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-[200] py-1.5"
-              :style="autoTagMenuPos"
-            >
-              <p class="px-3 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ t('browser.selectSource') }}</p>
-              <button
-                v-for="p in availableProviders"
-                :key="p.key"
-                class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
-                @click="openAutoTagSearch(p.key)"
-              ><img :src="p.logo" :alt="p.label" class="w-5 h-5 rounded object-cover shrink-0" />{{ p.label }}</button>
-            </div>
-          </div>
+          <button
+            class="btn-toolbar !bg-green-100 !text-green-700 hover:!bg-green-200 dark:!bg-green-900/30 dark:!text-green-400 shrink-0"
+            @click="openAutoTagDialog"
+          >🏷 {{ t('browser.autoTag') }}</button>
 
           <!-- 파일명 변경 -->
           <button
@@ -147,20 +137,23 @@
     <!-- ── Toolbar Row 1 (모바일): App 상단 바 모바일 슬롯에 Teleport ── -->
     <Teleport v-if="toolbarReady" to="#app-toolbar-slot-mobile">
       <div class="flex items-center gap-1.5 h-full px-2 flex-1 min-w-0">
-        <!-- undo / redo -->
-        <button
-          class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0 text-base"
-          :disabled="!historyStore.canUndo || historyStore.busy"
-          :title="historyStore.undoLabel ? t('browser.undoTitle', { label: historyStore.undoLabel }) : t('browser.undoEmpty')"
-          @click="historyStore.undo(browserStore)"
-        >↩</button>
-        <button
-          class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0 text-base"
-          :disabled="!historyStore.canRedo || historyStore.busy"
-          :title="historyStore.redoLabel ? t('browser.redoTitle', { label: historyStore.redoLabel }) : t('browser.redoEmpty')"
-          @click="historyStore.redo(browserStore)"
-        >↪</button>
-        <div v-if="browserStore.selectedFolder && !browserStore.loading && browserStore.files.length > 0" class="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0"></div>
+        <!-- 되돌리기 / 다시 실행 (히스토리 있을 때만 표시) -->
+        <template v-if="historyStore.canUndo || historyStore.canRedo">
+          <button
+            class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0 text-base"
+            :disabled="!historyStore.canUndo || historyStore.busy"
+            :title="historyStore.undoLabel ? t('browser.undoTitle', { label: historyStore.undoLabel }) : t('browser.undoEmpty')"
+            @click="historyStore.undo(browserStore)"
+          >↩</button>
+          <button
+            class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0 text-base"
+            :disabled="!historyStore.canRedo || historyStore.busy"
+            :title="historyStore.redoLabel ? t('browser.redoTitle', { label: historyStore.redoLabel }) : t('browser.redoEmpty')"
+            @click="historyStore.redo(browserStore)"
+          >↪</button>
+          <div v-if="browserStore.selectedFolder && !browserStore.loading && browserStore.files.length > 0" class="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0"></div>
+        </template>
+        <div v-else-if="browserStore.selectedFolder && !browserStore.loading && browserStore.files.length > 0" class="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0"></div>
         <!-- 전체선택 -->
         <button
           v-if="browserStore.selectedFolder && !browserStore.loading && browserStore.files.length > 0"
@@ -219,25 +212,11 @@
                     @click="openBatchPanel('tag'); browserStore.mobileMenuOpen = false"
                   ><span class="text-xl">✏️</span>{{ $t('browser.editTag') }}</button>
 
-                  <!-- 자동 태그 (아코디언) -->
-                  <div>
-                    <button
-                      class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors text-left"
-                      @click="mobileAutoTagExpanded = !mobileAutoTagExpanded"
-                    >
-                      <span class="text-xl">🏷</span>
-                      <span class="flex-1">{{ t('browser.autoTag') }}</span>
-                      <span class="text-xs opacity-60 transition-transform duration-200 inline-block" :class="mobileAutoTagExpanded ? 'rotate-180' : ''">▾</span>
-                    </button>
-                    <div v-if="mobileAutoTagExpanded" class="mt-0.5 ml-6 space-y-0.5">
-                      <button
-                        v-for="p in availableProviders"
-                        :key="p.key"
-                        class="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
-                        @click="openAutoTagSearch(p.key); browserStore.mobileMenuOpen = false; mobileAutoTagExpanded = false"
-                      ><img :src="p.logo" :alt="p.label" class="w-5 h-5 rounded object-cover shrink-0" />{{ p.label }}</button>
-                    </div>
-                  </div>
+                  <!-- 자동 태그 -->
+                  <button
+                    class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors text-left"
+                    @click="openAutoTagDialog(); browserStore.mobileMenuOpen = false"
+                  ><span class="text-xl">🏷</span>{{ t('browser.autoTag') }}</button>
 
                   <!-- LRC (아이콘 시트로 열기) -->
                   <button
@@ -523,12 +502,9 @@
       <!-- File list -->
       <div
         v-else
-        class="flex-1 overflow-x-auto min-h-0 flex flex-col"
-        :class="showPanel ? 'hidden sm:flex sm:flex-col' : ''"
-      >
-      <div
         ref="tableContainerRef"
-        class="flex-1 overflow-y-auto relative select-none min-h-0 flex flex-col"
+        class="flex-1 overflow-auto min-h-0 relative select-none"
+        :class="showPanel ? 'hidden sm:block' : ''"
         @mousedown="onTableMouseDown"
       >
         <!-- 드래그 선택 오버레이 -->
@@ -651,6 +627,10 @@
                   <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ file.title || file.filename }}</p>
                   <span v-if="file.file_format" class="text-[9px] font-mono font-semibold px-1 py-0.5 rounded shrink-0" :class="formatBadgeClass(file.file_format)">{{ file.file_format }}</span>
                   <span v-if="file.has_lrc" class="text-[9px] font-semibold px-1 py-0.5 rounded bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 shrink-0">LRC</span>
+                  <span v-if="file.auto_tag_status === 'no_match'"
+                    class="text-[9px] font-semibold px-1 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 shrink-0"
+                    :title="t('filenameAutoTag.noMatchBadgeTitle')"
+                  >{{ t('filenameAutoTag.noMatchBadge') }}</span>
                   <button
                     v-if="file.youtube_url"
                     class="shrink-0 inline-flex items-center justify-center text-red-500 hover:text-red-600 transition-colors"
@@ -734,7 +714,7 @@
           </div>
 
           <!-- ── 데스크톱 테이블 뷰 (md 이상) ── -->
-          <div v-if="browserStore.displayFiles.length > 0" class="hidden md:flex md:flex-col md:flex-1 min-w-max">
+          <div v-if="browserStore.displayFiles.length > 0" class="hidden md:flex md:flex-col min-w-max">
           <table class="w-full min-w-[1400px] text-sm">
               <thead class="sticky top-0 bg-sky-500 dark:bg-sky-900 border-b border-sky-600 dark:border-sky-800 z-10">
                 <tr class="text-xs text-white dark:text-sky-100 whitespace-nowrap select-none">
@@ -876,6 +856,10 @@
                         class="shrink-0 text-[9px] font-extrabold px-1.5 py-0.5 rounded
                                bg-gradient-to-r from-orange-500 to-red-500 text-white leading-none"
                       >{{ t('browser.titleBadge') }}</span>
+                      <span v-if="file.auto_tag_status === 'no_match'"
+                        class="shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 leading-none"
+                        :title="t('filenameAutoTag.noMatchBadgeTitle')"
+                      >{{ t('filenameAutoTag.noMatchBadge') }}</span>
                     </div>
                   </td>
                   <td class="px-3 py-2 text-gray-600 dark:text-gray-400 max-w-[130px]">
@@ -930,7 +914,6 @@
           </div>
         </template>
       </div>
-      </div>
 
       <!-- 미니 플레이어 (다이얼로그) -->
       <MiniPlayer
@@ -949,6 +932,7 @@
           :focus-spotify="false"
           @close="closePanel"
           @saved="onSaved"
+          @search-tag="onPanelSearchTag"
         />
       </div>
     </div>
@@ -1001,6 +985,23 @@
       @applied="onSpotifyDialogClose"
     />
 
+    <!-- 파일명 자동태그 다이얼로그 (패널 내 단건 검색용 유지) -->
+    <FilenameAutoTagDialog
+      v-model="showFilenameAutoTagDialog"
+      :files="filenameAutoTagFiles"
+      :available-providers="availableProviders"
+      @done="onFilenameAutoTagDone"
+      @retry-files="onFilenameAutoTagRetry"
+    />
+
+    <!-- 통합 자동태그 다이얼로그 -->
+    <AutoTagDialog
+      v-model="showAutoTagDialog"
+      :files="autoTagFiles"
+      :folder-name="browserStore.selectedFolder?.name || ''"
+      @done="onAutoTagDone"
+    />
+
     <!-- 마법사 다이얼로그 -->
     <WizardDialog
       v-model="browserStore.wizardOpen"
@@ -1018,7 +1019,28 @@
       @next-step="onWizardNext"
       @skip-step="onWizardSkip"
       @close="onWizardClose"
+      @abort="onWizardAbort"
     />
+
+    <!-- Pull to refresh indicator -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-150 ease-out"
+        leave-active-class="transition duration-200 ease-in"
+        enter-from-class="opacity-0 -translate-y-2"
+        leave-to-class="opacity-0 -translate-y-2"
+      >
+        <div
+          v-if="ptrBrowser.pulling.value || ptrBrowser.isRefreshing.value"
+          class="fixed top-14 left-1/2 -translate-x-1/2 z-[400] flex items-center gap-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-xs font-medium px-4 py-2 rounded-full shadow-lg pointer-events-none"
+        >
+          <span v-if="ptrBrowser.isRefreshing.value" class="w-3.5 h-3.5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+          <span v-else-if="ptrBrowser.isReady.value">↑ {{ t('common.releaseToRefresh') }}</span>
+          <span v-else>↓ {{ t('common.pullToRefresh') }}</span>
+          <span v-if="ptrBrowser.isRefreshing.value">{{ t('common.refreshing') }}</span>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -1034,6 +1056,8 @@ import MoveToLibraryModal from '../components/MoveToLibraryModal.vue'
 // import AICoverModal from '../components/AICoverModal.vue' // AI 커버아트 (개발 중단)
 import MiniPlayer from '../components/MiniPlayer.vue'
 import WizardDialog from '../components/WizardDialog.vue'
+import FilenameAutoTagDialog from '../components/FilenameAutoTagDialog.vue'
+import AutoTagDialog from '../components/AutoTagDialog.vue'
 import { useBrowserStore } from '../stores/browser.js'
 import { useToastStore } from '../stores/toast.js'
 import { useHistoryStore } from '../stores/history.js'
@@ -1041,12 +1065,13 @@ import { useJobStore } from '../stores/job.js'
 import { configApi } from '../api/config.js'
 import { browseApi, workspaceApi } from '../api/index.js'
 import { downloadBlob } from '../utils/download.js'
+import { usePullToRefresh } from '../composables/usePullToRefresh.js'
 
 const { t, locale } = useI18n()
 const router = useRouter()
 const browserStore = useBrowserStore()
-const historyStore = useHistoryStore()
 const toastStore = useToastStore()
+const historyStore = useHistoryStore()
 const jobStore = useJobStore()
 const showPanel = ref(null)
 const showSpotifyDialog = ref(false)
@@ -1137,7 +1162,6 @@ watch(() => browserStore.wizardOpen, (v) => {
       if (enabledSteps.length) onWizardStart(enabledSteps)
     }
   } else {
-    if (wizardPhase.value === 'running' && !wizardIsFinished.value) return  // 실행 중이면 닫기 무시
     wizardPhase.value = 'setup'
   }
 })
@@ -1150,7 +1174,6 @@ watch(() => browserStore.selectedFolder, () => {
   if (jobStore.youtubeJob?.done) jobStore.clearYoutubeJob()
   if (jobStore.lrcJob?.done) jobStore.clearLrcJob()
   browserStore.mobileMenuOpen = false
-  mobileAutoTagExpanded.value = false
   showLrcDialog.value = false
   mobileSelectMode.value = false
 })
@@ -1158,10 +1181,7 @@ watch(() => browserStore.selectedFolder, () => {
 // ── 툴바 Teleport 준비 (DOM 커밋 이후에만 활성화) ──
 const toolbarReady = ref(false)
 
-// ── 모바일 바텀시트 (열림 상태는 browser store에서 관리)
-const mobileAutoTagExpanded = ref(false)
-
-// ── 자동 태그 드롭다운 ──────────────────────────────
+// ── 자동 태그 드롭다운 (마법사/패널용 레거시) ──────────
 const showAutoTagMenu = ref(false)
 const autoTagRef = ref(null)
 const selectedAutoProviders = ref([])
@@ -1197,21 +1217,56 @@ async function loadProviders() {
   }
 }
 
-function toggleAutoTagMenu() {
-  showAutoTagMenu.value = !showAutoTagMenu.value
+// ── 통합 자동태그 다이얼로그 ──────────────────────────
+const showAutoTagDialog = ref(false)
+const autoTagFiles = ref([])
+
+function openAutoTagDialog() {
+  autoTagFiles.value = browserStore.checkedPaths.size > 0
+    ? browserStore.checkedFiles
+    : [...browserStore.files]
+  showAutoTagDialog.value = true
 }
 
-function dropdownPos(ref) {
-  if (!ref?.value) return {}
-  const r = ref.value.getBoundingClientRect()
-  const right = window.innerWidth - r.right
-  return { right: right + 'px' }
+async function onAutoTagDone() {
+  const folderPath = browserStore.selectedFolder?.path
+  if (folderPath) {
+    browserStore.invalidateFilesCache(folderPath)
+    if (browserStore.isRecursiveMode) await browserStore.loadRecursiveFiles(folderPath)
+    else await browserStore.loadFiles(folderPath, true)
+  }
 }
-const autoTagMenuPos = computed(() => showAutoTagMenu.value ? dropdownPos(autoTagRef) : {})
+
+// ── 파일명 자동태그 (패널 내 단건 검색용) ───────────────
+const showFilenameAutoTagDialog = ref(false)
+const filenameAutoTagFiles = ref([])
+
+// 태그편집 패널의 🏷 버튼 → 선택된 파일만으로 파일명 자동태그 실행
+function onPanelSearchTag(paths) {
+  const targetFiles = paths?.length
+    ? browserStore.files.filter(f => paths.includes(f.path))
+    : browserStore.selectedFile
+      ? [browserStore.selectedFile]
+      : []
+  if (!targetFiles.length) return
+  filenameAutoTagFiles.value = targetFiles
+  showFilenameAutoTagDialog.value = true
+}
+
+async function onFilenameAutoTagDone() {
+  const folderPath = browserStore.selectedFolder?.path
+  if (folderPath) {
+    browserStore.invalidateFilesCache(folderPath)
+    await browserStore.loadFiles(folderPath, true)
+  }
+}
+
+function onFilenameAutoTagRetry(paths) {
+  filenameAutoTagFiles.value = browserStore.files.filter(f => paths.includes(f.path))
+}
 
 function openAutoTagSearch(providerKey) {
   selectedAutoProviders.value = [providerKey]
-  showAutoTagMenu.value = false
   showSpotifyDialog.value = true
 }
 
@@ -1223,6 +1278,7 @@ function onClickOutside(e) {
 
 // ── 드래그 다중 선택 ────────────────────────────────
 const tableContainerRef = ref(null)
+const ptrBrowser = usePullToRefresh(tableContainerRef, forceReload)
 const dragState = ref(null)    // { startX, startY, curX, curY }
 const dragActive = ref(false)  // 실제 드래그 중 (4px 이상 이동)
 const didDrag = ref(false)     // 드래그 완료 직후 클릭 이벤트 무시용
@@ -1671,6 +1727,7 @@ const wizardStepsResults = ref([])      // 완료된 단계별 최종 결과
 const wizardHidden = ref(false)         // SpotifyDialog 열릴 때 마법사 숨김
 const wizardWaitingNext = ref(false)
 const wizardIsFinished = ref(false)
+const wizardAborted = ref(false)        // X 클릭 시 중단 플래그
 
 // 마법사 프리셋 드롭다운
 const WIZARD_STEPS_KEY = 'eztag-wizard-steps'
@@ -1685,6 +1742,12 @@ async function refreshWizardPresets() {
     const { data } = await configApi.getWizardPresets()
     wizardSavedPresets.value = Array.isArray(data.presets) ? data.presets : []
   } catch { wizardSavedPresets.value = [] }
+}
+
+function dropdownPos(refEl) {
+  if (!refEl.value) return {}
+  const rect = refEl.value.getBoundingClientRect()
+  return { left: rect.left + 'px', top: (rect.bottom + 4) + 'px' }
 }
 
 const wizardMenuPos = computed(() => showWizardMenu.value ? dropdownPos(wizardMenuRef) : {})
@@ -1785,6 +1848,26 @@ function onWizardSkip() {
   }
 }
 
+function _stopWizardJobs() {
+  // 백그라운드 작업 강제 중단
+  if (jobStore.lrcJob?.running) jobStore.cancelLrcJob()
+  if (jobStore.youtubeJob?.running) jobStore.cancelYoutubeJob()
+  // 대기 중인 Promise 해소 (루프 탈출)
+  _wizardCurrentResolve?.()
+  _wizardCurrentResolve = null
+  _wizardSpotifyResolve = null
+  _wizardRenameResolve = null
+}
+
+function onWizardAbort() {
+  wizardAborted.value = true
+  _stopWizardJobs()
+  // SpotifyDialog / RenameModal 닫기
+  showSpotifyDialog.value = false
+  showRenameModal.value = false
+  onWizardClose()
+}
+
 function onWizardClose() {
   browserStore.wizardOpen = false
   wizardPhase.value = 'setup'
@@ -1800,6 +1883,7 @@ function onWizardClose() {
 }
 
 function onWizardStart(steps) {
+  wizardAborted.value = false
   wizardSteps.value = steps
   wizardStepsDone.value = steps.map(() => false)
   wizardStepsResults.value = steps.map(() => null)
@@ -1815,6 +1899,8 @@ async function runWizard() {
   const SOURCE_LABELS = { alsong: '알송', bugs: 'Bugs', lrclib: 'LRCLIB' }
 
   for (let i = 0; i < wizardSteps.value.length; i++) {
+    if (wizardAborted.value) break
+
     wizardCurrentStep.value = i
     wizardWaitingNext.value = false
     wizardStepStatus.value = ''
@@ -1864,7 +1950,7 @@ async function runWizard() {
 
         await new Promise(resolve => {
           _wizardCurrentResolve = resolve
-          jobStore.startLrcJob({ files: targetFiles, source, apiMode: 'browser', routePath: '/browser', routeLabel: folderName, folderPath, sourceLabel })
+          jobStore.startLrcJob({ files: targetFiles, source, apiMode: 'browser', routePath: '/wizard', routeLabel: folderName, folderPath, sourceLabel })
           const unwatch = watch(() => jobStore.lrcJob?.done, (done) => {
             if (done && jobStore.lrcJob?.folderPath === folderPath) {
               unwatch()
@@ -1911,7 +1997,7 @@ async function runWizard() {
 
         await new Promise(resolve => {
           _wizardCurrentResolve = resolve
-          jobStore.startYoutubeJob({ files: allFiles, routePath: '/browser', routeLabel: folderName, folderPath })
+          jobStore.startYoutubeJob({ files: allFiles, routePath: '/wizard', routeLabel: folderName, folderPath })
           const unwatch = watch(() => jobStore.youtubeJob?.done, (done) => {
             if (done && jobStore.youtubeJob?.folderPath === folderPath) {
               unwatch()
@@ -1970,15 +2056,19 @@ async function runWizard() {
       }
     }
 
+    if (wizardAborted.value) break
+
     wizardStepsDone.value[i] = true
     wizardStepsDone.value = [...wizardStepsDone.value]
     wizardStepsResults.value = [...wizardStepsResults.value]
   }
 
-  wizardCurrentStep.value = -1
-  wizardStepProgress.value = null
-  wizardIsFinished.value = true
-  wizardWaitingNext.value = false
+  if (!wizardAborted.value) {
+    wizardCurrentStep.value = -1
+    wizardStepProgress.value = null
+    wizardIsFinished.value = true
+    wizardWaitingNext.value = false
+  }
 }
 
 // 완료 후 파일 목록 갱신: 그룹 모드이면 loadRecursiveFiles, 아니면 loadFiles

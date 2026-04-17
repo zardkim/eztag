@@ -51,6 +51,7 @@ export const useBrowserStore = defineStore('browser', () => {
         const av = a[key] ?? (dir > 0 ? Infinity : -Infinity)
         const bv = b[key] ?? (dir > 0 ? Infinity : -Infinity)
         cmp = (av - bv) * dir
+        if (isNaN(cmp)) cmp = 0  // 둘 다 null이면 Infinity-Infinity=NaN → 0으로 정규화해 보조 정렬 적용
       } else if (key === 'title') {
         const av = (a.title || a.filename || '').toLowerCase()
         const bv = (b.title || b.filename || '').toLowerCase()

@@ -369,6 +369,7 @@ def get_files(
                     "has_lyrics":     track.has_lyrics,
                     "is_title_track": bool(track.is_title_track),
                     "youtube_url":    track.youtube_url,
+                    "auto_tag_status": track.auto_tag_status,
                     "has_lrc":      has_lrc,
                     "lyrics":       track.lyrics,
                     "file_size":    stat.st_size,
@@ -402,6 +403,7 @@ def get_files(
                     "has_lyrics":     False,
                     "is_title_track": False,
                     "youtube_url":    None,
+                    "auto_tag_status": None,
                     "has_lrc":      has_lrc,
                     "lyrics":       None,
                     "file_size":    stat.st_size,
@@ -1597,78 +1599,28 @@ def rename_by_tags(
 
 # ── 파일명 분석 → 태그 입력 ────────────────────────────────
 
-_TAG_FROM_NAME_VARS = [
-    "%title%", "%artist%", "%album_artist%", "%album%",
-    "%track%", "%disc%", "%year%", "%genre%", "%label%",
-]
-
-# 각 변수에 대한 정규식 캡처 그룹 패턴
-_VAR_REGEX = {
-    "%track%":        r"(\d+)",
-    "%disc%":         r"(\d+)",
-    "%year%":         r"(\d{4})",
-    "%title%":        r"(.+?)",
-    "%artist%":       r"(.+?)",
-    "%album_artist%": r"(.+?)",
-    "%album%":        r"(.+?)",
-    "%genre%":        r"(.+?)",
-    "%label%":        r"(.+?)",
-}
-
-# 변수명 → DB 필드명 매핑
-_VAR_TO_FIELD = {
-    "%title%":        "title",
-    "%artist%":       "artist",
-    "%album_artist%": "album_artist",
-    "%album%":        "album_title",
-    "%track%":        "track_no",
-    "%disc%":         "disc_no",
-    "%year%":         "year",
-    "%genre%":        "genre",
-    "%label%":        "label",
-}
+from app.core.filename_parser import parse_filename_by_pattern as _parse_filename_by_pattern, detect_pattern as _detect_pattern
 
 
-def _pattern_to_regex(pattern: str):
-    """패턴 → 정규식 + 필드 순서 반환."""
-    fields = []
-    # 패턴에서 변수 위치 순서 추출
-    remaining = pattern
-    regex_str = ""
-    i = 0
-    while i < len(pattern):
-        matched = False
-        for var in _TAG_FROM_NAME_VARS:
-            if pattern[i:].startswith(var):
-                regex_str += _VAR_REGEX[var]
-                fields.append(var)
-                i += len(var)
-                matched = True
-                break
-        if not matched:
-            regex_str += re.escape(pattern[i])
-            i += 1
-    return re.compile(f"^{regex_str}$", re.IGNORECASE), fields
+class DetectPatternRequest(BaseModel):
+    paths: list[str]   # 파일 경로 목록 (stem 추출용)
 
 
-def _parse_filename_by_pattern(filename: str, pattern: str) -> dict:
-    """파일명을 패턴으로 파싱하여 태그 dict 반환. 매칭 실패 시 빈 dict."""
-    rx, fields = _pattern_to_regex(pattern)
-    m = rx.match(filename)
-    if not m:
-        return {}
-    result = {}
-    for i, var in enumerate(fields):
-        val = m.group(i + 1).strip()
-        field = _VAR_TO_FIELD[var]
-        if field in ("track_no", "disc_no", "year"):
-            try:
-                result[field] = int(val)
-            except ValueError:
-                result[field] = None
-        else:
-            result[field] = val
-    return result
+@router.post("/detect-filename-pattern")
+def detect_filename_pattern(
+    req: DetectPatternRequest,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """파일명 목록에서 가장 적합한 패턴 자동 감지."""
+    stems = []
+    for path_str in req.paths[:30]:  # 최대 30개 샘플
+        try:
+            p = _validate_path(path_str, db, allow_workspace=True)
+            stems.append(p.stem)
+        except Exception:
+            stems.append(Path(path_str).stem)
+    return _detect_pattern(stems)
 
 
 class TagFromNameRequest(BaseModel):
@@ -2545,7 +2497,8 @@ def recursive_files(
                     "file_format": (track.file_format or "").upper(),
                     "has_cover": track.has_cover, "has_lyrics": track.has_lyrics,
                     "is_title_track": bool(track.is_title_track),
-                    "youtube_url": track.youtube_url, "has_lrc": has_lrc,
+                    "youtube_url": track.youtube_url, "auto_tag_status": track.auto_tag_status,
+                    "has_lrc": has_lrc,
                     "lyrics": track.lyrics,
                     "file_size": stat.st_size, "modified_time": stat.st_mtime,
                     "scanned": True,
@@ -2562,7 +2515,7 @@ def recursive_files(
                     "tag_version": None, "comment": None,
                     "file_format": item.suffix.lstrip(".").upper(),
                     "has_cover": False, "has_lyrics": False,
-                    "is_title_track": False, "youtube_url": None,
+                    "is_title_track": False, "youtube_url": None, "auto_tag_status": None,
                     "has_lrc": has_lrc, "lyrics": None,
                     "file_size": stat.st_size, "modified_time": stat.st_mtime,
                     "scanned": False,

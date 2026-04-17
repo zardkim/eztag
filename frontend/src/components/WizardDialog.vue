@@ -217,12 +217,26 @@
                 </div>
               </div>
 
-              <!-- 진행 바 -->
-              <div class="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden mb-4">
-                <div
-                  class="h-full bg-indigo-500 rounded-full transition-all duration-500"
-                  :style="{ width: progressPct + '%' }"
-                />
+              <!-- 전체 진행 바 + 현재 단계 문구 -->
+              <div class="mb-4">
+                <!-- 단계 문구 (소프트웨어 설치처럼 "(N/M) 단계명" 표시) -->
+                <p class="text-sm font-medium text-indigo-600 dark:text-indigo-400 mb-2">
+                  <template v-if="isFinished">✅ {{ t('wizard.done') }}</template>
+                  <template v-else-if="currentStep >= 0 && activeSteps[currentStep]">
+                    ({{ currentStep + 1 }}/{{ activeSteps.length }}) {{ t('wizard.progressLabel.' + activeSteps[currentStep].id, stepStatus || t('wizard.statusRunning')) }}
+                  </template>
+                  <template v-else-if="stepStatus">{{ stepStatus }}</template>
+                </p>
+                <!-- 진행바 + % -->
+                <div class="flex items-center gap-2">
+                  <div class="flex-1 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                    <div
+                      class="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                      :style="{ width: progressPct + '%' }"
+                    />
+                  </div>
+                  <span class="text-xs text-gray-400 tabular-nums font-mono w-8 text-right shrink-0">{{ progressPct }}%</span>
+                </div>
               </div>
 
               <!-- 인터랙티브 단계: 완료 + 건너뛰기 버튼 -->
@@ -286,7 +300,7 @@ const props = defineProps({
   hidden: Boolean,
 })
 
-const emit = defineEmits(['update:modelValue', 'start', 'nextStep', 'skipStep', 'close'])
+const emit = defineEmits(['update:modelValue', 'start', 'nextStep', 'skipStep', 'close', 'abort'])
 
 const lrcSources = [
   { key: 'alsong', label: '알송' },
@@ -335,7 +349,7 @@ function stepIcon(id) {
 }
 
 // 파일명 변수 삽입
-const RENAME_VARS = ['%title%', '%artist%', '%albumartist%', '%album%', '%track%', '%disc%', '%year%']
+const RENAME_VARS = ['%title%', '%artist%', '%albumartist%', '%album%', '%track%', '%disc%', '%year%', '$num(%track%,2)', '$num(%track%,3)']
 
 const _renameInputRefs = {}
 const _renameInputCursor = reactive({})
@@ -453,7 +467,10 @@ function startWizard() {
 }
 
 function tryClose() {
-  if (props.phase === 'running' && !props.isFinished) return  // 실행 중에는 닫기 막음
+  if (props.phase === 'running' && !props.isFinished) {
+    emit('abort')  // 실행 중 닫기 → 중단 요청
+    return
+  }
   emit('close')
 }
 

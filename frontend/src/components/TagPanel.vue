@@ -29,6 +29,21 @@
         @click="reset"
       >{{ $t('common.cancel') }}</button>
     </div>
+    <!-- 되돌리기 / 다시 실행 -->
+    <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-800 flex gap-2">
+      <button
+        class="flex-1 py-1.5 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg transition-colors disabled:opacity-30"
+        :disabled="!historyStore.canUndo || historyStore.busy"
+        :title="historyStore.undoLabel || $t('browser.undoEmpty')"
+        @click="historyStore.undo(browserStore)"
+      >↩ {{ $t('browser.undoLabel') }}</button>
+      <button
+        class="flex-1 py-1.5 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg transition-colors disabled:opacity-30"
+        :disabled="!historyStore.canRedo || historyStore.busy"
+        :title="historyStore.redoLabel || $t('browser.redoEmpty')"
+        @click="historyStore.redo(browserStore)"
+      >{{ $t('browser.redoLabel') }} ↪</button>
+    </div>
 
     <!-- Scrollable content -->
     <div class="px-4 py-3 space-y-3">

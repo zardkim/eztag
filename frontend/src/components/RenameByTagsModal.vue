@@ -181,6 +181,7 @@
       <!-- 미리보기 테이블 -->
       <div class="flex-1 overflow-auto px-5 py-3">
         <div v-if="!pattern" class="text-center text-sm text-gray-400 py-8">{{ t('renameModal.patternHint') }}</div>
+        <div v-else-if="previewLoading" class="text-center text-sm text-gray-400 py-8">{{ t('common.loading') }}…</div>
         <template v-else>
           <!-- 요약 -->
           <div class="text-xs text-gray-500 dark:text-gray-400 mb-2 flex gap-3">
@@ -225,7 +226,7 @@
           >{{ t('common.cancel') }}</button>
           <button
             @click="applyRename"
-            :disabled="okCount === 0 || applying"
+            :disabled="okCount === 0 || applying || previewLoading"
             class="flex-[2] py-3 text-sm rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
           >
             <span v-if="applying">{{ t('renameModal.applying') }}</span>
@@ -238,7 +239,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { browseApi } from '../api/index.js'
 
@@ -344,10 +345,12 @@ function onDocClick(e) {
 onMounted(() => {
   document.addEventListener('click', onDocClick, true)
   document.addEventListener('click', onDocClickPreset, true)
+  loadPreview()
 })
 onUnmounted(() => {
   document.removeEventListener('click', onDocClick, true)
   document.removeEventListener('click', onDocClickPreset, true)
+  clearTimeout(_previewTimer)
 })
 
 // ── 프리셋 드롭다운 상태 ──────────────────────────────────
@@ -374,87 +377,46 @@ function onDocClickPreset(e) {
 const pattern = ref(patternHistory.value[0] || '%track% - %title%')
 const patternInputRef = ref(null)
 const applying = ref(false)
+const previewLoading = ref(false)
 
-const INVALID_CHARS = /[\\/:*?"<>|]/g
+// ── 서버 기반 미리보기 ────────────────────────────────────
+const previewRows = ref([])
 
-const _FIELD_MAP = {
-  title: 'title',
-  artist: 'artist',
-  albumartist: 'album_artist',
-  album: 'album_title',
-  totaltracks: 'total_tracks',
-  year: 'year',
-  genre: 'genre',
-  publisher: 'label',
-}
-
-function resolveVar(v, fields) {
-  v = v.toLowerCase()
-  if (v === '_filename') return fields._filename || ''
-  if (v === '_ext') return fields._ext || ''
-  if (v === '_bitrate') return String(fields.bitrate || '')
-  if (v === '_codec') return (fields.file_format || '').toUpperCase()
-  if (v === 'track') {
-    const n = fields.track_no
-    if (n == null) return ''
-    return String(parseInt(n) || 0)
+let _previewTimer = null
+async function loadPreview() {
+  if (!pattern.value || !props.files.length) {
+    previewRows.value = []
+    return
   }
-  if (v === 'disc') {
-    const d = fields.disc_no
-    if (!d || d === 0) return ''
-    return String(d)
+  previewLoading.value = true
+  try {
+    const paths = props.files.map(f => f.path)
+    const res = await browseApi.renameByTagsPreview(paths, pattern.value)
+    previewRows.value = res.data.results.map(r => ({
+      ...r,
+      same: !r.error && r.new_name === r.old_name,
+    }))
+  } catch (e) {
+    console.error('[RenameByTagsModal] preview error:', e)
+    previewRows.value = props.files.map(f => ({
+      path: f.path,
+      old_name: f._filename + (f._ext ? '.' + f._ext : ''),
+      new_name: null,
+      conflict: false,
+      error: String(e),
+      same: false,
+    }))
+  } finally {
+    previewLoading.value = false
   }
-  const key = _FIELD_MAP[v]
-  if (key) return fields[key] != null ? String(fields[key]) : ''
-  return ''
 }
 
-function renderPattern(pat, fields) {
-  // 1단계: $num(%field%,N) 처리
-  pat = pat.replace(/\$num\((%[^%]+%)\s*,\s*(\d+)\)/g, (m, inner, digits) => {
-    const varName = inner.slice(1, -1)
-    const raw = resolveVar(varName, fields)
-    const n = parseInt(raw)
-    if (isNaN(n)) return raw
-    return String(n).padStart(parseInt(digits), '0')
-  })
-  // 2단계: 나머지 %field% 처리 (%track%은 기본 2자리 패딩)
-  return pat.replace(/%([^%]+)%/g, (m, v) => {
-    v = v.toLowerCase()
-    if (v === 'track') {
-      const raw = resolveVar(v, fields)
-      if (!raw) return ''
-      return raw.padStart(2, '0')
-    }
-    return resolveVar(v, fields) || m
-  })
+function schedulePreview() {
+  clearTimeout(_previewTimer)
+  _previewTimer = setTimeout(loadPreview, 300)
 }
 
-function sanitize(name) {
-  name = name.replace(INVALID_CHARS, '_').replace(/ {2,}/g, ' ').replace(/^[ .]+|[ .]+$/g, '')
-  return name || '_'
-}
-
-function buildName(pat, file) {
-  const raw = renderPattern(pat, file)
-  const name = sanitize(raw)
-  const ext = file._ext || ''
-  return ext ? `${name}.${ext}` : name
-}
-
-const previewRows = computed(() => {
-  if (!pattern.value) return []
-  return props.files.map(f => {
-    const oldName = f._filename + (f._ext ? '.' + f._ext : '')
-    try {
-      const newName = buildName(pattern.value, f)
-      const same = newName === oldName
-      return { path: f.path, old_name: oldName, new_name: newName, conflict: false, error: null, same }
-    } catch (e) {
-      return { path: f.path, old_name: oldName, new_name: null, conflict: false, error: String(e), same: false }
-    }
-  })
-})
+watch(pattern, schedulePreview)
 
 const okCount = computed(() => previewRows.value.filter(r => !r.error && !r.conflict && !r.same).length)
 const conflictCount = computed(() => previewRows.value.filter(r => r.conflict).length)
