@@ -118,25 +118,39 @@
           </div>
 
           <!-- 패턴 입력 -->
-          <div class="space-y-1.5">
+          <div class="space-y-2">
             <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{{ t('autoTag.patternLabel') }}</label>
+
+            <!-- 프리셋 드롭다운 -->
+            <select
+              class="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:text-gray-200"
+              :value="FN_PRESETS.find(p => p.pattern === fn.pattern)?.pattern ?? ''"
+              @change="e => selectPreset(e.target.value)"
+            >
+              <option value="" disabled>{{ t('filenameAutoTag.selectPreset') }}</option>
+              <option v-for="p in FN_PRESETS" :key="p.pattern" :value="p.pattern">{{ p.label }}</option>
+            </select>
+
+            <!-- 패턴 직접 입력 -->
             <input
+              ref="fnPatternInputRef"
               v-model="fn.pattern"
               type="text"
               class="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:text-gray-200 font-mono"
               :placeholder="t('autoTag.patternPlaceholder')"
               @input="debouncedPreview"
+              @click="saveFnCursor"
+              @keyup="saveFnCursor"
             />
-            <div class="flex flex-wrap gap-1.5 pt-0.5">
+
+            <!-- 변수 삽입 버튼 -->
+            <div class="flex flex-wrap gap-1.5">
               <button
-                v-for="p in FN_PRESETS"
-                :key="p.pattern"
-                class="px-2.5 py-1 text-[11px] rounded-lg border transition-colors"
-                :class="fn.pattern === p.pattern
-                  ? 'bg-indigo-100 dark:bg-indigo-900/40 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300'
-                  : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'"
-                @click="selectPreset(p.pattern)"
-              >{{ p.label }}</button>
+                v-for="v in FN_PATTERN_VARS"
+                :key="v"
+                class="px-2 py-0.5 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-100 dark:hover:bg-blue-900 hover:text-blue-700 dark:hover:text-blue-300 border border-gray-200 dark:border-gray-600 transition-colors"
+                @click="insertFnVar(v)"
+              >{{ v }}</button>
             </div>
           </div>
 
@@ -744,6 +758,27 @@ const fn = reactive({
   reverting:        false,
   revertMessage:    '',
 })
+
+const FN_PATTERN_VARS = ['%artist%', '%title%', '%track%', '%disc%', '%year%', '%album%', '%albumartist%']
+const fnPatternInputRef = ref(null)
+let _fnCursor = null
+
+function saveFnCursor() {
+  const el = fnPatternInputRef.value
+  if (el) _fnCursor = { start: el.selectionStart, end: el.selectionEnd }
+}
+
+function insertFnVar(v) {
+  const el = fnPatternInputRef.value
+  const start = _fnCursor?.start ?? fn.pattern.length
+  const end   = _fnCursor?.end   ?? start
+  fn.pattern = fn.pattern.slice(0, start) + v + fn.pattern.slice(end)
+  _fnCursor = { start: start + v.length, end: start + v.length }
+  nextTick(() => {
+    if (el) { el.focus(); el.setSelectionRange(start + v.length, start + v.length) }
+    debouncedPreview()
+  })
+}
 
 const FN_PRESETS = computed(() => [
   { label: t('filenameAutoTag.presets.melonChart'),       pattern: '%track%-%artist%-%disc%-%title%' },
