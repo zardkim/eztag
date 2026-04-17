@@ -14,6 +14,8 @@ from datetime import datetime
 from typing import List
 from urllib.parse import urlparse
 
+from app.version import APP_VERSION
+
 BACKUP_DIR = os.environ.get("BACKUP_DIR", "/app/data/backup")
 
 
@@ -31,7 +33,7 @@ def _parse_db_url(db_url: str) -> dict:
 def create_backup(db_url: str) -> str:
     Path(BACKUP_DIR).mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_name = f"eztag_backup_{timestamp}.tar.gz"
+    backup_name = f"eztag_backup_v{APP_VERSION}_{timestamp}.tar.gz"
     backup_path = Path(BACKUP_DIR) / backup_name
 
     db_info = _parse_db_url(db_url)
@@ -41,6 +43,7 @@ def create_backup(db_url: str) -> str:
     with tempfile.TemporaryDirectory() as tmpdir:
         db_dump_path = Path(tmpdir) / "db.dump"
 
+        # --format=custom: 스키마+데이터 모두 포함, pg_restore로 선택적 복원 가능
         result = subprocess.run(
             [
                 "pg_dump",
@@ -61,7 +64,10 @@ def create_backup(db_url: str) -> str:
 
         meta_path = Path(tmpdir) / "backup_meta.txt"
         meta_path.write_text(
-            f"backup_version=3.0\ntimestamp={timestamp}\ndb_name={db_info['dbname']}\n"
+            f"app_version={APP_VERSION}\n"
+            f"backup_format=3.0\n"
+            f"timestamp={timestamp}\n"
+            f"db_name={db_info['dbname']}\n"
         )
 
         with tarfile.open(str(backup_path), "w:gz") as tar:
@@ -76,7 +82,7 @@ def list_backups() -> List[dict]:
     if not backup_path.exists():
         return []
     backups = []
-    for f in sorted(backup_path.glob("eztag_backup_*.tar.gz"), reverse=True):
+    for f in sorted(backup_path.glob("eztag_backup_*.tar.gz"), key=lambda x: x.stat().st_mtime, reverse=True):
         stat = f.stat()
         backups.append({
             "filename": f.name,

@@ -73,12 +73,12 @@
               <div class="mx-1 px-3 py-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800 rounded-lg text-xs text-gray-600 dark:text-gray-400 space-y-2">
                 <p class="font-semibold text-orange-700 dark:text-orange-400">{{ $t('settings.workspaceMountGuideTitle') }}</p>
                 <div>
-                  <p class="text-gray-500 dark:text-gray-500 mb-1">{{ $t('settings.libraryMountGuideDocker') }}</p>
-                  <code class="block bg-white dark:bg-gray-800 border border-orange-100 dark:border-orange-800 rounded px-2 py-1.5 font-mono text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap">-v /path/to/your/folder:/workspace/MyFolder</code>
+                  <p class="text-gray-500 dark:text-gray-500 mb-1">{{ $t('settings.libraryMountGuideMount') }}</p>
+                  <code class="block bg-white dark:bg-gray-800 border border-orange-100 dark:border-orange-800 rounded px-2 py-1.5 font-mono text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap">mount --bind /volume4/Download/Music_Temp /volume2/docker/eztag/data/workspace</code>
                 </div>
                 <div>
-                  <p class="text-gray-500 dark:text-gray-500 mb-1">{{ $t('settings.libraryMountGuideSymlink') }}</p>
-                  <code class="block bg-white dark:bg-gray-800 border border-orange-100 dark:border-orange-800 rounded px-2 py-1.5 font-mono text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap">ln -s /path/to/your/folder /workspace/MyFolder</code>
+                  <p class="text-gray-500 dark:text-gray-500 mb-1">{{ $t('settings.libraryMountGuideUmount') }}</p>
+                  <code class="block bg-white dark:bg-gray-800 border border-orange-100 dark:border-orange-800 rounded px-2 py-1.5 font-mono text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap">umount /volume2/docker/eztag/data/workspace</code>
                 </div>
               </div>
               <ConfigRow :label="$t('settings.libraryPath')" :desc="$t('settings.libraryPathDesc')">
@@ -93,12 +93,12 @@
               <div class="mx-1 px-3 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg text-xs text-gray-600 dark:text-gray-400 space-y-2">
                 <p class="font-semibold text-blue-700 dark:text-blue-400">{{ $t('settings.libraryMountGuideTitle') }}</p>
                 <div>
-                  <p class="text-gray-500 dark:text-gray-500 mb-1">{{ $t('settings.libraryMountGuideDocker') }}</p>
-                  <code class="block bg-white dark:bg-gray-800 border border-blue-100 dark:border-blue-800 rounded px-2 py-1.5 font-mono text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap">-v /path/to/your/music:/music/MyFolder</code>
+                  <p class="text-gray-500 dark:text-gray-500 mb-1">{{ $t('settings.libraryMountGuideMount') }}</p>
+                  <code class="block bg-white dark:bg-gray-800 border border-blue-100 dark:border-blue-800 rounded px-2 py-1.5 font-mono text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap">mount --bind /volume2/music /volume2/docker/eztag/data/library</code>
                 </div>
                 <div>
-                  <p class="text-gray-500 dark:text-gray-500 mb-1">{{ $t('settings.libraryMountGuideSymlink') }}</p>
-                  <code class="block bg-white dark:bg-gray-800 border border-blue-100 dark:border-blue-800 rounded px-2 py-1.5 font-mono text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap">ln -s /path/to/your/music /music/MyFolder</code>
+                  <p class="text-gray-500 dark:text-gray-500 mb-1">{{ $t('settings.libraryMountGuideUmount') }}</p>
+                  <code class="block bg-white dark:bg-gray-800 border border-blue-100 dark:border-blue-800 rounded px-2 py-1.5 font-mono text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap">umount /volume2/docker/eztag/data/library</code>
                 </div>
               </div>
               <ConfigRow :label="$t('settings.theme')" :desc="$t('settings.themeDesc')">

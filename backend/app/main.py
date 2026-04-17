@@ -55,6 +55,14 @@ async def lifespan(app: FastAPI):
 
     from app.database import SessionLocal
     from app.models.scan_folder import ScanFolder
+    from app.core.config_store import seed_defaults
+
+    # 설정 기본값 시딩 (DB에 없는 키만 삽입)
+    db_seed = SessionLocal()
+    try:
+        seed_defaults(db_seed)
+    finally:
+        db_seed.close()
 
     # data/library 기본 폴더 자동 등록 (browse 경로 검증에 필요)
     # MUSIC_BASE_PATH(Docker) 또는 LIBRARY_PATH 또는 기본값 순으로 사용

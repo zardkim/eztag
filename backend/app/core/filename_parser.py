@@ -1,5 +1,6 @@
 """파일명 패턴 파싱 유틸리티 (browse.py, metadata.py 공용)."""
 import re
+import unicodedata
 
 _TAG_FROM_NAME_VARS = [
     "%title%", "%artist%", "%album_artist%", "%album%",
@@ -45,6 +46,22 @@ DETECT_PRESETS = [
 ]
 
 
+def normalize_filename_for_parse(stem: str) -> str:
+    """
+    파싱 전 파일명 줄기(stem) 전처리.
+    - NFC 정규화 (macOS NFD 대응)
+    - 전각 구분자 → ASCII 대응 (：→ :, ／→ /, 　→ 공백)
+    - Division Slash 계열 → 일반 슬래시
+    """
+    stem = unicodedata.normalize("NFC", stem)
+    stem = stem.replace('\uff1a', ':')   # ： → :
+    stem = stem.replace('\uff0f', '/')   # ／ → /
+    stem = stem.replace('\u3000', ' ')   # 　전각 공백 → 공백
+    stem = stem.replace('\u2215', '/')   # ∕ → /
+    stem = stem.replace('\u2216', '\\')  # ∖ → \
+    return stem
+
+
 def pattern_to_regex(pattern: str):
     """패턴 문자열 → (컴파일된 정규식, 필드목록) 반환."""
     fields = []
@@ -68,7 +85,7 @@ def pattern_to_regex(pattern: str):
 def parse_filename_by_pattern(filename: str, pattern: str) -> dict:
     """파일명을 패턴으로 파싱 → 태그 dict. 매칭 실패 시 {}."""
     rx, fields = pattern_to_regex(pattern)
-    m = rx.match(filename)
+    m = rx.match(normalize_filename_for_parse(filename))
     if not m:
         return {}
     result = {}

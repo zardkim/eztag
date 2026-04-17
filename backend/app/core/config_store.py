@@ -86,6 +86,18 @@ def set_bulk_config(db: Session, data: dict):
         set_config(db, key, str(value))
 
 
+def seed_defaults(db: Session) -> None:
+    """DB에 없는 설정 기본값을 초기화 (첫 설치 또는 신규 키 추가 시)."""
+    existing = {r.key for r in db.query(AppConfig).all()}
+    added = []
+    for key, (default, desc) in DEFAULTS.items():
+        if key not in existing:
+            db.add(AppConfig(key=key, value=default, description=desc))
+            added.append(key)
+    if added:
+        db.commit()
+
+
 def get_supported_formats(db: Session) -> set[str]:
     raw = get_config(db, "supported_formats") or ".mp3,.flac,.m4a,.ogg,.aac"
     return {ext.strip() for ext in raw.split(",") if ext.strip()}

@@ -28,7 +28,7 @@ from app.core.metadata import apple_music_classical as amc_mod
 from app.core.metadata import melon as ml_mod
 from app.core.metadata import bugs as bg_mod
 from app.core.filename_parser import parse_filename_by_pattern
-from app.core.metadata.matcher import find_best_match
+from app.core.metadata.matcher import find_best_match, normalize_search_query
 from app.core.tag_reader import read_tags as _read_tags
 
 logger = logging.getLogger(__name__)
@@ -563,11 +563,11 @@ def auto_tag_by_filename(
                     yield f"data: {json.dumps({'type': 'progress', 'current': idx + 1, 'total': total, 'filename': filename, 'item': result.model_dump()})}\n\n"
                     continue
 
-                # 2. 검색 쿼리 구성
+                # 2. 검색 쿼리 구성 (특수문자 정규화 후 검색)
                 q_parts = []
                 if parsed.get("artist"):
-                    q_parts.append(parsed["artist"])
-                q_parts.append(parsed["title"])
+                    q_parts.append(normalize_search_query(parsed["artist"]))
+                q_parts.append(normalize_search_query(parsed["title"]))
                 query = " ".join(q_parts)
 
                 # 3. 검색 (캐시 활용)

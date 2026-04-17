@@ -14,21 +14,26 @@
     </div>
 
     <!-- 저장 / 초기화 / 태그검색 버튼 -->
-    <div class="px-4 py-2.5 border-b border-gray-200 dark:border-gray-800 flex gap-2">
-      <button
-        class="flex-1 py-2 text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white rounded-lg transition-colors"
-        :disabled="saving"
-        @click="save"
-      >{{ saving ? $t('batchPanel.saving') : $t('batchPanel.save') }}</button>
-      <button
-        class="px-3 py-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 rounded-lg transition-colors"
-        @click="reset"
-      >{{ $t('batchPanel.reset') }}</button>
-      <button
-        class="px-3 py-2 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700 rounded-lg transition-colors shrink-0"
-        :title="$t('batchPanel.searchTagTitle')"
-        @click="$emit('search-tag', targetPaths)"
-      >🏷</button>
+    <div class="px-4 py-2.5 border-b border-gray-200 dark:border-gray-800 space-y-1.5">
+      <div class="flex gap-2">
+        <button
+          class="flex-1 py-2 text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white rounded-lg transition-colors"
+          :disabled="saving"
+          @click="save"
+        >{{ saving ? $t('batchPanel.saving') : $t('batchPanel.save') }}</button>
+        <button
+          class="px-3 py-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 rounded-lg transition-colors"
+          @click="reset"
+        >{{ $t('batchPanel.reset') }}</button>
+        <button
+          class="px-3 py-2 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700 rounded-lg transition-colors shrink-0"
+          :title="$t('batchPanel.searchTagTitle')"
+          @click="$emit('search-tag', targetPaths)"
+        >🏷</button>
+      </div>
+      <p v-if="hasSpecialCharWarning" class="text-[11px] text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
+        <span>⚠️</span>{{ $t('tagWarning.specialChars') }}
+      </p>
     </div>
     <!-- 되돌리기 / 다시 실행 -->
     <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-800 flex gap-2">
@@ -422,6 +427,7 @@ import { useBrowserStore } from '../stores/browser.js'
 import { useHistoryStore } from '../stores/history.js'
 import { GENRES } from '../constants/genres.js'
 import { useToastStore } from '../stores/toast.js'
+import { hasAnyFilenameSpecialChars } from '../utils/tagWarning.js'
 
 
 function detectCoverTypeFromName(filename) {
@@ -581,6 +587,9 @@ const browserStore = useBrowserStore()
 const toastStore = useToastStore()
 const historyStore = useHistoryStore()
 const saving = ref(false)
+const hasSpecialCharWarning = computed(() =>
+  hasAnyFilenameSpecialChars({ title: form.title, artist: form.artist, album_artist: form.album_artist, album_title: form.album_title })
+)
 const expandExtra = ref(false)
 const fieldMode = ref({})   // { [field]: 'keep'|'clear'|'input' } — 다중 값 필드 처리 모드
 

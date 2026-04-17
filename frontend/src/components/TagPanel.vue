@@ -18,16 +18,21 @@
     </div>
 
     <!-- 저장 / 취소 버튼 -->
-    <div class="px-4 py-2.5 border-b border-gray-200 dark:border-gray-800 flex gap-2">
-      <button
-        class="flex-1 py-2 text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white rounded-lg transition-colors"
-        :disabled="saving"
-        @click="save"
-      >{{ saving ? $t('common.saving') : $t('common.save') }}</button>
-      <button
-        class="px-3 py-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 rounded-lg transition-colors"
-        @click="reset"
-      >{{ $t('common.cancel') }}</button>
+    <div class="px-4 py-2.5 border-b border-gray-200 dark:border-gray-800 space-y-1.5">
+      <div class="flex gap-2">
+        <button
+          class="flex-1 py-2 text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white rounded-lg transition-colors"
+          :disabled="saving"
+          @click="save"
+        >{{ saving ? $t('common.saving') : $t('common.save') }}</button>
+        <button
+          class="px-3 py-2 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700 rounded-lg transition-colors"
+          @click="reset"
+        >{{ $t('common.cancel') }}</button>
+      </div>
+      <p v-if="hasSpecialCharWarning" class="text-[11px] text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
+        <span>⚠️</span>{{ $t('tagWarning.specialChars') }}
+      </p>
     </div>
     <!-- 되돌리기 / 다시 실행 -->
     <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-800 flex gap-2">
@@ -171,7 +176,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, nextTick } from 'vue'
+import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { browseApi, metadataApi } from '../api/index.js'
 import { useBrowserStore } from '../stores/browser.js'
@@ -179,6 +184,7 @@ import { useHistoryStore } from '../stores/history.js'
 import SpotifyResultCard from './SpotifyResultCard.vue'
 import { GENRES } from '../constants/genres.js'
 import { useToastStore } from '../stores/toast.js'
+import { hasAnyFilenameSpecialChars } from '../utils/tagWarning.js'
 
 const { t } = useI18n()
 const toastStore = useToastStore()
@@ -192,6 +198,9 @@ const spotifySection = ref(null)
 const browserStore = useBrowserStore()
 const historyStore = useHistoryStore()
 const saving = ref(false)
+const hasSpecialCharWarning = computed(() =>
+  hasAnyFilenameSpecialChars({ title: form.title, artist: form.artist, album_artist: form.album_artist, album_title: form.album_title })
+)
 const spotifyLoading = ref(false)
 const spotifyResults = ref([])
 const spotifyError = ref('')

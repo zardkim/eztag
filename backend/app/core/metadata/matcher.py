@@ -8,6 +8,37 @@ _PARENS_RE = re.compile(r'[\(\[\{][^\)\]\}]*[\)\]\}]')
 _SPECIAL_RE = re.compile(r'[^\w\s가-힣]')
 _SPACES_RE = re.compile(r'\s+')
 
+# 전각 → 반각 변환 테이블 (U+FF01~U+FF5E → U+0021~U+007E)
+_FULLWIDTH_TABLE = str.maketrans(
+    ''.join(chr(0xFF01 + i) for i in range(94)),
+    ''.join(chr(0x21 + i) for i in range(94)),
+)
+
+# 검색 쿼리에서 제거할 특수문자 패턴
+_QUERY_STRIP_RE = re.compile(r'["""\'`＂＇?!]')
+_QUERY_BRACKET_RE = re.compile(r'[（）()【】\[\]{}｛｝]')
+_QUERY_SLASH_RE = re.compile(r'[/\\:∕∖⧵\uff0f\uff1a\uff3c\u2215\u2216]')
+
+
+def normalize_search_query(text: str) -> str:
+    """
+    API 검색 쿼리용 문자열 정규화.
+    - NFC 정규화
+    - 전각 → 반각 변환
+    - 슬래시 계열 → 공백 (AC/DC → AC DC)
+    - 따옴표·괄호 제거
+    - 연속 공백 정리
+    """
+    if not text:
+        return text
+    text = unicodedata.normalize("NFC", text)
+    text = text.translate(_FULLWIDTH_TABLE)
+    text = _QUERY_SLASH_RE.sub(" ", text)
+    text = _QUERY_STRIP_RE.sub("", text)
+    text = _QUERY_BRACKET_RE.sub(" ", text)
+    text = _SPACES_RE.sub(" ", text).strip()
+    return text
+
 
 def normalize(text: str) -> str:
     """비교용 텍스트 정규화 (소문자, feat 제거, 특수문자 제거)."""

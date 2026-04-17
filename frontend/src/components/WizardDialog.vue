@@ -82,24 +82,15 @@
                       @click="toggleCustomRename(step)"
                     >{{ $t('wizard.renameManual') }}</button>
                     <div v-if="isCustomRename(step)" class="w-full mt-1 space-y-1">
-                      <input
-                        type="text"
-                        class="w-full text-[11px] px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:border-orange-400"
+                      <TagVarInput
+                        :model-value="step.renamePattern"
+                        @update:model-value="v => { step.renamePattern = v; saveSteps() }"
+                        :variables="RENAME_VARS_WITH_DESC"
+                        :builtin-presets="RENAME_PRESETS"
+                        storage-key="eztag-wizard-rename"
+                        accent-color="orange"
                         :placeholder="$t('wizard.renameCustomPlaceholder')"
-                        v-model="step.renamePattern"
-                        :ref="el => setRenameInputRef(step.id, el)"
-                        @input="saveSteps(); onRenameInputInteract(step.id)"
-                        @click="onRenameInputInteract(step.id)"
-                        @keyup="onRenameInputInteract(step.id)"
                       />
-                      <div class="flex flex-wrap gap-1">
-                        <button
-                          v-for="v in RENAME_VARS"
-                          :key="v"
-                          class="px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-[10px] rounded font-mono hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors"
-                          @click.prevent="insertRenameVar(step, v)"
-                        >{{ v }}</button>
-                      </div>
                       <p class="text-[10px] text-gray-400">{{ $t('wizard.renameCustomHint') }}</p>
                     </div>
                   </div>
@@ -283,6 +274,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
+import TagVarInput from './TagVarInput.vue'
 
 const { t } = useI18n()
 
@@ -349,38 +341,32 @@ function stepIcon(id) {
 }
 
 // 파일명 변수 삽입
-const RENAME_VARS = ['%title%', '%artist%', '%albumartist%', '%album%', '%track%', '%disc%', '%year%', '$num(%track%,2)', '$num(%track%,3)']
+const RENAME_VARS_WITH_DESC = computed(() => [
+  { var: '%title%',           desc: t('renameModal.varTitle') },
+  { var: '%artist%',          desc: t('renameModal.varArtist') },
+  { var: '%albumartist%',     desc: t('renameModal.varAlbumArtist') },
+  { var: '%album%',           desc: t('renameModal.varAlbum') },
+  { var: '$num(%track%,2)',   desc: t('renameModal.varTrackNum2') },
+  { var: '$num(%track%,3)',   desc: t('renameModal.varTrackNum3') },
+  { var: '%track%',           desc: t('renameModal.varTrack') },
+  { var: '%totaltracks%',     desc: t('renameModal.varTotalTracks') },
+  { var: '%disc%',            desc: t('renameModal.varDisc') },
+  { var: '%year%',            desc: t('renameModal.varYear') },
+  { var: '%genre%',           desc: t('renameModal.varGenre') },
+  { var: '%publisher%',       desc: t('renameModal.varPublisher') },
+  { var: '%_filename%',       desc: t('renameModal.varFilename') },
+  { var: '%_ext%',            desc: t('renameModal.varExt') },
+])
 
-const _renameInputRefs = {}
-const _renameInputCursor = reactive({})
+const RENAME_PRESETS = computed(() => [
+  { label: t('renameModal.presetTrackTitle'),            pattern: '%track% - %title%' },
+  { label: t('renameModal.presetArtistTitle'),           pattern: '%artist% - %title%' },
+  { label: t('renameModal.presetTrackArtistTitle'),      pattern: '%track% - %artist% - %title%' },
+  { label: t('renameModal.presetArtistAlbumTrackTitle'), pattern: '%artist% - %album% - %track% - %title%' },
+  { label: t('renameModal.presetDiscTrackTitle'),        pattern: '%disc%-%track% - %title%' },
+])
 
-function setRenameInputRef(stepId, el) {
-  if (el) _renameInputRefs[stepId] = el
-  else delete _renameInputRefs[stepId]
-}
-
-function onRenameInputInteract(stepId) {
-  const el = _renameInputRefs[stepId]
-  if (el) _renameInputCursor[stepId] = { start: el.selectionStart, end: el.selectionEnd }
-}
-
-function insertRenameVar(step, varStr) {
-  const cursor = _renameInputCursor[step.id]
-  if (cursor !== undefined) {
-    const start = cursor.start ?? (step.renamePattern || '').length
-    const end = cursor.end ?? start
-    const old = step.renamePattern || ''
-    step.renamePattern = old.slice(0, start) + varStr + old.slice(end)
-    _renameInputCursor[step.id] = { start: start + varStr.length, end: start + varStr.length }
-    nextTick(() => {
-      const el = _renameInputRefs[step.id]
-      if (el) { el.focus(); el.setSelectionRange(start + varStr.length, start + varStr.length) }
-    })
-  } else {
-    step.renamePattern = (step.renamePattern || '') + varStr
-  }
-  saveSteps()
-}
+// insertRenameVar은 TagVarInput 내부에서 처리되므로 제거됨
 
 const STORAGE_KEY = 'eztag-wizard-steps'
 

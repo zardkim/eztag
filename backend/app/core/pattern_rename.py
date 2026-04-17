@@ -1,8 +1,22 @@
 """태그 기반 파일명 패턴 처리 유틸리티."""
 import re
+import unicodedata
 
-# 파일명에 사용 불가한 문자
-INVALID_CHARS = re.compile(r'[\\/:*?"<>|]')
+# 파일명에 사용 불가한 문자 (ASCII 금지 문자 + 전각 대응 문자 + Division Slash 계열)
+INVALID_CHARS = re.compile(
+    r'[\\/:*?"<>|'
+    r'\uff0a'   # ＊ Fullwidth Asterisk
+    r'\uff0f'   # ／ Fullwidth Solidus
+    r'\uff1a'   # ： Fullwidth Colon
+    r'\uff1c'   # ＜ Fullwidth Less-Than
+    r'\uff1e'   # ＞ Fullwidth Greater-Than
+    r'\uff1f'   # ？ Fullwidth Question Mark
+    r'\uff3c'   # ＼ Fullwidth Reverse Solidus
+    r'\u2215'   # ∕ Division Slash
+    r'\u2216'   # ∖ Set Minus
+    r'\u29f5'   # ⧵ Reverse Solidus Operator
+    r']'
+)
 
 _FIELD_MAP = {
     "title": "title",
@@ -85,12 +99,14 @@ def render_pattern(pattern: str, fields: dict) -> str:
 def sanitize_filename(name: str) -> str:
     """
     파일명 안전 처리:
+    - NFC 유니코드 정규화 (macOS NFD 대응)
     - 제어 문자(0x00-0x1F, 0x7F) 제거
-    - 금지 문자(\\/:*?"<>|) → '_' 치환
+    - 금지 문자(\\/:*?"<>| 및 전각 대응 문자) → '_' 치환
     - 연속 공백 → 단일 공백
     - 앞뒤 공백/점 제거
     - 빈 문자열 → '_'
     """
+    name = unicodedata.normalize("NFC", name)
     name = re.sub(r'[\x00-\x1f\x7f]', '', name)
     name = INVALID_CHARS.sub("_", name)
     name = re.sub(r" {2,}", " ", name)

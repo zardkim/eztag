@@ -79,38 +79,14 @@
           <!-- 패턴 입력 -->
           <div class="space-y-2">
             <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{{ t('filenameAutoTag.patternLabel') }}</label>
-
-            <!-- 프리셋 드롭다운 -->
-            <select
-              class="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:text-gray-200"
-              :value="PRESETS.find(p => p.pattern === pattern)?.pattern ?? ''"
-              @change="e => selectPreset(e.target.value)"
-            >
-              <option value="" disabled>{{ t('filenameAutoTag.selectPreset') }}</option>
-              <option v-for="p in PRESETS" :key="p.pattern" :value="p.pattern">{{ p.label }}</option>
-            </select>
-
-            <!-- 패턴 직접 입력 -->
-            <input
-              ref="patternInputRef"
+            <TagVarInput
               v-model="pattern"
-              type="text"
-              class="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:text-gray-200 font-mono"
+              :variables="PATTERN_VARS_WITH_DESC"
+              :builtin-presets="PRESETS"
+              storage-key="eztag-filename-autotag"
+              accent-color="indigo"
               :placeholder="t('filenameAutoTag.patternPlaceholder')"
-              @input="debouncedPreview"
-              @click="saveCursor"
-              @keyup="saveCursor"
             />
-
-            <!-- 변수 삽입 버튼 (RenameByTagsModal과 동일한 스타일) -->
-            <div class="flex flex-wrap gap-1.5">
-              <button
-                v-for="v in PATTERN_VARS"
-                :key="v"
-                class="px-2 py-0.5 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-100 dark:hover:bg-blue-900 hover:text-blue-700 dark:hover:text-blue-300 border border-gray-200 dark:border-gray-600 transition-colors"
-                @click="insertVar(v)"
-              >{{ v }}</button>
-            </div>
           </div>
 
           <!-- 비교 미리보기 테이블 -->
@@ -340,10 +316,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { browseApi } from '../api/index.js'
 import { metadataApi } from '../api/metadata.js'
+import TagVarInput from './TagVarInput.vue'
 
 const props = defineProps({
   modelValue:         { type: Boolean, default: false },
@@ -354,32 +331,17 @@ const emit = defineEmits(['update:modelValue', 'done', 'retryFiles'])
 
 const { t } = useI18n()
 
-// ── 패턴 변수 삽입 ──
-const PATTERN_VARS = [
-  '%artist%', '%title%', '%track%', '%disc%', '%year%', '%album%', '%albumartist%',
-]
-const patternInputRef = ref(null)
-let _cursor = null
-
-function saveCursor() {
-  const el = patternInputRef.value
-  if (el) _cursor = { start: el.selectionStart, end: el.selectionEnd }
-}
-
-function insertVar(v) {
-  const el = patternInputRef.value
-  const start = _cursor?.start ?? pattern.value.length
-  const end   = _cursor?.end   ?? start
-  pattern.value = pattern.value.slice(0, start) + v + pattern.value.slice(end)
-  _cursor = { start: start + v.length, end: start + v.length }
-  nextTick(() => {
-    if (el) {
-      el.focus()
-      el.setSelectionRange(start + v.length, start + v.length)
-    }
-    debouncedPreview()
-  })
-}
+// ── 패턴 변수 (설정 안내문 전체 목록 기준) ──
+const PATTERN_VARS_WITH_DESC = computed(() => [
+  { var: '%artist%',      desc: t('renameModal.varArtist') },
+  { var: '%title%',       desc: t('renameModal.varTitle') },
+  { var: '%albumartist%', desc: t('renameModal.varAlbumArtist') },
+  { var: '%album%',       desc: t('renameModal.varAlbum') },
+  { var: '%track%',       desc: t('renameModal.varTrack') },
+  { var: '%disc%',        desc: t('renameModal.varDisc') },
+  { var: '%year%',        desc: t('renameModal.varYear') },
+  { var: '%genre%',       desc: t('renameModal.varGenre') },
+])
 
 // ── 상태 ──
 const STEP_ORDER = ['source', 'config', 'running', 'result']
@@ -458,11 +420,8 @@ watch(() => props.modelValue, (open) => {
 // ── 소스 선택 → 패턴 설정으로 이동 ──
 async function goToConfig() {
   step.value = 'config'
-  if (!pattern.value) {
-    await detectPattern()
-  } else {
-    await loadPreview()
-  }
+  // 항상 자동감지 시도 (패턴이 이미 있어도 재감지하여 파일 변화 반영)
+  await detectPattern()
 }
 
 async function detectPattern() {
@@ -500,10 +459,8 @@ function debouncedPreview() {
   _previewTimer = setTimeout(() => loadPreview(), 400)
 }
 
-function selectPreset(p) {
-  pattern.value = p
-  loadPreview()
-}
+// 패턴 변경 시 자동으로 미리보기 다시 실행
+watch(pattern, debouncedPreview)
 
 function toggleProvider(key) {
   const idx = selectedProviders.value.indexOf(key)
