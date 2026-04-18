@@ -19,7 +19,7 @@ DEFAULTS: dict[str, tuple] = {
     "cleanup_on_scan": ("false", "스캔 시 누락 파일 자동 정리"),
     "destination_folders": ('[{"path":"/volume1/music","label":"NAS Music"}]', "이동 대상 폴더 목록 (JSON: [{path, label}])"),
     "startup_folder": ("workspace", "앱 시작 시 자동으로 열 폴더 (workspace/library/none)"),
-    "recent_folders": ("[]", "최근 방문 폴더 목록 (JSON)"),
+    # recent_folders: 사용자별 개인 설정으로 이동 (user_preferences 테이블)
     "workspace_path": ("../data/workspace", "워크스페이스 폴더 경로 (환경변수 WORKSPACE_PATH 설정 시 무시됨)"),
     "library_path": ("../data/library", "라이브러리 폴더 경로 (환경변수 MUSIC_BASE_PATH 설정 시 무시됨)"),
     "lrc_base_folder": ("", "Get LRC 기본 폴더 경로"),

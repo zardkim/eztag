@@ -482,7 +482,7 @@ import { useThemeStore } from './stores/theme.js'
 import { useAuthStore } from './stores/auth.js'
 import { useBrowserStore } from './stores/browser.js'
 import { useAppConfigStore } from './stores/appConfig.js'
-import { authApi, workspaceApi } from './api/index.js'
+import { authApi, workspaceApi, userPrefsApi } from './api/index.js'
 import { configApi } from './api/config.js'
 import WorkspaceSidebar from './components/WorkspaceSidebar.vue'
 import ToastContainer from './components/ToastContainer.vue'
@@ -571,11 +571,11 @@ const LAST_FOLDER_KEY = 'eztag-last-folder'
 
 async function saveRecentFolder(folder, area) {
   try {
-    // 저장 직전 서버 최신 목록을 조회하여 기기 간 기록이 덮어쓰이지 않도록 병합
+    // 서버에서 최신 목록 조회 후 병합 (계정 기준 동기화)
     let base = []
     try {
-      const { data } = await configApi.get()
-      const raw = data.recent_folders?.value
+      const { data } = await userPrefsApi.get()
+      const raw = data.recent_folders
       if (raw) base = JSON.parse(raw)
     } catch { /* 서버 조회 실패 시 로컬 fallback */ }
     if (!base.length) {
@@ -583,8 +583,9 @@ async function saveRecentFolder(folder, area) {
     }
     const filtered = base.filter(f => f.path !== folder.path)
     const updated = [{ name: folder.name, path: folder.path, area: area || null, timestamp: Date.now() }, ...filtered].slice(0, 15)
-    localStorage.setItem(RECENT_FOLDERS_KEY, JSON.stringify(updated))
-    configApi.update({ recent_folders: JSON.stringify(updated) }).catch(() => {})
+    const json = JSON.stringify(updated)
+    localStorage.setItem(RECENT_FOLDERS_KEY, json)
+    userPrefsApi.update({ recent_folders: json }).catch(() => {})
   } catch { /* ignore */ }
 }
 

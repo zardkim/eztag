@@ -146,6 +146,11 @@ export const workspaceApi = {
 // }
 
 // Covers
+export const userPrefsApi = {
+  get: () => client.get('/user/prefs/'),
+  update: (prefs) => client.post('/user/prefs/', { prefs }),
+}
+
 export const coversApi = {
   getAlbumCover: (id) => client.get(`/covers/album/${id}`),
   uploadAlbumCover: (id, file) => {

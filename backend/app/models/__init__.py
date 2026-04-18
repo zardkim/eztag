@@ -7,3 +7,4 @@ from app.models.scan_log import ScanLog
 from app.models.user import User
 from app.models.activity_log import ActivityLog
 from app.models.workspace import WorkspaceSession, WorkspaceItem, WorkspaceHistoryOp
+from app.models.user_pref import UserPreference

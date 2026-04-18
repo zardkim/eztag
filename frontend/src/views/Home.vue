@@ -150,7 +150,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useBrowserStore } from '../stores/browser.js'
 import LibraryPickerModal from '../components/LibraryPickerModal.vue'
-import { configApi } from '../api/config.js'
+import { userPrefsApi } from '../api/index.js'
 import { usePullToRefresh } from '../composables/usePullToRefresh.js'
 
 const { t, locale } = useI18n()
@@ -168,20 +168,26 @@ const recentFolders = ref([])
 
 async function loadRecent() {
   try {
-    // 서버에서 우선 로드 (기기 간 동기화)
-    const { data } = await configApi.get()
-    const serverRaw = data.recent_folders?.value
-    if (serverRaw) {
-      const serverList = JSON.parse(serverRaw)
-      recentFolders.value = serverList
-      // 로컬도 최신 상태로 갱신
-      localStorage.setItem(RECENT_KEY, serverRaw)
+    // 계정 기준 서버에서 로드
+    const { data } = await userPrefsApi.get()
+    const raw = data.recent_folders
+    if (raw) {
+      const list = JSON.parse(raw)
+      recentFolders.value = list
+      localStorage.setItem(RECENT_KEY, raw)
       return
     }
   } catch { /* ignore */ }
-  // 서버에 없으면 로컬 fallback
+  // 서버에 없으면 로컬 fallback (구버전 데이터 마이그레이션)
   try {
-    recentFolders.value = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]')
+    const local = localStorage.getItem(RECENT_KEY)
+    if (local) {
+      recentFolders.value = JSON.parse(local)
+      // 로컬 데이터를 서버에 마이그레이션
+      userPrefsApi.update({ recent_folders: local }).catch(() => {})
+    } else {
+      recentFolders.value = []
+    }
   } catch {
     recentFolders.value = []
   }
@@ -190,7 +196,7 @@ async function loadRecent() {
 function clearRecent() {
   recentFolders.value = []
   localStorage.removeItem(RECENT_KEY)
-  configApi.update({ recent_folders: '[]' }).catch(() => {})
+  userPrefsApi.update({ recent_folders: '[]' }).catch(() => {})
 }
 
 const ptr = usePullToRefresh(homeContainerRef, loadRecent)
