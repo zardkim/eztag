@@ -161,19 +161,17 @@ export const useBrowserStore = defineStore('browser', () => {
 
       const hasUnscanned = fileList.some(f => f.scanned === false)
       if (hasUnscanned && _scanRetryCount < 4) {
-        // 아직 스캔 미완료: 로딩 상태 유지하며 1초 후 재조회 (최대 4회 = 4초)
+        // 파일 목록 즉시 표시 후, 백그라운드에서 스캔 완료 대기
         _scanRetryCount++
         _scanPollTimer = setTimeout(() => {
           _scanPollTimer = null
           if (selectedFolder.value?.path === path) {
-            loadFiles(path, true)
+            _pollRefreshFiles(path)
           }
-        }, 1000)
-        return  // loading=true 유지, 파일 목록 미표시
+        }, 1500)
+      } else {
+        _scanRetryCount = 0
       }
-
-      // 스캔 완료(또는 최대 재시도 초과) — 한 번에 표시
-      _scanRetryCount = 0
 
       // 직접 오디오 파일이 없고 오디오가 있는 하위 폴더가 있으면 자동으로 재귀 로드
       if (fileList.length === 0 && subs.some(s => s.has_audio)) {
@@ -192,6 +190,36 @@ export const useBrowserStore = defineStore('browser', () => {
     } finally {
       loading.value = false
     }
+  }
+
+  async function _pollRefreshFiles(path) {
+    try {
+      const [filesRes, childrenRes] = await Promise.all([
+        browseApi.getFiles(path, true),
+        browseApi.getChildren(path, true).catch(() => ({ data: [] })),
+      ])
+      if (selectedFolder.value?.path !== path) return
+      const fileList  = Array.isArray(filesRes.data) ? filesRes.data : (filesRes.data.files ?? [])
+      const extraList = filesRes.data.extra_files ?? []
+      const warning   = filesRes.data.warning ?? null
+      const subs      = Array.isArray(childrenRes.data) ? childrenRes.data : []
+      files.value = fileList
+      extraFiles.value = extraList
+      fileWarning.value = warning
+      subfolders.value = subs
+      const hasUnscanned = fileList.some(f => f.scanned === false)
+      if (hasUnscanned && _scanRetryCount < 4) {
+        _scanRetryCount++
+        _scanPollTimer = setTimeout(() => {
+          if (selectedFolder.value?.path === path) _pollRefreshFiles(path)
+        }, 1500)
+      } else {
+        _scanRetryCount = 0
+        if (!warning) {
+          _filesCache.set(path, { files: fileList, extraFiles: extraList, albumDescription: albumDescription.value, hasEztagReport: hasEztagReport.value, subfolders: subs, warning, ts: Date.now() })
+        }
+      }
+    } catch (_) { /* 사일런트 실패 */ }
   }
 
   function invalidateFilesCache(path) {
@@ -222,7 +250,7 @@ export const useBrowserStore = defineStore('browser', () => {
       isRecursiveMode.value = true
       if (!isRetry) selectedFile.value = null
 
-      // 미스캔 파일이 있으면 백그라운드 스캔 완료 후 재조회 (최대 4회)
+      // 미스캔 파일이 있으면 즉시 표시 후 백그라운드에서 갱신 (최대 4회)
       const hasUnscanned = fileList.some(f => f.scanned === false)
       if (hasUnscanned && _scanRetryCount < 4) {
         _scanRetryCount++
@@ -233,9 +261,9 @@ export const useBrowserStore = defineStore('browser', () => {
             loadRecursiveFiles(path, true)
           }
         }, 1500)
-        return
+      } else {
+        _scanRetryCount = 0
       }
-      _scanRetryCount = 0
     } catch (e) {
       error.value = e.response?.data?.detail || '파일 목록을 불러올 수 없습니다.'
       files.value = []

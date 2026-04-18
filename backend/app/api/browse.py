@@ -93,6 +93,29 @@ def _validate_path(path: str, db: Session, allow_destinations: bool = False, all
     raise HTTPException(status_code=403, detail="Path not in registered scan folders")
 
 
+def _quick_scan(path, excluded_set: set) -> tuple[bool, bool]:
+    """단일 패스로 has_children / has_audio 동시 판별. 둘 다 찾으면 조기 종료."""
+    has_children = False
+    has_audio = False
+    try:
+        with os.scandir(path) as it:
+            for entry in it:
+                try:
+                    if not has_audio and entry.is_file(follow_symlinks=False):
+                        if Path(entry.name).suffix.lower() in AUDIO_EXTS:
+                            has_audio = True
+                    if not has_children and entry.is_dir(follow_symlinks=False):
+                        if not entry.name.startswith(".") and entry.name not in excluded_set:
+                            has_children = True
+                except OSError:
+                    pass
+                if has_children and has_audio:
+                    break
+    except PermissionError:
+        pass
+    return has_children, has_audio
+
+
 # ── 루트 폴더 목록 ─────────────────────────────────────────
 @router.get("/roots")
 def get_roots(
@@ -121,23 +144,19 @@ def get_roots(
         children = []
         if p.exists():
             try:
-                sub_items = sorted(p.iterdir())
-                has_children = any(x.is_dir() and not _skip(x.name) for x in sub_items)
+                excluded_set = set(excluded)
+                with os.scandir(p) as sc:
+                    sub_entries = sorted(
+                        [e for e in sc if e.is_dir(follow_symlinks=False) and not _skip(e.name)],
+                        key=lambda e: e.name,
+                    )
+                has_children = bool(sub_entries)
                 if with_children:
-                    for item in sub_items:
-                        if not item.is_dir() or _skip(item.name):
-                            continue
-                        item_has_children = False
-                        item_has_audio = False
-                        try:
-                            sub = list(item.iterdir())
-                            item_has_children = any(x.is_dir() and not _skip(x.name) for x in sub)
-                            item_has_audio = any(x.is_file() and x.suffix.lower() in AUDIO_EXTS for x in sub)
-                        except PermissionError:
-                            pass
+                    for entry in sub_entries:
+                        item_has_children, item_has_audio = _quick_scan(entry.path, excluded_set)
                         children.append({
-                            "name": item.name,
-                            "path": str(item),
+                            "name": entry.name,
+                            "path": entry.path,
                             "has_children": item_has_children,
                             "has_audio": item_has_audio,
                         })
@@ -181,22 +200,19 @@ def get_children(
     def _skip_c(name: str) -> bool:
         return name.startswith(".") or name in excluded
 
+    excluded_set = set(excluded)
     children = []
     try:
-        for item in sorted(p.iterdir()):
-            if not item.is_dir() or _skip_c(item.name):
-                continue
-            has_children = False
-            has_audio = False
-            try:
-                sub_items = list(item.iterdir())
-                has_children = any(x.is_dir() and not _skip_c(x.name) for x in sub_items)
-                has_audio = any(x.is_file() and x.suffix.lower() in AUDIO_EXTS for x in sub_items)
-            except PermissionError:
-                pass
+        with os.scandir(p) as sc:
+            dir_entries = sorted(
+                [e for e in sc if e.is_dir(follow_symlinks=False) and not _skip_c(e.name)],
+                key=lambda e: e.name,
+            )
+        for entry in dir_entries:
+            has_children, has_audio = _quick_scan(entry.path, excluded_set)
             children.append({
-                "name": item.name,
-                "path": str(item),
+                "name": entry.name,
+                "path": entry.path,
                 "has_children": has_children,
                 "has_audio": has_audio,
             })
