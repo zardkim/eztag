@@ -340,9 +340,9 @@ async function doCreateFolder() {
   crudLoading.value = true
   crudError.value = ''
   try {
-    await browseApi.destMkdir({ parent_path: currentPath.value, name })
+    const { data } = await browseApi.destMkdir({ parent_path: currentPath.value, name })
     cancelCreateFolder()
-    await loadChildren(currentPath.value)
+    enterFolder({ name: data.name, path: data.path })
   } catch (e) {
     crudError.value = e.response?.data?.detail || t('browser.moveToLibrary.createFolder')
   } finally {

@@ -119,12 +119,30 @@ function formatDuration(sec) {
 
 <style scoped>
 .tag-row {
-  @apply flex gap-2 min-w-0;
+  display: flex;
+  gap: 0.5rem;
+  min-width: 0;
 }
 .tag-label {
-  @apply text-[10px] text-gray-400 shrink-0 w-20 leading-[1.4] pt-px;
+  font-size: 10px;
+  color: rgb(156 163 175);
+  flex-shrink: 0;
+  width: 5rem;
+  line-height: 1.4;
+  padding-top: 1px;
 }
 .tag-value {
-  @apply text-[11px] text-gray-700 dark:text-gray-200 truncate leading-[1.4];
+  font-size: 11px;
+  color: rgb(55 65 81);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+:global(.dark) .tag-label {
+  color: rgb(156 163 175);
+}
+:global(.dark) .tag-value {
+  color: rgb(229 231 235);
 }
 </style>

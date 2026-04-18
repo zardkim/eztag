@@ -22,14 +22,6 @@
         <!-- 적용 필드 체크박스 -->
         <div>
           <div class="text-[11px] text-gray-500 dark:text-gray-400 mb-1.5">{{ t('tagFromName.fieldsLabel') }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        <!-- 적용 필드 체크박스 -->
-        <div>
-          <div class="text-[11px] text-gray-500 dark:text-gray-400 mb-1.5">{{ t('tagFromName.fieldsLabel') }}</div>
           <div class="flex flex-wrap gap-x-4 gap-y-1">
             <label
               v-for="f in fieldOptions"

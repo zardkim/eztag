@@ -1048,12 +1048,34 @@ async function autoTrackNumber() {
 
 <style scoped>
 .tag-label {
-  @apply text-xs text-gray-500 block mb-1;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: rgb(107 114 128);
+  display: block;
+  margin-bottom: 0.25rem;
 }
 .mixed-select {
-  @apply field w-full text-sm text-gray-400 dark:text-gray-500 cursor-pointer;
+  field-sizing: content;
+  width: 100%;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: rgb(156 163 175);
+  cursor: pointer;
 }
 .mixed-select.clear {
-  @apply text-red-500 dark:text-red-400 border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/10;
+  color: rgb(239 68 68);
+  border-color: rgb(252 165 165);
+  background-color: rgb(254 242 242);
+}
+:global(.dark) .tag-label {
+  color: rgb(107 114 128);
+}
+:global(.dark) .mixed-select {
+  color: rgb(107 114 128);
+}
+:global(.dark) .mixed-select.clear {
+  color: rgb(248 113 113);
+  border-color: rgb(185 28 28);
+  background-color: rgb(69 10 10 / 0.1);
 }
 </style>
