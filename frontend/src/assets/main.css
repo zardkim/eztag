@@ -8,7 +8,7 @@ body {
 
 @layer components {
   .field {
-    @apply px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900
+    @apply px-3 py-2 bg-white border border-gray-300 rounded-lg text-base sm:text-sm text-gray-900
            placeholder-gray-400 focus:outline-none focus:border-blue-500
            dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-500;
   }

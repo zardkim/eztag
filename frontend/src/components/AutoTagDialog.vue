@@ -123,7 +123,7 @@
 
             <!-- 프리셋 드롭다운 -->
             <select
-              class="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:text-gray-200"
+              class="w-full px-3 py-2 text-base sm:text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:text-gray-200"
               :value="FN_PRESETS.find(p => p.pattern === fn.pattern)?.pattern ?? ''"
               @change="e => selectPreset(e.target.value)"
             >
@@ -136,7 +136,7 @@
               ref="fnPatternInputRef"
               v-model="fn.pattern"
               type="text"
-              class="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:text-gray-200 font-mono"
+              class="w-full px-3 py-2 text-base sm:text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:text-gray-200 font-mono"
               :placeholder="t('autoTag.patternPlaceholder')"
               @input="debouncedPreview"
               @click="saveFnCursor"
@@ -544,24 +544,16 @@
         <!-- ══════════════════════════════════════════════════════════
              STEP: alb_result  (앨범 모드 적용 결과)
         ══════════════════════════════════════════════════════════ -->
-        <div v-else-if="step === 'alb_result'" class="flex-1 overflow-y-auto px-5 py-6 flex flex-col items-center justify-center gap-4 min-h-0">
+        <div v-else-if="step === 'alb_result'" class="flex-1 overflow-y-auto px-5 py-6 flex flex-col items-center justify-center gap-3 min-h-0">
           <div v-if="alb.reverted" class="flex flex-col items-center gap-2 text-center">
             <span class="text-3xl">↩</span>
             <p class="text-sm font-semibold text-blue-600 dark:text-blue-400">{{ t('autoTag.revertDone', { n: alb.applyCount }) }}</p>
           </div>
           <template v-else>
             <span class="text-3xl">✅</span>
-            <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">
+            <p class="text-sm font-semibold text-gray-800 dark:text-gray-100 text-center">
               {{ t('autoTag.albApplyDone', { album: alb.selectedAlbum?.album_title || alb.selectedAlbum?.title || '', n: alb.applyCount }) }}
             </p>
-            <button
-              class="mt-2 px-4 py-2 text-sm bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-xl transition-colors disabled:opacity-40 font-medium"
-              :disabled="alb.reverting || !historyStore.canUndo"
-              @click="albDoRevert"
-            >
-              <span v-if="alb.reverting">{{ t('autoTag.reverting') }}</span>
-              <span v-else>↩ {{ t('autoTag.revert') }} ({{ alb.applyCount }})</span>
-            </button>
           </template>
         </div>
 
@@ -584,6 +576,15 @@
             >
               <span v-if="fn.reverting">{{ t('autoTag.reverting') }}</span>
               <span v-else>↩ {{ t('autoTag.revert') }} ({{ fnAppliedResults.length }})</span>
+            </button>
+            <button
+              v-if="step === 'alb_result' && !alb.reverted"
+              class="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 rounded-xl transition-colors font-medium disabled:opacity-50"
+              :disabled="alb.reverting || !historyStore.canUndo"
+              @click="albDoRevert"
+            >
+              <span v-if="alb.reverting">{{ t('autoTag.reverting') }}</span>
+              <span v-else>↩ {{ t('autoTag.revert') }} ({{ alb.applyCount }})</span>
             </button>
           </div>
 
@@ -771,7 +772,7 @@ async function goFromSelect() {
     alb.selectedSources = [...selectedProviders.value]
     initAlbumQuery()
     await nextTick()
-    albSearchInput.value?.focus()
+    if (window.innerWidth >= 640) albSearchInput.value?.focus()
     if (alb.query) doAlbumSearch()
   }
 }
