@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.8.25-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.9.7-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -264,7 +264,15 @@ docker-compose pull && docker-compose up -d
 
 | 버전 | 날짜 | 주요 변경사항 |
 |------|------|--------------|
-| **v0.8.25** | 2026-04-15 | 모바일 폴더 선택 시 하위 폴더 파일 자동 표시 버그 수정 |
+| **v0.9.7** | 2026-04-19 | 알송 LRC 안정화 — 차단/Rate Limit 감지 즉시 중단, 배치 딜레이, ID3v2.4 해시 수정, 괄호 제거 개선 |
+| v0.9.6 | 2026-04-18 | 최근 폴더 계정 연동 — 기기와 무관하게 로그인 계정 기준으로 동기화 |
+| v0.9.5 | 2026-04-18 | 라이브러리로 이동 — 새 폴더 생성 후 해당 폴더로 자동 진입 |
+| v0.9.4 | 2026-04-18 | 폴더 로딩 성능 개선 — scandir 조기 종료로 N+1 파일시스템 읽기 제거, 파일 목록 즉시 표시 |
+| v0.9.3 | 2026-04-17 | 모바일 최적화 — 자동태그 검색 결과·마법사 설정 레이아웃, 백업 파일 업로드 복원 |
+| v0.9.2 | 2026-04-17 | 태그 변수 입력 통합 컴포넌트, 특수문자(`?` `!` `:`) 검색 정규화, 백업에 앱 버전 포함, NAS 마운트 안내 |
+| v0.9.1 | 2026-04-17 | 자동태그 파일명 패턴 변수 삽입 버튼 및 프리셋 드롭다운 추가 |
+| v0.9.0 | 2026-04-17 | 자동태그 개선, 마법사 중단·진행 표시, Pull-to-Refresh, 파일명 파서 |
+| v0.8.25 | 2026-04-15 | 모바일 폴더 선택 시 하위 폴더 파일 자동 표시 버그 수정 |
 | v0.8.24 | 2026-04-14 | 마법사 기능 안정화 및 전반 개선 |
 | v0.8.19 | 2026-03-31 | 마법사 단계 스킵, 단계 활성/비활성 토글, 순서 저장, 자동태그 앨범선택 가능하도록 WizardDialog 임시 숨김 수정 |
 | v0.8.18 | 2026-03-31 | 마법사 기능(5단계 자동 순차 실행), 모바일 롱프레스 다중 선택, 재귀 모드 폴더 단위 선택, 외부 태그 403 우회 개선 |

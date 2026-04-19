@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.8.25-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.9.7-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -264,7 +264,15 @@ docker-compose pull && docker-compose up -d
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **v0.8.25** | 2026-04-15 | Fix: mobile folder selection now auto-loads files from subfolders |
+| **v0.9.7** | 2026-04-19 | Alsong LRC hardening — block/rate-limit detection with immediate abort, batch delay, ID3v2.4 hash fix, unlimited bracket stripping |
+| v0.9.6 | 2026-04-18 | Recent folders synced per account — restored on any device after login |
+| v0.9.5 | 2026-04-18 | Move to Library — automatically enter a newly created folder |
+| v0.9.4 | 2026-04-18 | Folder loading performance — scandir early-exit removes N+1 FS reads, file list shown immediately |
+| v0.9.3 | 2026-04-17 | Mobile optimization — auto-tag results & wizard settings layout, backup file upload & restore |
+| v0.9.2 | 2026-04-17 | Unified tag-variable input component, search normalization for `?` `!` `:`, app version in backup filename, NAS mount guide |
+| v0.9.1 | 2026-04-17 | Auto-tag filename pattern — variable insert button and preset dropdown |
+| v0.9.0 | 2026-04-17 | Auto-tag improvements, wizard stop/progress indicator, pull-to-refresh, filename parser |
+| v0.8.25 | 2026-04-15 | Fix: mobile folder selection now auto-loads files from subfolders |
 | v0.8.24 | 2026-04-14 | Wizard feature stabilization and overall improvements |
 | v0.8.19 | 2026-03-31 | Wizard step skip, step enable/disable toggle, order persistence, fix WizardDialog hiding during auto-tag album selection |
 | v0.8.18 | 2026-03-31 | Wizard (5-step sequential automation), mobile long-press multi-select, folder-level selection in recursive mode, external tag 403 bypass improvements |
