@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import shutil
+import time
 from pathlib import Path
 
 _log = logging.getLogger(__name__)
@@ -1287,6 +1288,10 @@ def fetch_lyrics_endpoint(
                     source_used = fallback
 
             results.append({"path": path_str, "source_used": source_used, **result})
+
+            # 알송 사용 시 Rate Limit 방지 딜레이 (배치 파일 간)
+            if primary == "alsong" or fallback == "alsong":
+                time.sleep(0.3)
 
         except HTTPException:
             results.append({"path": path_str, "status": "error", "message": "허용되지 않는 경로입니다"})

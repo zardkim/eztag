@@ -30,6 +30,10 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+# 차단/Rate Limit 응답을 나타내는 내부 예외
+class _AlsongBlocked(Exception):
+    pass
+
 _ALSONG_URL = "http://lyrics.alsong.co.kr/alsongwebservice/service1.asmx"
 
 # 2019년 프로토콜 변경으로 모든 요청에 필요한 인증 토큰 (foobar2000 플러그인에서 추출)
@@ -100,15 +104,18 @@ _SOAP_SEARCH_TEMPLATE = """\
   </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>"""
 
-# 제목에서 제거할 패턴
+# 제목에서 제거할 패턴 (괄호 내용 길이 제한 없음)
 _TITLE_NOISE_RE = re.compile(
     r"""
     \s*[\(\[\{]                  # 여는 괄호
-    [^\)\]\}]{0,40}              # 괄호 안 내용 (최대 40자)
+    [^\)\]\}]*                   # 괄호 안 내용 (길이 제한 없음)
     [\)\]\}]                     # 닫는 괄호
     """,
     re.VERBOSE,
 )
+
+# MAC 주소 / 로컬 IP — 모듈 로드 시 1회만 계산
+_MAC_ADDRESS: str = f"{uuid.getnode():012X}"
 _FEAT_RE = re.compile(r"\s+(?:feat\.?|ft\.?|with)\s+.+$", re.IGNORECASE)
 
 
@@ -137,19 +144,25 @@ def _strip_brackets(title: str) -> str:
 
 
 def _get_mac_address() -> str:
-    """MAC 주소 반환 (대문자, 콜론 없음). 예: A1B2C3D4E5F6"""
-    mac_int = uuid.getnode()
-    return f"{mac_int:012X}"
+    """MAC 주소 반환 — 모듈 레벨 캐시 사용."""
+    return _MAC_ADDRESS
+
+
+_LOCAL_IP: Optional[str] = None
 
 
 def _get_local_ip() -> str:
-    """로컬 IP 주소 반환. 실패 시 127.0.0.1."""
+    """로컬 IP 주소 반환. 실패 시 127.0.0.1. 첫 호출 후 캐시."""
+    global _LOCAL_IP
+    if _LOCAL_IP is not None:
+        return _LOCAL_IP
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.connect(("8.8.8.8", 80))
-            return s.getsockname()[0]
+            _LOCAL_IP = s.getsockname()[0]
     except Exception:
-        return "127.0.0.1"
+        _LOCAL_IP = "127.0.0.1"
+    return _LOCAL_IP
 
 
 # ──────────────────────────────────────────────
@@ -172,6 +185,7 @@ def _compute_alsong_hash(file_path: str) -> Optional[str]:
         if ext == ".mp3":
             # ID3v2 태그 건너뛰기
             if raw[:3] == b"ID3":
+                id3_ver = raw[3] if len(raw) > 3 else 0   # 3=ID3v2.3, 4=ID3v2.4
                 flags = raw[5] if len(raw) > 5 else 0
                 if len(raw) >= 10:
                     sb = raw[6:10]
@@ -181,8 +195,17 @@ def _compute_alsong_hash(file_path: str) -> Optional[str]:
                     offset = 10 + size
                     # Extended header?
                     if flags & 0x40 and len(raw) > offset + 4:
-                        ext_size = struct.unpack(">I", raw[offset:offset + 4])[0]
-                        offset += ext_size + 4
+                        raw_ext = raw[offset:offset + 4]
+                        if id3_ver >= 4:
+                            # ID3v2.4: synchsafe integer, 크기에 4바이트 자신 포함
+                            ext_size = 0
+                            for b in raw_ext:
+                                ext_size = (ext_size << 7) | (b & 0x7F)
+                            offset += ext_size
+                        else:
+                            # ID3v2.3: 일반 32비트 big-endian, 4바이트 미포함
+                            ext_size = struct.unpack(">I", raw_ext)[0]
+                            offset += ext_size + 4
 
         audio_chunk = raw[offset:offset + 163840]
         if len(audio_chunk) < 1024:
@@ -202,8 +225,9 @@ def _compute_alsong_hash(file_path: str) -> Optional[str]:
 def _post_soap(body: str, headers: dict) -> Optional[bytes]:
     """알송 SOAP 요청 → 응답 bytes 반환. 네트워크 오류 시 None.
 
-    HTTP 500도 Fault 본문을 반환할 수 있으므로 raise_for_status() 하지 않음.
-    각 호출자가 Fault 여부를 직접 판단한다.
+    - 429 / 403: _AlsongBlocked 발생 → 호출자가 즉시 중단
+    - 500: Fault 본문을 반환할 수 있으므로 그대로 반환 (호출자가 판단)
+    - 기타 4xx: None 반환
     """
     try:
         resp = requests.post(
@@ -212,7 +236,14 @@ def _post_soap(body: str, headers: dict) -> Optional[bytes]:
             headers=headers,
             timeout=10,
         )
+        if resp.status_code in (429, 403):
+            raise _AlsongBlocked(f"HTTP {resp.status_code} — 알송 서버 차단/Rate Limit")
+        if resp.status_code >= 400 and resp.status_code != 500:
+            logger.warning(f"[alsong] unexpected HTTP {resp.status_code}")
+            return None
         return resp.content
+    except _AlsongBlocked:
+        raise
     except Exception as e:
         logger.warning(f"[alsong] request error: {e}")
         return None
@@ -254,8 +285,8 @@ def _fetch_lyric_by_hash(checksum: str) -> Optional[str]:
     if content is None:
         return None
 
-    # 해시 미매칭시 Fault 반환
-    if b"Fault" in content:
+    # 해시 미매칭시 SOAP Fault 반환
+    if b"<Fault" in content or b":Fault" in content:
         return None
 
     return _extract_lyric_from_xml(content)
@@ -320,18 +351,23 @@ def fetch_lrc_for_file(file_path: str, artist: str, title: str) -> dict:
 
     lrc = None
 
-    # 1순위: 해시 기반 정확 매칭
-    checksum = _compute_alsong_hash(file_path)
-    if checksum:
-        logger.debug(f"[alsong] hash={checksum}, trying GetLyric8")
-        lrc = _fetch_lyric_by_hash(checksum)
-        if lrc:
-            logger.info(f"[alsong] hash match: {p.name}")
+    try:
+        # 1순위: 해시 기반 정확 매칭
+        checksum = _compute_alsong_hash(file_path)
+        if checksum:
+            logger.debug(f"[alsong] hash={checksum}, trying GetLyric8")
+            lrc = _fetch_lyric_by_hash(checksum)
+            if lrc:
+                logger.info(f"[alsong] hash match: {p.name}")
 
-    # 2순위: 텍스트 검색 (해시 미매칭 또는 해시 계산 실패 시)
-    if lrc is None and title:
-        logger.debug(f"[alsong] hash miss, trying text search: title={title!r} artist={artist!r}")
-        lrc = _fetch_lyric_by_text(title, artist)
+        # 2순위: 텍스트 검색 (해시 미매칭 또는 해시 계산 실패 시)
+        if lrc is None and title:
+            logger.debug(f"[alsong] hash miss, trying text search: title={title!r} artist={artist!r}")
+            lrc = _fetch_lyric_by_text(title, artist)
+
+    except _AlsongBlocked as e:
+        logger.warning(f"[alsong] blocked: {e}")
+        return {"status": "error", "lrc_path": None, "message": f"알송 서버 차단/Rate Limit: {e}"}
 
     if lrc is None:
         return {"status": "not_found", "lrc_path": None, "message": "트랙을 찾을 수 없습니다"}
