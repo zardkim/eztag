@@ -297,6 +297,25 @@ export const useBrowserStore = defineStore('browser', () => {
     loadRecursiveFiles(folder.path)
   }
 
+  function resetFolder() {
+    // 선택 폴더 초기화 — 태깅 버튼 진입 시 이전 startup 폴더 제거용
+    if (_scanPollTimer) { clearTimeout(_scanPollTimer); _scanPollTimer = null }
+    _scanRetryCount = 0
+    selectedFolder.value = null
+    selectedFile.value = null
+    selectedExtraFile.value = null
+    files.value = []
+    subfolders.value = []
+    extraFiles.value = []
+    breadcrumb.value = []
+    checkedPaths.value = new Set()
+    filterText.value = ''
+    folderGroups.value = []
+    isRecursiveMode.value = false
+    albumDescription.value = null
+    hasEztagReport.value = false
+  }
+
   function selectFolder(folder, crumb = null, area = null) {
     // 폴더 변경 시 이전 폴더의 스캔 완료 대기 타이머 취소, 재시도 카운터 초기화
     if (_scanPollTimer) {
@@ -416,6 +435,6 @@ export const useBrowserStore = defineStore('browser', () => {
     isRecursiveMode, folderGroups,
     loadFiles, selectFolder, selectFolderRecursive, loadRecursiveFiles,
     selectFile, selectExtraFile, toggleCheck, toggleAll, setCheckedPaths,
-    updateFile, updateFiles, invalidateFilesCache,
+    updateFile, updateFiles, invalidateFilesCache, resetFolder,
   }
 })

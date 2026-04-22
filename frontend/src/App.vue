@@ -341,7 +341,7 @@
           : (route.path === '/browser' && browserStore.files.length > 0)
             ? 'text-violet-400 dark:text-violet-500'
             : 'text-gray-400 dark:text-gray-500'"
-        @click="mobileUserOpen = false; route.path === '/browser' ? browserStore.mobileMenuOpen = !browserStore.mobileMenuOpen : router.push('/browser')"
+        @click="onTaggingClick"
       >
         <div class="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
           :class="route.path === '/browser' && browserStore.mobileMenuOpen
@@ -568,6 +568,7 @@ onUnmounted(() => {
 // 최근 폴더 저장
 const RECENT_FOLDERS_KEY = 'eztag-recent-folders'
 const LAST_FOLDER_KEY = 'eztag-last-folder'
+let _skipLastFolder = false  // startup 자동선택 시 LAST_FOLDER_KEY 덮어쓰기 방지
 
 async function saveRecentFolder(folder, area) {
   try {
@@ -594,6 +595,11 @@ watch(() => browserStore.selectedFolder, async (folder) => {
   if (folder) {
     await saveRecentFolder(folder, browserStore.currentArea)
     // 마지막 열기 폴더 저장 (새로고침 후 복원용)
+    // startup 자동선택(_skipLastFolder=true)인 경우 덮어쓰지 않음
+    if (_skipLastFolder) {
+      _skipLastFolder = false
+      return
+    }
     try {
       localStorage.setItem(LAST_FOLDER_KEY, JSON.stringify({
         folder: { name: folder.name, path: folder.path },
@@ -676,6 +682,28 @@ async function changePassword() {
   }
 }
 
+// ── 모바일 태깅 버튼 ─────────────────────────────────
+function onTaggingClick() {
+  mobileUserOpen.value = false
+  if (route.path === '/browser') {
+    browserStore.mobileMenuOpen = !browserStore.mobileMenuOpen
+    return
+  }
+  // 마지막 작업 폴더 복원 후 이동
+  // 저장된 폴더가 없으면 startup 자동선택(workspace root 전체목록)이 남아있을 수 있으므로 초기화
+  try {
+    const saved = JSON.parse(localStorage.getItem(LAST_FOLDER_KEY) || 'null')
+    if (saved?.folder?.path) {
+      browserStore.selectFolder(saved.folder, saved.breadcrumb || [saved.folder], saved.area || null)
+    } else {
+      browserStore.resetFolder()
+    }
+  } catch {
+    browserStore.resetFolder()
+  }
+  router.push('/browser')
+}
+
 // ───────────────────────────────────────────────────
 function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value
@@ -700,6 +728,7 @@ async function loadAppConfig() {
           const { data: ws } = await workspaceApi.workspaceRoots()
           if (ws.configured && ws.roots?.length > 0) {
             const root = ws.roots[0]
+            _skipLastFolder = true  // startup 자동선택 — LAST_FOLDER_KEY 유지
             browserStore.selectFolder({ name: root.name, path: root.path }, [{ name: root.name, path: root.path }], 'workspace')
           }
         } catch { /* ignore */ }
@@ -708,6 +737,7 @@ async function loadAppConfig() {
           const { data: lib } = await workspaceApi.libraryRoots()
           if (lib.roots?.length > 0) {
             const root = lib.roots[0]
+            _skipLastFolder = true  // startup 자동선택 — LAST_FOLDER_KEY 유지
             browserStore.selectFolder({ name: root.name, path: root.path }, [{ name: root.name, path: root.path }], 'library')
           }
         } catch { /* ignore */ }
