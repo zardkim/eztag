@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.9.7-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.9.8-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -264,7 +264,8 @@ docker-compose pull && docker-compose up -d
 
 | 버전 | 날짜 | 주요 변경사항 |
 |------|------|--------------|
-| **v0.9.7** | 2026-04-19 | 알송 LRC 안정화 — 차단/Rate Limit 감지 즉시 중단, 배치 딜레이, ID3v2.4 해시 수정, 괄호 제거 개선 |
+| **v0.9.8** | 2026-09-01 | 모바일 태깅 버튼 진입 시 마지막 작업 폴더 복원, 시작 폴더 자동선택이 마지막 폴더를 덮어쓰던 문제 수정 |
+| v0.9.7 | 2026-04-19 | 알송 LRC 안정화 — 차단/Rate Limit 감지 즉시 중단, 배치 딜레이, ID3v2.4 해시 수정, 괄호 제거 개선 |
 | v0.9.6 | 2026-04-18 | 최근 폴더 계정 연동 — 기기와 무관하게 로그인 계정 기준으로 동기화 |
 | v0.9.5 | 2026-04-18 | 라이브러리로 이동 — 새 폴더 생성 후 해당 폴더로 자동 진입 |
 | v0.9.4 | 2026-04-18 | 폴더 로딩 성능 개선 — scandir 조기 종료로 N+1 파일시스템 읽기 제거, 파일 목록 즉시 표시 |

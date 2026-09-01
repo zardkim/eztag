@@ -53,3 +53,6 @@ Thumbs.db
 
 # ── 개발 유틸리티 (운영 서버에 배포 불필요) ──────────────────
 backend/reset_password.py
+
+# MCP 서버 설정 (토큰 포함 — 커밋 금지)
+.mcp.json
