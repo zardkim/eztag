@@ -360,6 +360,19 @@
             <img src="/logo-icon.svg" class="w-3 h-3 rounded-sm" alt="" />
             {{ $t('browser.eztagOrganized') }}
           </span>
+          <!-- 폴더 인스펙터 토글 -->
+          <button
+            class="ml-auto shrink-0 w-6 h-6 flex items-center justify-center rounded transition-colors"
+            :class="showPanel === 'folder'
+              ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'
+              : 'text-emerald-600/70 hover:text-emerald-600 dark:text-emerald-400/70 dark:hover:text-emerald-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
+            :title="$t('browser.folderPanel')"
+            @click="showPanel = showPanel === 'folder' ? null : 'folder'"
+          >
+            <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
+              <path d="M1.5 4.5v7a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V5.5a1 1 0 0 0-1-1H8L6.5 3h-4a1 1 0 0 0-1 1Z" stroke="currentColor" stroke-width="1.2" />
+            </svg>
+          </button>
         </template>
         <span v-else class="text-gray-400 italic text-[11px]">{{ $t('browser.selectFolder') }}</span>
       </div>
@@ -924,7 +937,7 @@
 
       <!-- Batch Tag Panel (right) -->
       <div
-        v-if="showPanel && browserStore.files.length > 0"
+        v-if="showPanel === 'folder' || (showPanel && browserStore.files.length > 0)"
         class="w-full sm:w-80 lg:w-96 shrink-0 overflow-y-auto max-h-full"
       >
         <BatchTagPanel
@@ -933,6 +946,10 @@
           @close="closePanel"
           @saved="onSaved"
           @search-tag="onPanelSearchTag"
+        />
+        <FolderInspectorPanel
+          v-else-if="showPanel === 'folder'"
+          @close="closePanel"
         />
       </div>
     </div>
@@ -1049,6 +1066,7 @@ import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import BatchTagPanel from '../components/BatchTagPanel.vue'
+import FolderInspectorPanel from '../components/FolderInspectorPanel.vue'
 import SpotifySearchDialog from '../components/SpotifySearchDialog.vue'
 import RenameByTagsModal from '../components/RenameByTagsModal.vue'
 import MoveToDestinationModal from '../components/MoveToDestinationModal.vue'

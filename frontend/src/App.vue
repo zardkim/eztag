@@ -92,28 +92,6 @@
     </Teleport>
 
     <!-- ══════════════════════════════════════════════
-         MOBILE: 폴더/파일 열기 모달
-    ══════════════════════════════════════════════ -->
-    <Teleport to="body">
-      <LibraryPickerModal
-        v-if="mobileShowWorkspacePicker"
-        :folder-mode="true"
-        area="workspace"
-        @close="mobileShowWorkspacePicker = false"
-        @select-folder="onMobileSelectWorkspaceFolder"
-        @select-folder-recursive="f => { mobileShowWorkspacePicker = false; browserStore.selectFolderRecursive({ name: f.name, path: f.path }, [{ name: f.name, path: f.path }], 'workspace'); router.push('/browser') }"
-      />
-      <LibraryPickerModal
-        v-if="mobileShowLibraryPicker"
-        :folder-mode="true"
-        area="library"
-        @close="mobileShowLibraryPicker = false"
-        @select-folder="onMobileSelectLibraryFolder"
-        @select-folder-recursive="f => { mobileShowLibraryPicker = false; browserStore.selectFolderRecursive({ name: f.name, path: f.path }, [{ name: f.name, path: f.path }], 'library'); router.push('/browser') }"
-      />
-    </Teleport>
-
-    <!-- ══════════════════════════════════════════════
          DESKTOP: 사이드바 (lg 이상만)
     ══════════════════════════════════════════════ -->
     <aside
@@ -178,8 +156,8 @@
         <button
           v-if="sidebarCollapsed"
           class="w-full flex items-center justify-center px-2 py-2 rounded-lg text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
-          title="폴더 열기"
-          @click="workspaceSidebarRef?.openFolderPicker()"
+          title="폴더 트리 열기"
+          @click="toggleSidebar"
         ><span class="text-base">📂</span></button>
         <RouterLink
           v-for="item in bottomNav"
@@ -297,42 +275,6 @@
         <span class="text-[10px] font-medium">{{ $t('nav.home') }}</span>
       </RouterLink>
 
-      <!-- ② + 폴더 열기 (초록색) -->
-      <div class="flex-1 flex flex-col items-center justify-center relative">
-        <button
-          class="flex flex-col items-center justify-center gap-0.5 transition-colors"
-          :class="mobileFolderMenuOpen ? 'text-emerald-500 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-500'"
-          @click.stop="mobileUserOpen = false; mobileFolderMenuOpen = !mobileFolderMenuOpen"
-        >
-          <div class="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
-            :class="mobileFolderMenuOpen ? 'bg-emerald-500 text-white' : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 dark:text-emerald-400'"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-            </svg>
-          </div>
-          <span class="text-[10px] font-medium">열기</span>
-        </button>
-        <!-- 팝업 메뉴 -->
-        <Transition enter-from-class="opacity-0 scale-95" leave-to-class="opacity-0 scale-95" enter-active-class="transition duration-150 origin-bottom" leave-active-class="transition duration-100 origin-bottom">
-          <div
-            v-if="mobileFolderMenuOpen"
-            class="absolute bottom-12 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden w-44 z-50"
-            @click.stop
-          >
-            <button
-              class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors text-left"
-              @click="mobileFolderMenuOpen = false; mobileShowWorkspacePicker = true"
-            ><span class="text-base">📂</span>{{ $t('sidebar.openWorkspace') }}</button>
-            <div class="h-px bg-gray-100 dark:bg-gray-700"></div>
-            <button
-              class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-left"
-              @click="mobileFolderMenuOpen = false; mobileShowLibraryPicker = true"
-            ><span class="text-base">📚</span>{{ $t('sidebar.openLibrary') }}</button>
-          </div>
-        </Transition>
-      </div>
-
       <!-- ③ 태깅 (보라색) -->
       <button
         class="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors"
@@ -362,7 +304,7 @@
           :class="browserStore.wizardOpen || mobileWizardMenuOpen
             ? 'text-indigo-500 dark:text-indigo-400'
             : 'text-gray-400 dark:text-gray-500'"
-          @click.stop="mobileUserOpen = false; mobileFolderMenuOpen = false; toggleMobileWizardMenu()"
+          @click.stop="mobileUserOpen = false; toggleMobileWizardMenu()"
         >
           <div class="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
             :class="browserStore.wizardOpen || mobileWizardMenuOpen
@@ -486,7 +428,6 @@ import { authApi, workspaceApi, userPrefsApi } from './api/index.js'
 import { configApi } from './api/config.js'
 import WorkspaceSidebar from './components/WorkspaceSidebar.vue'
 import ToastContainer from './components/ToastContainer.vue'
-import LibraryPickerModal from './components/LibraryPickerModal.vue'
 import JobIndicator from './components/JobIndicator.vue'
 
 /* global __APP_VERSION__ */
@@ -505,9 +446,6 @@ const workspaceSidebarRef = ref(null)
 // 모바일 시트 상태
 const mobileUserOpen = ref(false)
 const mobileShowFolderPicker = ref(false)
-const mobileFolderMenuOpen = ref(false)
-const mobileShowWorkspacePicker = ref(false)
-const mobileShowLibraryPicker = ref(false)
 const mobileWizardMenuOpen = ref(false)
 
 const mobileWizardPresets = ref([])
@@ -542,19 +480,16 @@ function onMobileSelectFolder(folder) {
 }
 
 function onMobileSelectWorkspaceFolder(folder) {
-  mobileShowWorkspacePicker.value = false
   browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'workspace')
   router.push('/browser')
 }
 
 function onMobileSelectLibraryFolder(folder) {
-  mobileShowLibraryPicker.value = false
   browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'library')
   router.push('/browser')
 }
 
 function closeMobileMenus() {
-  mobileFolderMenuOpen.value = false
   mobileWizardMenuOpen.value = false
 }
 

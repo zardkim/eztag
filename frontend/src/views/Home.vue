@@ -2,38 +2,19 @@
   <div ref="homeContainerRef" class="flex flex-col h-full overflow-y-auto bg-gray-50 dark:bg-gray-950">
     <div class="p-4 pb-3 pt-5">
       <h1 class="text-lg font-bold text-gray-900 dark:text-white mb-3">{{ t('home.title') }}</h1>
-      <div class="flex gap-2">
-        <button
-          class="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-orange-500 hover:bg-orange-400 active:bg-orange-600 text-white text-sm font-semibold transition-colors"
-          @click="showWorkspacePicker = true"
-        >
-          <span class="text-base">📂</span>
-          <span>{{ t('sidebar.openWorkspace') }}</span>
-        </button>
-        <button
-          class="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-semibold transition-colors"
-          @click="showLibraryPicker = true"
-        >
-          <span class="text-base">📚</span>
-          <span>{{ t('sidebar.openLibrary') }}</span>
-        </button>
-      </div>
+      <!-- 작업공간/라이브러리를 한 트리(2섹션)로 보여주므로 버튼은 하나로 충분하다 -->
+      <button
+        class="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-sm font-semibold transition-colors"
+        @click="showFolderSheet = true"
+      >
+        <svg class="w-4 h-4" viewBox="0 0 16 16" fill="none">
+          <path d="M1.5 4.5v7a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V5.5a1 1 0 0 0-1-1H8L6.5 3h-4a1 1 0 0 0-1 1Z" stroke="currentColor" stroke-width="1.4" />
+        </svg>
+        <span>{{ t('home.openFolder') }}</span>
+      </button>
     </div>
 
-    <LibraryPickerModal
-      v-if="showWorkspacePicker"
-      :folder-mode="true"
-      area="workspace"
-      @close="showWorkspacePicker = false"
-      @select-folder="onSelectWorkspaceFolder"
-    />
-    <LibraryPickerModal
-      v-if="showLibraryPicker"
-      :folder-mode="true"
-      area="library"
-      @close="showLibraryPicker = false"
-      @select-folder="onSelectLibraryFolder"
-    />
+    <FolderTreeSheet :open="showFolderSheet" @close="showFolderSheet = false" />
 
     <!-- 현재 열린 폴더 -->
     <div v-if="browserStore.selectedFolder" class="px-4 mb-4">
@@ -149,7 +130,7 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useBrowserStore } from '../stores/browser.js'
-import LibraryPickerModal from '../components/LibraryPickerModal.vue'
+import FolderTreeSheet from '../components/FolderTreeSheet.vue'
 import { userPrefsApi } from '../api/index.js'
 import { usePullToRefresh } from '../composables/usePullToRefresh.js'
 
@@ -161,8 +142,7 @@ const browserStore = useBrowserStore()
 const homeContainerRef = ref(null)
 
 const RECENT_KEY = 'eztag-recent-folders'
-const showWorkspacePicker = ref(false)
-const showLibraryPicker = ref(false)
+const showFolderSheet = ref(false)
 
 const recentFolders = ref([])
 
@@ -205,20 +185,6 @@ onMounted(loadRecent)
 
 async function openFolder(item) {
   browserStore.selectFolder({ name: item.name, path: item.path }, [{ name: item.name, path: item.path }], item.area || null)
-  await nextTick()
-  if (route.path !== '/browser') router.push('/browser')
-}
-
-async function onSelectWorkspaceFolder(folder) {
-  showWorkspacePicker.value = false
-  browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'workspace')
-  await nextTick()
-  if (route.path !== '/browser') router.push('/browser')
-}
-
-async function onSelectLibraryFolder(folder) {
-  showLibraryPicker.value = false
-  browserStore.selectFolder({ name: folder.name, path: folder.path }, [{ name: folder.name, path: folder.path }], 'library')
   await nextTick()
   if (route.path !== '/browser') router.push('/browser')
 }
