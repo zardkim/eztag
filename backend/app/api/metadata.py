@@ -7,6 +7,7 @@ GET  /api/metadata/album-tracks - Spotify 앨범 트랙 목록
 """
 import json
 import logging
+import time
 import requests as _requests
 from pathlib import Path
 from typing import Optional, Literal, List
@@ -475,6 +476,23 @@ def _search_tracks_by_providers(q: str, providers: list, db: Session) -> list:
     return results
 
 
+def _parsed_from_tags(tags: dict) -> dict:
+    """파일에 이미 들어있는 태그로 검색용 parsed 딕셔너리를 만든다.
+
+    멜론/벅스 등에서 받은 파일은 대개 title/artist 태그가 정확하다.
+    파일명 패턴이 안 맞아 파싱이 실패해도 이걸로 검색할 수 있다.
+    """
+    out = {}
+    if tags.get("title"):
+        out["title"] = str(tags["title"]).strip()
+    if tags.get("artist"):
+        out["artist"] = str(tags["artist"]).strip()
+    for k in ("track_no", "disc_no"):
+        if tags.get(k):
+            out[k] = tags[k]
+    return out
+
+
 _AUTO_TAG_WRITE_FIELDS = {
     "title", "artist", "album_artist", "album_title",
     "track_no", "disc_no", "total_tracks", "year", "release_date",
@@ -488,6 +506,23 @@ class AutoTagByFilenameRequest(BaseModel):
     providers: List[str]
     match_threshold: float = 70.0
 
+    # 커버 정책. 파일 단위 태깅은 트랙마다 앨범이 다를 수 있으므로(차트·컴필레이션)
+    # 폴더 커버를 건드리지 않는 "embed"가 기본값이다.
+    #   embed        : 파일에 임베드만
+    #   embed+folder : 임베드 + 폴더 커버(cover.jpg)도 갱신 — 진짜 앨범 폴더용
+    #   none         : 커버를 건드리지 않음
+    covers: Literal["embed", "embed+folder", "none"] = "embed"
+
+    # 검색어를 무엇에서 뽑을지.
+    #   filename      : 파일명 파싱 결과만 (구버전 동작)
+    #   tags          : 파일에 이미 있는 태그만
+    #   tags_fallback : 파일명 우선, 파싱 실패 시 기존 태그로 폴백 (기본값)
+    search_source: Literal["filename", "tags", "tags_fallback"] = "tags_fallback"
+
+    # provider 요청 간 간격(ms). 100곡짜리 차트 폴더는 캐시가 거의 안 먹어
+    # 검색이 곡 수만큼 발생한다. 차단을 피하려 기본으로 간격을 둔다.
+    request_delay_ms: int = 400
+
 
 class FileAutoTagResult(BaseModel):
     path: str
@@ -500,6 +535,7 @@ class FileAutoTagResult(BaseModel):
     matched_year: Optional[int] = None
     matched_genre: Optional[str] = None
     matched_provider: Optional[str] = None
+    source: Optional[str] = None      # 검색어를 뽑은 곳 (filename | tags)
     original: Optional[dict] = None   # 되돌리기용 원본 태그
     error: Optional[str] = None
 
@@ -516,26 +552,35 @@ def auto_tag_by_filename(
 ):
     """파일명 파싱 → provider 검색 → 매칭 → 태그 + 커버 자동 적용 (SSE 스트리밍)."""
 
+    write_folder_cover = body.covers == "embed+folder"
+
     def _apply_cover(path_str: str, cover_url: str, track):
+        """트랙에 커버를 임베드한다. 폴더 커버(cover.jpg)는 옵션일 때만 갱신.
+
+        폴더 커버 갱신을 파일마다 하면, 트랙별 앨범이 다른 컴필레이션 폴더에서
+        100개 트랙이 각자 폴더 커버를 지우고 다시 써 마지막 트랙 것만 남는다.
+        그래서 기본값은 임베드만 한다.
+        """
         try:
             resp = _requests.get(cover_url, timeout=15)
             resp.raise_for_status()
             img_data = resp.content
             content_type = resp.headers.get("content-type", "image/jpeg").split(";")[0].strip()
             _write_cover_fn(path_str, img_data, content_type, 3)
-            ext = "png" if "png" in content_type else "jpg"
-            dir_path = Path(path_str).parent
-            for old_name in ("cover.jpg", "cover.png", "folder.jpg", "folder.png"):
+            if write_folder_cover:
+                ext = "png" if "png" in content_type else "jpg"
+                dir_path = Path(path_str).parent
+                for old_name in ("cover.jpg", "cover.png", "folder.jpg", "folder.png"):
+                    try:
+                        old_f = dir_path / old_name
+                        if old_f.exists():
+                            old_f.unlink()
+                    except Exception:
+                        pass
                 try:
-                    old_f = dir_path / old_name
-                    if old_f.exists():
-                        old_f.unlink()
-                except Exception:
-                    pass
-            try:
-                (dir_path / f"cover.{ext}").write_bytes(img_data)
-            except Exception as e:
-                logger.warning(f"Cover file save failed: {e}")
+                    (dir_path / f"cover.{ext}").write_bytes(img_data)
+                except Exception as e:
+                    logger.warning(f"Cover file save failed: {e}")
             if track:
                 track.has_cover = True
         except Exception as e:
@@ -544,6 +589,7 @@ def auto_tag_by_filename(
     def generate():
         total = len(body.paths)
         search_cache: dict = {}
+        searched_any = False
         summary = {"applied": 0, "kept_existing": 0, "applied_parsed": 0, "parse_error": 0, "error": 0}
 
         for idx, path_str in enumerate(body.paths):
@@ -552,12 +598,41 @@ def auto_tag_by_filename(
             result: FileAutoTagResult
 
             try:
-                # 1. 파일명 파싱
-                parsed = parse_filename_by_pattern(filename, body.pattern)
-                if not parsed or not parsed.get("title"):
+                # 1. 검색어 소스 결정 (파일명 파싱 / 기존 태그 / 파싱 실패 시 태그 폴백)
+                existing_tags = None
+
+                def _tags():
+                    """파일 태그를 1회만 읽어 재사용."""
+                    nonlocal existing_tags
+                    if existing_tags is None:
+                        try:
+                            existing_tags = _read_tags(path_str)
+                        except Exception:
+                            existing_tags = {}
+                    return existing_tags
+
+                parsed = None
+                source = None
+
+                if body.search_source in ("filename", "tags_fallback"):
+                    parsed = parse_filename_by_pattern(filename, body.pattern)
+                    if parsed and parsed.get("title"):
+                        source = "filename"
+                    else:
+                        parsed = None
+
+                if parsed is None and body.search_source in ("tags", "tags_fallback"):
+                    from_tags = _parsed_from_tags(_tags())
+                    if from_tags.get("title"):
+                        parsed = from_tags
+                        source = "tags"
+
+                if parsed is None:
+                    # 파일명도 태그도 제목을 못 얻음 — 검색할 근거가 없다
                     result = FileAutoTagResult(
-                        path=path_str, filename=filename, parsed=parsed or {},
-                        status="parse_error", error="패턴 불일치 또는 제목 없음",
+                        path=path_str, filename=filename, parsed={},
+                        status="parse_error",
+                        error="파일명 패턴 불일치 · 기존 태그에도 제목 없음",
                     )
                     summary["parse_error"] = summary.get("parse_error", 0) + 1
                     yield f"data: {json.dumps({'type': 'progress', 'current': idx + 1, 'total': total, 'filename': filename, 'item': result.model_dump()})}\n\n"
@@ -573,7 +648,12 @@ def auto_tag_by_filename(
                 # 3. 검색 (캐시 활용)
                 cache_key = query.lower()
                 if cache_key not in search_cache:
+                    # 실제 외부 요청이 나갈 때만 간격을 둔다 (캐시 히트는 대기 없음).
+                    # 차트 폴더는 곡이 전부 달라 캐시 효과가 거의 없으므로 이 간격이 실제로 적용된다.
+                    if searched_any and body.request_delay_ms > 0:
+                        time.sleep(body.request_delay_ms / 1000.0)
                     search_cache[cache_key] = _search_tracks_by_providers(query, body.providers, db)
+                    searched_any = True
                 candidates = search_cache[cache_key]
 
                 # 4. 로컬 파일 재생시간 + Track 레코드
@@ -587,10 +667,7 @@ def auto_tag_by_filename(
 
                 if best is None:
                     # ── 미매칭: 기존 태그 유지 또는 파싱값 적용 ──
-                    try:
-                        existing = _read_tags(path_str)
-                    except Exception:
-                        existing = {}
+                    existing = _tags()
 
                     if existing.get("title"):
                         # 기존 태그가 있으면 그대로 유지 (파일 미수정)
@@ -600,7 +677,7 @@ def auto_tag_by_filename(
                         _cache.invalidate_for_file(path_str)
                         result = FileAutoTagResult(
                             path=path_str, filename=filename, parsed=parsed,
-                            status="kept_existing",
+                            status="kept_existing", source=source,
                             matched_title=existing.get("title"),
                             matched_artist=existing.get("artist"),
                             matched_album=existing.get("album_title"),
@@ -630,7 +707,7 @@ def auto_tag_by_filename(
                         _cache.invalidate_for_file(path_str)
                         result = FileAutoTagResult(
                             path=path_str, filename=filename, parsed=parsed,
-                            status="applied_parsed",
+                            status="applied_parsed", source=source,
                             matched_title=parsed.get("title"),
                             matched_artist=parsed.get("artist"),
                         )
@@ -640,11 +717,8 @@ def auto_tag_by_filename(
                     continue
 
                 # 6. 원본 태그 백업 (되돌리기용)
-                try:
-                    original_tags = _read_tags(path_str)
-                    original = {k: original_tags.get(k) for k in _AUTO_TAG_WRITE_FIELDS}
-                except Exception:
-                    original = {}
+                original_tags = _tags()
+                original = {k: original_tags.get(k) for k in _AUTO_TAG_WRITE_FIELDS}
 
                 # 7. 적용할 태그 구성
                 updates = {k: v for k, v in best.items() if k in _AUTO_TAG_WRITE_FIELDS and v is not None}
@@ -671,8 +745,8 @@ def auto_tag_by_filename(
                     track.auto_tag_status = "ok"
                     db.commit()
 
-                # 8. 커버 무조건 적용
-                if best.get("cover_url"):
+                # 8. 커버 적용 (covers 정책에 따름)
+                if body.covers != "none" and best.get("cover_url"):
                     _apply_cover(path_str, best["cover_url"], track)
                     if track:
                         db.commit()
@@ -680,7 +754,7 @@ def auto_tag_by_filename(
                 _cache.invalidate_for_file(path_str)
                 result = FileAutoTagResult(
                     path=path_str, filename=filename, parsed=parsed,
-                    status="applied",
+                    status="applied", source=source,
                     matched_title=best.get("title"),
                     matched_artist=best.get("artist"),
                     matched_album=best.get("album_title"),

@@ -154,6 +154,35 @@
             </div>
           </div>
 
+          <!-- 검색 소스 / 커버 정책 -->
+          <div class="space-y-2">
+            <label class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{{ t('autoTag.searchSourceLabel') }}</label>
+            <div class="flex flex-col gap-1">
+              <label
+                v-for="opt in SEARCH_SOURCES"
+                :key="opt.value"
+                class="flex items-start gap-2 px-2.5 py-2 rounded-xl border cursor-pointer transition-colors"
+                :class="fn.searchSource === opt.value
+                  ? 'border-indigo-400 bg-indigo-50 dark:border-indigo-600 dark:bg-indigo-900/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'"
+              >
+                <input type="radio" class="mt-0.5 accent-indigo-600" :value="opt.value" v-model="fn.searchSource" @change="persistFnOptions" />
+                <span class="min-w-0">
+                  <span class="block text-xs font-medium text-gray-800 dark:text-gray-100">{{ t(opt.label) }}</span>
+                  <span class="block text-[11px] text-gray-500 dark:text-gray-400 leading-snug">{{ t(opt.desc) }}</span>
+                </span>
+              </label>
+            </div>
+
+            <label class="flex items-start gap-2 px-2.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              <input type="checkbox" class="mt-0.5 accent-indigo-600" v-model="fn.folderCover" @change="persistFnOptions" />
+              <span class="min-w-0">
+                <span class="block text-xs font-medium text-gray-800 dark:text-gray-100">{{ t('autoTag.folderCoverLabel') }}</span>
+                <span class="block text-[11px] text-gray-500 dark:text-gray-400 leading-snug">{{ t('autoTag.folderCoverDesc') }}</span>
+              </span>
+            </label>
+          </div>
+
           <!-- 파싱 미리보기 -->
           <div class="space-y-1.5">
             <div class="flex items-center justify-between">
@@ -183,15 +212,21 @@
                   </thead>
                   <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                     <tr v-for="row in fn.previewRows" :key="row.path"
-                      :class="row.error ? 'bg-red-50/50 dark:bg-red-900/5' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'"
+                      :class="rowWillFallback(row) ? 'bg-amber-50/50 dark:bg-amber-900/10'
+                        : row.error ? 'bg-red-50/50 dark:bg-red-900/5'
+                        : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'"
                     >
                       <td class="px-2 py-1.5 text-gray-400 dark:text-gray-500 max-w-[120px] truncate font-mono text-[10px] border-r border-gray-100 dark:border-gray-800">{{ stemOf(fileMap[row.path]?.filename || '') }}</td>
                       <td class="px-2 py-1.5 text-gray-500 dark:text-gray-400 max-w-[90px] truncate bg-gray-50/30 dark:bg-gray-800/20">{{ fileMap[row.path]?.artist || '' }}</td>
                       <td class="px-2 py-1.5 text-gray-500 dark:text-gray-400 max-w-[100px] truncate bg-gray-50/30 dark:bg-gray-800/20">{{ fileMap[row.path]?.title || '' }}</td>
                       <td class="px-2 py-1.5 text-gray-500 dark:text-gray-400 max-w-[70px] truncate bg-gray-50/30 dark:bg-gray-800/20">{{ fileMap[row.path]?.genre || '' }}</td>
                       <td class="px-2 py-1.5 text-gray-500 dark:text-gray-400 border-r border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-800/20">{{ fileMap[row.path]?.year || '' }}</td>
-                      <td class="px-2 py-1.5 max-w-[90px] truncate" :class="row.error ? 'text-red-400' : diffClass(row.path, 'artist', row.parsed?.artist)">
-                        <span v-if="row.error" class="text-[10px]">✗ {{ t('autoTag.parseNoMatch') }}</span>
+                      <td class="px-2 py-1.5 max-w-[90px] truncate"
+                        :class="rowWillFallback(row) ? 'text-amber-600 dark:text-amber-400'
+                          : row.error ? 'text-red-400'
+                          : diffClass(row.path, 'artist', row.parsed?.artist)">
+                        <span v-if="rowWillFallback(row)" class="text-[10px]">↩ {{ t('autoTag.willUseTags') }}</span>
+                        <span v-else-if="row.error" class="text-[10px]">✗ {{ t('autoTag.parseNoMatch') }}</span>
                         <span v-else>{{ row.parsed?.artist || '' }}</span>
                       </td>
                       <td class="px-2 py-1.5 max-w-[100px] truncate" :class="diffClass(row.path, 'title', row.parsed?.title)">{{ row.parsed?.title || '' }}</td>
@@ -654,7 +689,11 @@ const historyStore = useHistoryStore()
 
 // ── 공통 상태 ─────────────────────────────────────────────
 const step = ref('select')   // 'select' | 'fn_config' | 'fn_running' | 'fn_result' | 'alb_search' | 'alb_compare'
-const mode = ref('album') // 'filename' | 'album'
+// 마지막으로 쓴 모드를 기억한다. 기본값이 늘 'album'이면 파일 단위 모드가 있다는 걸
+// 발견하기 어렵다(차트·컴필레이션 폴더는 파일 단위가 맞다).
+const MODE_KEY = 'eztag-autotag-mode'
+const mode = ref(localStorage.getItem(MODE_KEY) === 'filename' ? 'filename' : 'album')
+watch(mode, v => { try { localStorage.setItem(MODE_KEY, v) } catch {} })
 const selectedProviders = ref([])
 
 // ── Provider 메타 ──────────────────────────────────────────
@@ -780,8 +819,15 @@ async function goFromSelect() {
 // ═══════════════════════════════════════════════════════════
 //  파일명 모드 (fn_*)
 // ═══════════════════════════════════════════════════════════
+const SRC_KEY = 'eztag-autotag-search-source'
+const COVER_KEY = 'eztag-autotag-folder-cover'
+
 const fn = reactive({
   pattern:          '',
+  // 검색 소스: 파일명 우선 + 파싱 실패 시 기존 태그 폴백 (기본값)
+  searchSource:     localStorage.getItem(SRC_KEY) || 'tags_fallback',
+  // 폴더 커버(cover.jpg)까지 갱신할지. 컴필레이션에서 트랙마다 덮어쓰는 것을 막기 위해 기본 꺼짐
+  folderCover:      localStorage.getItem(COVER_KEY) === 'true',
   detectedPattern:  '',
   detectedConfidence: 0,
   detecting:        false,
@@ -792,6 +838,26 @@ const fn = reactive({
   reverting:        false,
   revertMessage:    '',
 })
+
+const SEARCH_SOURCES = [
+  { value: 'tags_fallback', label: 'autoTag.srcFallback', desc: 'autoTag.srcFallbackDesc' },
+  { value: 'filename',      label: 'autoTag.srcFilename', desc: 'autoTag.srcFilenameDesc' },
+  { value: 'tags',          label: 'autoTag.srcTags',     desc: 'autoTag.srcTagsDesc' },
+]
+
+// 파싱 실패 행이 폴백으로 구제되는지 — 미리보기의 빨간 ✗ 가 거짓말이 되지 않도록
+function rowWillFallback(row) {
+  if (!row.error) return false
+  if (fn.searchSource === 'filename') return false
+  return !!(fileMap.value?.[row.path]?.title)
+}
+
+function persistFnOptions() {
+  try {
+    localStorage.setItem(SRC_KEY, fn.searchSource)
+    localStorage.setItem(COVER_KEY, String(fn.folderCover))
+  } catch {}
+}
 
 const FN_PATTERN_VARS = ['%artist%', '%title%', '%track%', '%disc%', '%year%', '%album%', '%albumartist%']
 const fnPatternInputRef = ref(null)
@@ -891,6 +957,8 @@ async function runFilename() {
         pattern:         fn.pattern,
         providers:       selectedProviders.value,
         match_threshold: 70.0,
+        search_source:   fn.searchSource,
+        covers:          fn.folderCover ? 'embed+folder' : 'embed',
       },
       {
         onProgress(current, total, filename, item) {
