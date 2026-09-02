@@ -17,6 +17,7 @@ from typing import Optional
 from app.database import get_db
 from app.core.auth import get_current_user
 from app.models.scan_folder import ScanFolder
+from app.core.path_guard import safe_path, is_within, same_path, first_root_containing
 from app.models.track import Track
 from app.core.tag_writer import write_tags, write_cover, remove_cover
 from app.core.tag_reader import read_tags, extract_cover, extract_cover_at, list_covers
@@ -56,17 +57,19 @@ def _is_instrumental(title: str) -> bool:
 
 # ── 경로 보안 검증 ──────────────────────────────────────────
 def _is_under_root(p: Path, root: Path) -> bool:
-    try:
-        p.relative_to(root)
-        return True
-    except ValueError:
-        return False
+    return is_within(p, root)
 
 
 def _validate_path(path: str, db: Session, allow_destinations: bool = False, allow_lrc_folder: bool = False, allow_workspace: bool = False) -> Path:
-    """등록된 스캔 폴더(또는 이동할 폴더) 하위 경로인지 검증."""
-    import os as _os
-    p = Path(path).resolve()
+    """등록된 스캔 폴더(또는 이동할 폴더) 하위 경로인지 검증.
+
+    심볼릭 링크를 따라가지 않은 **어휘적 경로**를 반환한다.
+    resolve 한 경로를 돌려주면 이후 scandir 가 링크 대상 접두사(`/volume1/...`)로
+    자식 경로를 만들어내고, 그 경로로 오는 다음 요청이 다시 403이 된다.
+    """
+    p = safe_path(path)
+    if p is None:
+        raise HTTPException(status_code=403, detail="Path not in registered scan folders")
     roots = [Path(f.path).resolve() for f in db.query(ScanFolder).all()]
     # library_path(라이브러리 열기 피커에서 선택한 경로 허용)
     from app.core.config_store import get_library_path as _get_lib
@@ -85,12 +88,8 @@ def _validate_path(path: str, db: Session, allow_destinations: bool = False, all
     if allow_workspace:
         from app.core.config_store import get_workspace_path
         roots.append(get_workspace_path(db))
-    for root in roots:
-        try:
-            p.relative_to(root)
-            return p
-        except ValueError:
-            continue
+    if first_root_containing(p, roots) is not None:
+        return p
     raise HTTPException(status_code=403, detail="Path not in registered scan folders")
 
 
@@ -102,10 +101,10 @@ def _quick_scan(path, excluded_set: set) -> tuple[bool, bool]:
         with os.scandir(path) as it:
             for entry in it:
                 try:
-                    if not has_audio and entry.is_file(follow_symlinks=False):
+                    if not has_audio and entry.is_file():
                         if Path(entry.name).suffix.lower() in AUDIO_EXTS:
                             has_audio = True
-                    if not has_children and entry.is_dir(follow_symlinks=False):
+                    if not has_children and entry.is_dir():
                         if not entry.name.startswith(".") and entry.name not in excluded_set:
                             has_children = True
                 except OSError:
@@ -148,7 +147,7 @@ def get_roots(
                 excluded_set = set(excluded)
                 with os.scandir(p) as sc:
                     sub_entries = sorted(
-                        [e for e in sc if e.is_dir(follow_symlinks=False) and not _skip(e.name)],
+                        [e for e in sc if e.is_dir() and not _skip(e.name)],
                         key=lambda e: e.name,
                     )
                 has_children = bool(sub_entries)
@@ -206,7 +205,7 @@ def get_children(
     try:
         with os.scandir(p) as sc:
             dir_entries = sorted(
-                [e for e in sc if e.is_dir(follow_symlinks=False) and not _skip_c(e.name)],
+                [e for e in sc if e.is_dir() and not _skip_c(e.name)],
                 key=lambda e: e.name,
             )
         for entry in dir_entries:
@@ -613,8 +612,8 @@ def batch_write_tags_endpoint(
     # 유효 경로 검증
     valid_paths = []
     for raw_path in req.paths:
-        p = Path(raw_path).resolve()
-        if any(_is_under_root(p, r) for r in roots) and p.is_file():
+        p = safe_path(raw_path)
+        if p is not None and first_root_containing(p, roots) is not None and p.is_file():
             valid_paths.append(p)
 
     if not valid_paths:
@@ -1363,15 +1362,12 @@ def get_library_audio_files(
     from app.core.config_store import get_destination_folders
 
     from app.core.config_store import get_config as _get_config
-    p = Path(folder).resolve()
+    p = safe_path(folder)
     dest_paths = [Path(d["path"]).resolve() for d in get_destination_folders(db)]
     lrc_base = _get_config(db, "lrc_base_folder") or ""
     if lrc_base:
         dest_paths.append(Path(lrc_base).resolve())
-    allowed = any(
-        p == dest or _is_under_root(p, dest)
-        for dest in dest_paths
-    )
+    allowed = p is not None and first_root_containing(p, dest_paths) is not None
     if not allowed:
         raise HTTPException(status_code=403, detail="Path not in destination folders")
     if not p.is_dir():
@@ -1756,15 +1752,9 @@ def tag_from_name_apply(
 # ── 이동 대상 폴더 탐색 ─────────────────────────────────────
 
 def _is_under_destination(p: Path, destinations: list) -> bool:
-    """경로가 등록된 대상 폴더 하위인지 확인."""
-    for dest in destinations:
-        dest_p = Path(dest["path"]).resolve()
-        try:
-            p.relative_to(dest_p)
-            return True
-        except ValueError:
-            continue
-    return False
+    """경로가 등록된 대상 폴더 하위(또는 대상 폴더 자신)인지 확인."""
+    roots = [Path(d["path"]).resolve() for d in destinations]
+    return first_root_containing(p, roots) is not None
 
 
 def _get_library_path() -> Path:
@@ -1784,15 +1774,10 @@ def get_dest_children(
     if not destinations:
         raise HTTPException(status_code=404, detail="No destination folders registered")
 
-    p = Path(path).resolve()
+    p = safe_path(path)
 
     # path가 등록된 대상 폴더 루트이거나 그 하위인지 확인
-    allowed = False
-    for dest in destinations:
-        dest_p = Path(dest["path"]).resolve()
-        if p == dest_p or _is_under_destination(p, destinations):
-            allowed = True
-            break
+    allowed = p is not None and _is_under_destination(p, destinations)
 
     if not allowed:
         raise HTTPException(status_code=403, detail="Path not under any registered destination folder")
@@ -1835,7 +1820,9 @@ def dest_mkdir(
 ):
     """대상 폴더 하위에 새 폴더 생성."""
     destinations = get_destination_folders(db)
-    parent = Path(body.parent_path).resolve()
+    parent = safe_path(body.parent_path)
+    if parent is None:
+        raise HTTPException(status_code=403, detail="허용되지 않는 경로입니다")
 
     # destination_folders + ScanFolder(library roots) + library_path + workspace 모두 허용
     from app.core.config_store import get_library_path as _get_lib, get_workspace_path as _get_ws
@@ -1893,22 +1880,20 @@ def move_folder(
     library_path = _get_library_path()
     destinations = get_destination_folders(db)
 
-    source = Path(body.source_path).resolve()
-    dest_parent = Path(body.dest_path).resolve()
+    source = safe_path(body.source_path)
+    dest_parent = safe_path(body.dest_path)
+    if source is None or dest_parent is None:
+        raise HTTPException(status_code=403, detail="허용되지 않는 경로입니다")
 
     # 소스 검증: library 하위여야 함
-    try:
-        source.relative_to(library_path)
-    except ValueError:
+    if not is_within(source, library_path):
         raise HTTPException(status_code=403, detail="Source must be under the library working folder")
 
     if not source.is_dir():
         raise HTTPException(status_code=400, detail="Source is not a directory")
 
     # 대상 검증: 등록된 대상 폴더 하위여야 함
-    if not _is_under_destination(dest_parent, destinations) and not any(
-        Path(d["path"]).resolve() == dest_parent for d in destinations
-    ):
+    if not _is_under_destination(dest_parent, destinations):
         raise HTTPException(status_code=403, detail="Destination not under any registered destination folder")
 
     if not dest_parent.is_dir():
@@ -1970,25 +1955,23 @@ def move_to_library(
     workspace_base = get_workspace_path(db)
     music_base = get_library_path(db)
 
-    source = Path(body.source_path).resolve()
-    dest_parent = Path(body.dest_path).resolve()
+    source = safe_path(body.source_path)
+    dest_parent = safe_path(body.dest_path)
+    if source is None or dest_parent is None:
+        raise HTTPException(status_code=403, detail="허용되지 않는 경로입니다")
 
     # 소스: 워크스페이스 하위여야 함
-    try:
-        source.relative_to(workspace_base)
-    except ValueError:
+    if not is_within(source, workspace_base):
         raise HTTPException(status_code=403, detail="Source must be under the workspace folder")
 
     if not source.is_dir():
         raise HTTPException(status_code=400, detail="Source is not a directory")
 
     # 대상: 라이브러리 하위여야 함
-    try:
-        dest_parent.relative_to(music_base)
-    except ValueError:
+    if not is_within(dest_parent, music_base):
         # scan_folder 에 등록된 경로도 허용
         roots = [Path(f.path).resolve() for f in db.query(ScanFolder).all()]
-        if not any(_is_under_root(dest_parent, r) or dest_parent == r for r in roots):
+        if first_root_containing(dest_parent, roots) is None:
             raise HTTPException(status_code=403, detail="Destination must be under the library folder")
 
     if not dest_parent.is_dir():
@@ -2372,10 +2355,12 @@ def delete_folder(
     """라이브러리/대상 폴더 삭제 (빈 폴더만 허용)."""
     path = data.get("path", "")
     destinations = get_destination_folders(db)
-    p = Path(path).resolve()
+    p = safe_path(path)
+    if p is None:
+        raise HTTPException(status_code=403, detail="폴더가 등록된 라이브러리 경로 외부에 있습니다")
 
     # 루트 대상 폴더 자체는 삭제 불가
-    if any(Path(d["path"]).resolve() == p for d in destinations):
+    if any(same_path(p, Path(d["path"]).resolve()) for d in destinations):
         raise HTTPException(status_code=403, detail="루트 라이브러리 폴더는 삭제할 수 없습니다")
 
     # 등록된 대상 폴더 하위여야 함

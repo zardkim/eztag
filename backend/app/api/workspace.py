@@ -28,6 +28,7 @@ from app.models.workspace import WorkspaceSession, WorkspaceItem, WorkspaceHisto
 from app.core.tag_reader import read_tags
 from app.core.tag_writer import write_tags
 from app.core.config_store import get_workspace_path, get_library_path, get_excluded_folders
+from app.core.path_guard import safe_path, is_within, first_root_containing
 
 _log = logging.getLogger(__name__)
 
@@ -87,29 +88,28 @@ def _session_to_dict(session: WorkspaceSession, include_items: bool = False) -> 
 
 
 def _validate_library_path(path: str, db: Session) -> Path:
-    """라이브러리 마운트 경로 검증 (library_path 하위 또는 scan_folder)."""
+    """라이브러리 마운트 경로 검증 (library_path 하위 또는 scan_folder).
+
+    심볼릭 링크를 따라가지 않은 어휘적 경로를 반환한다 (`app.core.path_guard` 참고).
+    """
     from app.models.scan_folder import ScanFolder
-    p = Path(path).resolve()
+    p = safe_path(path)
+    if p is None:
+        raise HTTPException(status_code=403, detail=f"허용되지 않는 경로입니다: {path}")
     roots = [Path(f.path).resolve() for f in db.query(ScanFolder).all()]
     roots.append(get_library_path(db))
-    for root in roots:
-        try:
-            p.relative_to(root)
-            return p
-        except ValueError:
-            continue
+    if first_root_containing(p, roots) is not None:
+        return p
     raise HTTPException(status_code=403, detail=f"허용되지 않는 경로입니다: {path}")
 
 
 def _validate_workspace_path(path: str, db: Session) -> Path:
     """워크스페이스 경로 검증 (workspace_path 하위인지 확인)."""
     workspace_base = get_workspace_path(db)
-    p = Path(path).resolve()
-    try:
-        p.relative_to(workspace_base)
+    p = safe_path(path)
+    if p is not None and is_within(p, workspace_base):
         return p
-    except ValueError:
-        raise HTTPException(status_code=403, detail=f"허용되지 않는 워크스페이스 경로입니다: {path}")
+    raise HTTPException(status_code=403, detail=f"허용되지 않는 워크스페이스 경로입니다: {path}")
 
 
 # ── 세션 관리 ──────────────────────────────────────────────
