@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.9.8-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.10.0-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -264,7 +264,8 @@ docker-compose pull && docker-compose up -d
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **v0.9.8** | 2026-09-01 | Mobile Tagging tab restores the last working folder on entry; startup folder auto-selection no longer overwrites the last opened folder |
+| **v0.10.0** | 2026-09-02 | Sidebar folder tree, folder inspector panel, mobile folder bottom sheet, symlinked-folder 403 fix, per-file auto-tagging for compilations, cache memory limits |
+| v0.9.8 | 2026-09-01 | Mobile Tagging tab restores the last working folder on entry; startup folder auto-selection no longer overwrites the last opened folder |
 | v0.9.7 | 2026-04-19 | Alsong LRC hardening — block/rate-limit detection with immediate abort, batch delay, ID3v2.4 hash fix, unlimited bracket stripping |
 | v0.9.6 | 2026-04-18 | Recent folders synced per account — restored on any device after login |
 | v0.9.5 | 2026-04-18 | Move to Library — automatically enter a newly created folder |
