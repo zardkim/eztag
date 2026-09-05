@@ -140,6 +140,7 @@ export default {
     autoTagByFilename: 'Auto Tag by Filename',
     selectSource: 'Select Source',
     subfolders: 'Subfolders',
+    showAllSubfolderFiles: 'Show all subfolder files ({n})',
     audioLabel: 'Music',
     exportHtml: 'Create Album Card',
     exportHtmlConfirm: 'Create an album card for the current folder.\nContinue?',

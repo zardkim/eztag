@@ -140,6 +140,7 @@ export default {
     autoTagByFilename: '파일명 자동태그',
     selectSource: '소스 선택',
     subfolders: '하위 폴더',
+    showAllSubfolderFiles: '하위 폴더 전체 보기 ({n}개)',
     audioLabel: '음악',
     exportHtml: '앨범 카드 생성',
     exportHtmlConfirm: '현재 폴더의 트랙 목록으로 앨범 카드를 생성합니다.\n계속하시겠습니까?',

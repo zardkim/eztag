@@ -548,7 +548,15 @@
 
           <!-- 하위 폴더 그리드 -->
           <div v-if="(browserStore.subfolders?.length ?? 0) > 0" class="px-4 pt-3 pb-2">
-            <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">{{ t('browser.subfolders') }}</p>
+            <div class="flex items-center gap-2 mb-2">
+              <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ t('browser.subfolders') }}</p>
+              <!-- 자동 재귀는 하위 폴더가 많으면 건너뛴다. 직접 전체를 보고 싶을 때의 진입점. -->
+              <button
+                v-if="!browserStore.isRecursiveMode && browserStore.selectedFolder"
+                class="ml-auto px-2 py-0.5 rounded-lg text-[11px] text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                @click="loadAllSubfolderFiles"
+              >{{ t('browser.showAllSubfolderFiles', { n: browserStore.subfolders.length }) }}</button>
+            </div>
             <div class="flex flex-wrap gap-2">
               <button
                 v-for="folder in (browserStore.subfolders ?? [])"
@@ -1244,6 +1252,12 @@ function openAutoTagDialog() {
     ? browserStore.checkedFiles
     : [...browserStore.files]
   showAutoTagDialog.value = true
+}
+
+async function loadAllSubfolderFiles() {
+  const f = browserStore.selectedFolder
+  if (!f) return
+  await browserStore.loadRecursiveFiles(f.path)
 }
 
 async function onAutoTagDone() {

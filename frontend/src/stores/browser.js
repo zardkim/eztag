@@ -6,6 +6,12 @@ import { browseApi } from '../api/index.js'
 const _filesCache = new Map()   // path → { files, subfolders, warning, ts }
 const FILES_TTL_MS = 3 * 60 * 1000  // 3분
 
+// 직접 오디오 파일이 없는 폴더를 열었을 때 자동으로 하위 전체를 읽을지 판단하는 한계값.
+// 원래 의도는 "Disc 1 / Disc 2" 처럼 앨범이 디스크별로 쪼개진 경우였는데(v0.8.25),
+// 제한이 없어서 아티스트 폴더(앨범 수십 개)를 눌러도 전곡을 재귀로 읽어버렸다.
+// 오디오를 가진 하위 폴더가 이보다 많으면 재귀하지 않고 하위 폴더 그리드를 보여준다.
+const AUTO_RECURSE_MAX_SUBFOLDERS = 5
+
 // 백그라운드 스캔 완료 대기 타이머 (모듈 레벨 — store 인스턴스 외부)
 let _scanPollTimer = null
 let _scanRetryCount = 0
@@ -173,8 +179,11 @@ export const useBrowserStore = defineStore('browser', () => {
         _scanRetryCount = 0
       }
 
-      // 직접 오디오 파일이 없고 오디오가 있는 하위 폴더가 있으면 자동으로 재귀 로드
-      if (fileList.length === 0 && subs.some(s => s.has_audio)) {
+      // 직접 오디오 파일이 없고 오디오가 있는 하위 폴더가 "몇 개뿐"이면 자동으로 재귀 로드.
+      // 많으면(아티스트 폴더 등) 재귀하지 않고 하위 폴더 그리드를 보여준다 —
+      // 사용자는 그리드에서 들어가거나 "하위 폴더 전체 보기"로 직접 재귀할 수 있다.
+      const audioSubs = subs.filter(s => s.has_audio)
+      if (fileList.length === 0 && audioSubs.length > 0 && audioSubs.length <= AUTO_RECURSE_MAX_SUBFOLDERS) {
         loadRecursiveFiles(path)
         return
       }
