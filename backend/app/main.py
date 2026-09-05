@@ -88,12 +88,20 @@ async def lifespan(app: FastAPI):
                 library_path,
             )
 
-        stale = [f.path for f in db_lib.query(ScanFolder).all() if f.path != library_path]
+        # 라이브러리 경로를 바꾸면 예전 행이 남는다. scan_folders 는 이 lifespan 만
+        # 기록하고(scan 라우터는 main 에 등록돼 있지 않다) _validate_path 의 허용 루트로만
+        # 쓰이므로, 현재 라이브러리가 아닌 행은 남겨둘 이유가 없다.
+        # 남겨두면 더 이상 쓰지 않는 경로에 계속 접근 권한을 주게 된다.
+        stale = db_lib.query(ScanFolder).filter(ScanFolder.path != library_path).all()
         if stale:
-            _log.warning(
-                "[startup] 사용하지 않는 라이브러리 경로가 scan_folders 에 남아 있습니다: %s "
-                "(현재 경로: %s). 동작에는 영향이 없지만 정리하려면 해당 행을 삭제하세요.",
-                stale, library_path,
+            removed = [f.path for f in stale]
+            for f in stale:
+                db_lib.delete(f)
+            db_lib.commit()
+            _log.info(
+                "[startup] 사용하지 않는 라이브러리 경로 %d개를 scan_folders 에서 정리했습니다: %s "
+                "(현재 경로: %s)",
+                len(removed), removed, library_path,
             )
     finally:
         db_lib.close()
