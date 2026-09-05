@@ -8,8 +8,13 @@ load_dotenv()
 
 config = context.config
 
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+# 앱(main.py)이 command.upgrade() 로 부를 때는 로깅을 건드리지 않는다.
+# fileConfig() 는 alembic.ini 의 [logger_root] 대로 루트 핸들러를 **교체**하므로,
+# 그대로 두면 setup_logging() 이 붙여둔 app.log / error.log 파일 핸들러가 사라지고
+# 마이그레이션 이후 운영 로그가 하나도 남지 않는다.
+# alembic CLI 로 직접 실행할 때는 attributes 가 비어 있어 평소대로 설정된다.
+if config.config_file_name is not None and config.attributes.get("configure_logger", True):
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # Override sqlalchemy.url from environment
 db_url = os.environ.get("DATABASE_URL", "")

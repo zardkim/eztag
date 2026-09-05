@@ -52,6 +52,8 @@ async def lifespan(app: FastAPI):
     from alembic.config import Config
     from alembic import command
     alembic_cfg = Config("alembic.ini")
+    # alembic 이 앱의 로깅 설정(app.log / error.log 핸들러)을 덮어쓰지 않도록 한다
+    alembic_cfg.attributes["configure_logger"] = False
     command.upgrade(alembic_cfg, "heads")
 
     from app.database import SessionLocal
@@ -73,6 +75,26 @@ async def lifespan(app: FastAPI):
         if not db_lib.query(ScanFolder).filter(ScanFolder.path == library_path).first():
             db_lib.add(ScanFolder(path=library_path, name="Library"))
             db_lib.commit()
+
+        # 라이브러리 경로를 바꾸면 예전 행이 남는다. 삭제는 하지 않되(다른 경로를
+        # 참조하는 설치가 있을 수 있음) 눈에 띄게 남긴다. 사이드바 루트는 더 이상
+        # 이 테이블을 읽지 않는다(workspace.library_roots 참고).
+        # 라이브러리 경로가 실제로 없으면 사이드바 라이브러리 섹션이 비어 보인다.
+        # (예전에는 scan_folders 의 예전 경로가 대신 떠서 문제가 가려졌다)
+        if not Path(library_path).is_dir():
+            _log.warning(
+                "[startup] 라이브러리 경로가 존재하지 않습니다: %s — 사이드바 라이브러리가 비어 보입니다. "
+                "MUSIC_BASE_PATH 환경변수 또는 설정 > 일반의 라이브러리 경로를 확인하세요.",
+                library_path,
+            )
+
+        stale = [f.path for f in db_lib.query(ScanFolder).all() if f.path != library_path]
+        if stale:
+            _log.warning(
+                "[startup] 사용하지 않는 라이브러리 경로가 scan_folders 에 남아 있습니다: %s "
+                "(현재 경로: %s). 동작에는 영향이 없지만 정리하려면 해당 행을 삭제하세요.",
+                stale, library_path,
+            )
     finally:
         db_lib.close()
 
