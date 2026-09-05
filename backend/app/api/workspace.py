@@ -839,33 +839,26 @@ def library_roots(
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    """라이브러리 루트 폴더 목록 (피커용)."""
-    from app.models.scan_folder import ScanFolder
-    folders = db.query(ScanFolder).all()
-    roots = []
-    seen = set()
+    """라이브러리 루트 폴더. 현재 설정된 라이브러리 경로 하나만 반환한다.
 
-    # library_path (DB 설정 > 환경변수) 우선
+    예전에는 `scan_folders` 테이블의 모든 행도 함께 반환했다. 그런데 그 테이블은
+    앱 시작 시 lifespan 이 "현재 라이브러리 경로"를 등록할 때만 쓰이고,
+    경로가 바뀌어도 **이전 행을 지우지 않는다**. 게다가 이 테이블을 관리하는
+    scan 라우터는 main.py 에 등록돼 있지 않아 사용자가 정리할 방법도 없다.
+
+    그 결과 라이브러리 경로를 한 번이라도 바꾼 설치에서는 사이드바에
+    쓰지 않는 예전 경로가 루트로 함께 떠 있었다(예: "music" + "Library").
+    """
     p = get_library_path(db)
-    if p.is_dir() and str(p) not in seen:
-        seen.add(str(p))
-        roots.append({
+    if not p.is_dir():
+        return {"roots": []}
+    return {
+        "roots": [{
             "name": p.name or "music",
             "path": str(p),
-            "has_children": any(True for _ in p.iterdir() if _.is_dir()),
-        })
-
-    for f in folders:
-        p = Path(f.path)
-        if str(p) not in seen and p.is_dir():
-            seen.add(str(p))
-            roots.append({
-                "name": f.name or p.name,
-                "path": str(p),
-                "has_children": any(True for _ in p.iterdir() if _.is_dir()),
-            })
-
-    return {"roots": roots}
+            "has_children": any(True for x in p.iterdir() if x.is_dir()),
+        }],
+    }
 
 
 @router.get("/library/children")
