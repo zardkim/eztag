@@ -62,12 +62,23 @@
                 </select>
               </ConfigRow>
               <ConfigRow :label="$t('settings.workspacePath')" :desc="$t('settings.workspacePathDesc')">
-                <input
-                  v-model="form.workspace_path"
-                  type="text"
-                  class="field w-full sm:w-72"
-                  @blur="saveField('workspace_path', form.workspace_path)"
-                />
+                <div class="w-full sm:w-72">
+                  <input
+                    v-model="form.workspace_path"
+                    type="text"
+                    class="field w-full"
+                    :class="envOverride('workspace_path') ? 'opacity-50 cursor-not-allowed' : ''"
+                    :disabled="!!envOverride('workspace_path')"
+                    @blur="saveField('workspace_path', form.workspace_path)"
+                  />
+                  <!-- 환경변수가 있으면 이 설정은 저장돼도 무시된다 -->
+                  <p v-if="envOverride('workspace_path')" class="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">
+                    <span class="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 font-medium">{{ $t('settings.envOverridden') }}</span>
+                    <code class="font-mono">WORKSPACE_PATH</code>
+                    <span class="text-gray-500 dark:text-gray-400">→</span>
+                    <code class="font-mono text-gray-700 dark:text-gray-300 break-all">{{ envOverride('workspace_path').value }}</code>
+                  </p>
+                </div>
               </ConfigRow>
               <!-- 작업공간 마운트 안내 -->
               <div class="mx-1 px-3 py-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800 rounded-lg text-xs text-gray-600 dark:text-gray-400 space-y-2">
@@ -82,12 +93,23 @@
                 </div>
               </div>
               <ConfigRow :label="$t('settings.libraryPath')" :desc="$t('settings.libraryPathDesc')">
-                <input
-                  v-model="form.library_path"
-                  type="text"
-                  class="field w-full sm:w-72"
-                  @blur="saveField('library_path', form.library_path)"
-                />
+                <div class="w-full sm:w-72">
+                  <input
+                    v-model="form.library_path"
+                    type="text"
+                    class="field w-full"
+                    :class="envOverride('library_path') ? 'opacity-50 cursor-not-allowed' : ''"
+                    :disabled="!!envOverride('library_path')"
+                    @blur="saveField('library_path', form.library_path)"
+                  />
+                  <!-- 환경변수가 있으면 이 설정은 저장돼도 무시된다 -->
+                  <p v-if="envOverride('library_path')" class="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">
+                    <span class="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 font-medium">{{ $t('settings.envOverridden') }}</span>
+                    <code class="font-mono">MUSIC_BASE_PATH</code>
+                    <span class="text-gray-500 dark:text-gray-400">→</span>
+                    <code class="font-mono text-gray-700 dark:text-gray-300 break-all">{{ envOverride('library_path').value }}</code>
+                  </p>
+                </div>
               </ConfigRow>
               <!-- 라이브러리 마운트 안내 -->
               <div class="mx-1 px-3 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg text-xs text-gray-600 dark:text-gray-400 space-y-2">
@@ -965,6 +987,14 @@ const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0
 const serverVersion = ref('')
 const buildDate = ref('')
 
+// 환경변수로 재정의된 설정인지 (백엔드 /api/config 가 env_override/env_value 를 내려준다)
+const rawConfig = ref({})
+function envOverride(key) {
+  const item = rawConfig.value?.[key]
+  if (!item?.env_override) return null
+  return { name: item.env_override, value: item.env_value }
+}
+
 const form = reactive({
   site_name: 'eztag',
   browser_title: 'eztag',
@@ -1079,6 +1109,7 @@ async function loadConfig() {
     form.browser_title = c.browser_title?.value ?? 'eztag'
     form.app_language = c.app_language?.value ?? 'ko'
     form.startup_folder = c.startup_folder?.value ?? 'workspace'
+    rawConfig.value = c
     form.workspace_path = c.workspace_path?.value ?? '../data/workspace'
     form.library_path = c.library_path?.value ?? '../data/library'
     locale.value = form.app_language

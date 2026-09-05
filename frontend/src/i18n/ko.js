@@ -368,6 +368,7 @@ export default {
     tracksFailed: '트랙 목록 조회 실패',
   },
   settings: {
+    envOverridden: '환경변수로 재정의됨',
     title: '설정',
     general: '일반',
     excludedFolders: {

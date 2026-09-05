@@ -49,6 +49,24 @@ DEFAULTS: dict[str, tuple] = {
 }
 
 
+# 환경변수가 있으면 DB 설정을 무시하는 키들.
+# get_workspace_path / get_library_path 가 env 를 우선하므로, 설정 화면에서
+# 값을 저장해도 반영되지 않는다. UI 가 이를 표시할 수 있도록 매핑을 노출한다.
+ENV_OVERRIDES: dict[str, str] = {
+    "workspace_path": "WORKSPACE_PATH",
+    "library_path": "MUSIC_BASE_PATH",
+}
+
+
+def get_env_override(key: str) -> Optional[tuple[str, str]]:
+    """key 가 환경변수로 재정의 중이면 (변수명, 실제 값), 아니면 None."""
+    var = ENV_OVERRIDES.get(key)
+    if not var:
+        return None
+    val = os.getenv(var, "")
+    return (var, val) if val else None
+
+
 def get_config(db: Session, key: str) -> Optional[str]:
     row = db.query(AppConfig).filter(AppConfig.key == key).first()
     if row:
@@ -60,11 +78,15 @@ def get_all_config(db: Session) -> dict:
     rows = {r.key: r.value for r in db.query(AppConfig).all()}
     result = {}
     for key, (default, desc) in DEFAULTS.items():
-        result[key] = {
+        item = {
             "value": rows.get(key, default),
             "default": default,
             "description": desc,
         }
+        ov = get_env_override(key)
+        if ov:
+            item["env_override"], item["env_value"] = ov
+        result[key] = item
     return result
 
 

@@ -368,6 +368,7 @@ export default {
     tracksFailed: 'Failed to load track list',
   },
   settings: {
+    envOverridden: 'Overridden by env',
     title: 'Settings',
     general: 'General',
     excludedFolders: {
