@@ -35,10 +35,17 @@
     <!-- 트리 컨테이너: 디자인 .tree { padding: 4px } -->
     <div v-else class="flex-1 overflow-y-auto min-h-0 p-1">
       <template v-for="section in visibleSections" :key="section.key">
-        <!-- 섹션 헤더: 디자인 .section { padding: 10px 8px 4px; 10px·600·uppercase·ls .06em } -->
-        <div class="px-2 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-400 dark:text-gray-600">
-          {{ $t(section.labelKey) }}
-        </div>
+        <!-- 섹션 헤더: 디자인 .section { padding: 10px 8px 4px; 10px·600·uppercase·ls .06em }
+             루트가 하나뿐이면 그 루트의 자식을 바로 아래에 펼치므로(hoist),
+             헤더 자체가 루트 폴더를 여는 진입점이 된다. -->
+        <button
+          class="w-full text-left px-2 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.06em] transition-colors"
+          :class="section.root && browserStore.selectedFolder?.path === section.root.path
+            ? 'text-indigo-600 dark:text-indigo-400'
+            : 'text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400'"
+          :title="section.root ? section.root.path : ''"
+          @click="section.root && selectRoot(section)"
+        >{{ $t(section.labelKey) }}</button>
         <FolderNode
           v-for="node in section.nodes"
           :key="node.path"
@@ -46,10 +53,13 @@
           :depth="0"
           :area="section.key"
           :mobile="mobile"
-          :ancestors="[]"
+          :ancestors="section.root ? [section.root] : []"
           :selected-path="browserStore.selectedFolder?.path"
           @select="onFolderSelect"
         />
+        <div v-if="section.nodes.length === 0" class="px-3 py-1.5 text-[11px] text-gray-400 dark:text-gray-600">
+          {{ $t('browser.noFolders') }}
+        </div>
       </template>
     </div>
   </div>
@@ -59,7 +69,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import FolderNode from './FolderNode.vue'
-import { workspaceApi } from '../api/index.js'
+import { browseApi, workspaceApi } from '../api/index.js'
 import { useBrowserStore } from '../stores/browser.js'
 import { sessionCache } from '../utils/cache.js'
 
@@ -77,12 +87,8 @@ const route = useRoute()
 const sections = ref([])
 const loading = ref(false)
 
-const ROOTS_TTL = 5 * 60 * 1000  // 5분
-// 영역별로 캐시 키를 분리 — 단일 'roots' 키는 두 영역을 구분하지 못한다
-const CACHE_KEYS = { workspace: 'roots:workspace', library: 'roots:library' }
-
 // 루트가 없는 영역은 섹션 헤더까지 통째로 숨긴다 (빈 헤더를 남기지 않음)
-const visibleSections = computed(() => sections.value.filter(s => s.nodes.length > 0))
+const visibleSections = computed(() => sections.value.filter(s => s.root || s.nodes.length > 0))
 
 function onFolderSelect({ node, area, crumb }) {
   // 선택된 폴더의 하위 캐시 무효화 → 외부 변경사항 즉시 반영
@@ -97,6 +103,15 @@ function onFolderSelect({ node, area, crumb }) {
   }
 }
 
+// 섹션 헤더 클릭 → 라이브러리/작업공간 루트 폴더 자체를 연다
+function selectRoot(section) {
+  const r = section.root
+  sessionCache.delete(`children:${r.path}`)
+  browserStore.selectFolder({ name: r.name, path: r.path }, [r], section.key)
+  emit('select', { node: r, area: section.key })
+  if (route.path !== '/browser') router.push('/browser')
+}
+
 function toNodes(roots, area) {
   return (roots || []).map(r => ({
     name: r.name,
@@ -107,16 +122,37 @@ function toNodes(roots, area) {
   }))
 }
 
-async function loadRoots(force = false) {
-  if (!force) {
-    const ws = sessionCache.get(CACHE_KEYS.workspace)
-    const lib = sessionCache.get(CACHE_KEYS.library)
-    if (ws && lib) {
-      sections.value = buildSections(ws, lib)
-      return
+/**
+ * 한 영역의 섹션을 만든다.
+ *
+ * 루트가 하나뿐이면(라이브러리/작업공간의 일반적인 구성) 루트 노드를 그리지 않고
+ * **그 루트의 자식을 바로 섹션 아래에 펼친다.** data/library 는 마운트를 담는
+ * 컨테이너 폴더이므로, "라이브러리 > library > MyAlbums" 처럼 한 단계가 더 생기면
+ * 의미 없는 깊이만 늘어난다. 루트 자체는 섹션 헤더를 눌러 열 수 있다.
+ */
+async function buildSection(key, labelKey, roots, force) {
+  const nodes = toNodes(roots, key)
+  if (nodes.length !== 1) {
+    return { key, labelKey, root: null, nodes }
+  }
+  const root = nodes[0]
+  let children = []
+  if (root.has_children) {
+    try {
+      const { data } = await browseApi.getChildren(root.path, force)
+      children = (data || []).map(c => ({ ...c, area: key }))
+    } catch {
+      children = []
     }
   }
+  return {
+    key, labelKey,
+    root: { name: root.name, path: root.path },
+    nodes: children,
+  }
+}
 
+async function loadRoots(force = false) {
   loading.value = true
   try {
     // 두 영역의 루트 API를 병합한다. /browse/roots는 ScanFolder만 읽어
@@ -125,11 +161,10 @@ async function loadRoots(force = false) {
       workspaceApi.workspaceRoots().catch(() => ({ data: { roots: [] } })),
       workspaceApi.libraryRoots().catch(() => ({ data: { roots: [] } })),
     ])
-    const wsNodes = toNodes(wsRes.data?.roots, 'workspace')
-    const libNodes = toNodes(libRes.data?.roots, 'library')
-    sessionCache.set(CACHE_KEYS.workspace, wsNodes, ROOTS_TTL)
-    sessionCache.set(CACHE_KEYS.library, libNodes, ROOTS_TTL)
-    sections.value = buildSections(wsNodes, libNodes)
+    sections.value = await Promise.all([
+      buildSection('workspace', 'sidebar.workspaceSection', wsRes.data?.roots, force),
+      buildSection('library',   'sidebar.librarySection',   libRes.data?.roots, force),
+    ])
   } catch {
     sections.value = []
   } finally {
@@ -137,17 +172,8 @@ async function loadRoots(force = false) {
   }
 }
 
-function buildSections(wsNodes, libNodes) {
-  return [
-    { key: 'workspace', labelKey: 'sidebar.workspaceSection', nodes: wsNodes },
-    { key: 'library',   labelKey: 'sidebar.librarySection',   nodes: libNodes },
-  ]
-}
-
 // 새로고침 버튼: 강제 재로드
 async function refreshRoots() {
-  sessionCache.delete(CACHE_KEYS.workspace)
-  sessionCache.delete(CACHE_KEYS.library)
   sessionCache.deleteByPrefix('children:')
   await loadRoots(true)
 }
