@@ -182,16 +182,32 @@ def get_roots(
 def get_children(
     path: str = Query(...),
     force: bool = Query(False),
+    meta: bool = Query(False),
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    """지정 경로의 하위 디렉터리 목록."""
+    """지정 경로의 하위 디렉터리 목록.
+
+    meta=False (기본): 부모 폴더를 **한 번만** 읽고 이름/경로만 돌려준다.
+    meta=True        : 자식마다 _quick_scan 을 돌려 has_children / has_audio 를 채운다.
+
+    예전에는 meta 가 항상 켜진 셈이라, 하위 폴더 N개짜리 폴더를 열 때
+    scandir 를 N+1 회 호출했다. 로컬 SSD 에서는 티가 안 나지만
+    NAS(SMB/NFS)처럼 왕복 지연이 붙는 곳에서는 이 호출 횟수가 전체를 지배한다
+    (하위 5,000개 · 왕복 10ms 기준 약 50초).
+
+    캐럿(펼침 화살표)은 프론트에서 낙관적으로 표시하고, 펼쳤을 때 자식이 없으면
+    그때 숨긴다. has_audio(♪)는 음악 라이브러리에서 거의 모든 말단 폴더가 참이라
+    정보량이 거의 없어 기본 응답에서 뺐다.
+    """
     p = _validate_path(path, db, allow_workspace=True)
     if not p.is_dir():
         raise HTTPException(status_code=400, detail="Not a directory")
 
+    # 응답 형태가 다르므로 캐시 키를 분리한다 (섞이면 캐럿/♪ 가 들쭉날쭉해진다)
+    cache_key = f"{p}:meta={int(meta)}"
     if not force:
-        cached = _cache.get_children(str(p))
+        cached = _cache.get_children(cache_key)
         if cached is not None:
             return cached
 
@@ -209,17 +225,14 @@ def get_children(
                 key=lambda e: e.name,
             )
         for entry in dir_entries:
-            has_children, has_audio = _quick_scan(entry.path, excluded_set)
-            children.append({
-                "name": entry.name,
-                "path": entry.path,
-                "has_children": has_children,
-                "has_audio": has_audio,
-            })
+            item = {"name": entry.name, "path": entry.path}
+            if meta:
+                item["has_children"], item["has_audio"] = _quick_scan(entry.path, excluded_set)
+            children.append(item)
     except PermissionError:
         pass
 
-    _cache.set_children(str(p), children)
+    _cache.set_children(cache_key, children)
     return children
 
 

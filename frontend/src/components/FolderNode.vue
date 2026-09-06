@@ -18,7 +18,7 @@
         :class="[mobile ? 'w-7 h-7 -my-1' : 'w-3.5 h-3.5', open ? 'rotate-90' : '']"
         @click="toggleExpand"
       >
-        <svg v-if="node.has_children || node.isRoot" class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
+        <svg v-if="expandable" class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
           <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
       </span>
@@ -43,12 +43,6 @@
           </svg>
         </span>
         <span :class="mobile ? 'line-clamp-2 break-all' : 'truncate'" :title="node.name">{{ node.name }}</span>
-        <!-- 디자인의 count 뱃지 자리 — 트랙 수 데이터가 없어 오디오 유무만 표시 (계획서 §7 ①) -->
-        <span
-          v-if="node.has_audio"
-          class="ml-auto shrink-0 font-mono text-[10px] leading-none"
-          :class="isSelected ? 'text-indigo-400 dark:text-indigo-500' : 'text-gray-400 dark:text-gray-600'"
-        >♪</span>
       </button>
     </div>
 
@@ -109,6 +103,14 @@ const loadedAt = ref(_cached ? Date.now() : 0)
 const isSelected = computed(() => props.selectedPath === props.node.path)
 const indentStep = computed(() => (props.mobile ? 10 : 14))
 
+// /browse/children 은 기본적으로 has_children 을 주지 않는다(N+1 제거).
+// 모르는 상태(undefined)는 "펼칠 수 있음"으로 보고 캐럿을 낙관적으로 보여준 뒤,
+// 실제로 펼쳐서 자식이 없으면 그때 캐럿을 감춘다.
+const knownEmpty = ref(false)
+const expandable = computed(() =>
+  !knownEmpty.value && (props.node.isRoot || props.node.has_children !== false)
+)
+
 // 영역별 폴더 아이콘 색상 — 작업공간(주황) / 라이브러리(파랑)
 const areaIconClass = computed(() => {
   if (props.area === 'workspace') return 'text-orange-500 dark:text-orange-400'
@@ -140,6 +142,7 @@ async function loadChildren(force = false) {
   try {
     const { data } = await browseApi.getChildren(props.node.path, force)
     children.value = data
+    knownEmpty.value = data.length === 0
     loadedAt.value = Date.now()
     sessionCache.set(cacheKey, data, CHILDREN_TTL_MS)
   } catch {
@@ -151,7 +154,7 @@ async function loadChildren(force = false) {
 }
 
 function toggleExpand() {
-  if (!props.node.has_children && !props.node.isRoot) return
+  if (!expandable.value) return
   open.value = !open.value
   if (open.value) loadChildren()
 }
@@ -164,8 +167,8 @@ function selectNode() {
     area: props.area,
     crumb: childAncestors.value,
   })
-  // 자식이 있으면 선택 시 자동으로 펼침 + 강제 새로고침 (외부 변경 감지)
-  if (props.node.has_children || props.node.isRoot) {
+  // 펼칠 수 있으면 선택 시 자동으로 펼침 + 강제 새로고침 (외부 변경 감지)
+  if (expandable.value) {
     open.value = true
     loadChildren(true)
   }

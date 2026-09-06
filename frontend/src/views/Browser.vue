@@ -564,9 +564,8 @@
                 class="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-600 transition-colors text-left group"
                 @click="enterSubfolder(folder)"
               >
-                <span class="text-yellow-400 text-base shrink-0">{{ folder.has_children ? '📂' : '📁' }}</span>
+                <span class="text-yellow-400 text-base shrink-0">📁</span>
                 <span class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-blue-700 dark:group-hover:text-blue-300 max-w-[280px] truncate">{{ folder.name }}</span>
-                <span v-if="folder.has_audio" class="text-[9px] px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-500 dark:text-blue-400 shrink-0">{{ t('browser.audioLabel') }}</span>
               </button>
             </div>
             <div v-if="browserStore.files.length > 0" class="mt-3 border-t border-gray-100 dark:border-gray-800"></div>

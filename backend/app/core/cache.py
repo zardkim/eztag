@@ -101,8 +101,15 @@ def set_children(folder_path: str, value):
         _safe_set(_children_cache, folder_path, value)
 
 def invalidate_children(folder_path: str):
+    """해당 폴더의 children 캐시를 지운다.
+
+    키가 "{경로}:meta={0|1}" 형태라 두 변형을 모두 지워야 한다.
+    (예전 키 형태로 저장된 항목이 있을 수 있어 경로 자체도 함께 지운다)
+    """
     with _lock:
         _children_cache.pop(folder_path, None)
+        for suffix in (":meta=0", ":meta=1"):
+            _children_cache.pop(folder_path + suffix, None)
 
 
 # ── roots ────────────────────────────────────────────────────

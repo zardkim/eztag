@@ -29,7 +29,7 @@ export const useBrowserStore = defineStore('browser', () => {
   const extraFiles = ref([])   // [{ filename, path, file_type, file_size, modified_time, is_eztag? }, ...]
   const albumDescription = ref(null)
   const hasEztagReport = ref(false)  // 폴더에 eztag 생성 HTML 파일 존재 여부
-  const subfolders = ref([])   // [{ name, path, has_children, has_audio }, ...]
+  const subfolders = ref([])   // [{ name, path }, ...] (meta=true 일 때만 has_children/has_audio 포함)
   const loading = ref(false)
   const error = ref(null)
   const fileWarning = ref(null)
@@ -182,8 +182,9 @@ export const useBrowserStore = defineStore('browser', () => {
       // 직접 오디오 파일이 없고 오디오가 있는 하위 폴더가 "몇 개뿐"이면 자동으로 재귀 로드.
       // 많으면(아티스트 폴더 등) 재귀하지 않고 하위 폴더 그리드를 보여준다 —
       // 사용자는 그리드에서 들어가거나 "하위 폴더 전체 보기"로 직접 재귀할 수 있다.
-      const audioSubs = subs.filter(s => s.has_audio)
-      if (fileList.length === 0 && audioSubs.length > 0 && audioSubs.length <= AUTO_RECURSE_MAX_SUBFOLDERS) {
+      // has_audio 는 더 이상 기본 응답에 없다(N+1 제거) — 하위 폴더 개수로 판정한다.
+      // Disc 1/Disc 2 는 2개, 아티스트 폴더는 수십 개라 실질적으로 동일하게 갈린다.
+      if (fileList.length === 0 && subs.length > 0 && subs.length <= AUTO_RECURSE_MAX_SUBFOLDERS) {
         loadRecursiveFiles(path)
         return
       }
