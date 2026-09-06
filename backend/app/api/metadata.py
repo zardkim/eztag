@@ -614,18 +614,41 @@ def auto_tag_by_filename(
                 parsed = None
                 source = None
 
+                from_name = None
                 if body.search_source in ("filename", "tags_fallback"):
-                    parsed = parse_filename_by_pattern(filename, body.pattern)
-                    if parsed and parsed.get("title"):
-                        source = "filename"
-                    else:
-                        parsed = None
+                    cand = parse_filename_by_pattern(filename, body.pattern)
+                    if cand and cand.get("title"):
+                        from_name = cand
 
-                if parsed is None and body.search_source in ("tags", "tags_fallback"):
+                if body.search_source == "filename":
+                    if from_name:
+                        parsed, source = from_name, "filename"
+                else:
                     from_tags = _parsed_from_tags(_tags())
-                    if from_tags.get("title"):
-                        parsed = from_tags
-                        source = "tags"
+
+                    if body.search_source == "tags":
+                        if from_tags.get("title"):
+                            parsed, source = from_tags, "tags"
+                    else:
+                        # tags_fallback — "제목이 있는가"만 보면 안 된다.
+                        # 차트 폴더 파일명은 보통 "1-001 제목" 처럼 아티스트가 없는데,
+                        # 파싱이 성공했다는 이유로 그걸 쓰면 아티스트 없는 약한 검색어가 된다.
+                        # score_match 에서 아티스트는 30점이라 매칭 품질 차이가 크다.
+                        # 그래서 아티스트까지 주는 쪽을 먼저 고른다.
+                        if from_name and from_name.get("artist"):
+                            parsed, source = from_name, "filename"
+                        elif from_tags.get("title") and from_tags.get("artist"):
+                            parsed, source = from_tags, "tags"
+                        elif from_name:
+                            parsed, source = from_name, "filename"
+                        elif from_tags.get("title"):
+                            parsed, source = from_tags, "tags"
+
+                # 파일명에서 얻은 트랙/디스크 번호는 어느 소스를 쓰든 보존한다
+                if parsed is not None and from_name:
+                    for k in ("track_no", "disc_no"):
+                        if from_name.get(k) and not parsed.get(k):
+                            parsed[k] = from_name[k]
 
                 if parsed is None:
                     # 파일명도 태그도 제목을 못 얻음 — 검색할 근거가 없다
