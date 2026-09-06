@@ -18,6 +18,7 @@ from app.database import get_db
 from app.core.auth import get_current_user
 from app.models.scan_folder import ScanFolder
 from app.core.path_guard import safe_path, is_within, same_path, first_root_containing
+from app.core.fs_walk import walk_dirs
 from app.models.track import Track
 from app.core.tag_writer import write_tags, write_cover, remove_cover
 from app.core.tag_reader import read_tags, extract_cover, extract_cover_at, list_covers
@@ -2414,8 +2415,7 @@ def recursive_count(
 
     folder_count = 0
     file_count = 0
-    for root, dirs, files in os.walk(str(p)):
-        dirs[:] = sorted(d for d in dirs if not d.startswith(".") and d not in excluded)
+    for root, dirs, files in walk_dirs(str(p), set(excluded)):
         folder_count += len(dirs)
         file_count += sum(1 for f in files if Path(f).suffix.lower() in AUDIO_EXTS)
 
@@ -2439,8 +2439,7 @@ def recursive_files(
 
     # 1단계: 폴더별 오디오 파일 경로 수집
     group_structure = []
-    for root, dirs, files in os.walk(str(p)):
-        dirs[:] = sorted(d for d in dirs if not d.startswith(".") and d not in excluded)
+    for root, dirs, files in walk_dirs(str(p), set(excluded)):
         root_path = Path(root)
 
         # CUE 파일 처리: 페어링된 FLAC 제외, CUE 트랙 추가
