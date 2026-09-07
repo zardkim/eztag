@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.10.2-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.10.3-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -264,7 +264,8 @@ docker-compose pull && docker-compose up -d
 
 | 버전 | 날짜 | 주요 변경사항 |
 |------|------|--------------|
-| **v0.10.2** | 2026-09-06 | NAS 폴더 로딩 대폭 개선(scandir N+1 제거), 재귀 보기 심볼릭 링크 통과, 차트 폴더 자동태깅 매칭률 개선 |
+| **v0.10.3** | 2026-09-07 | 하위 폴더 목록을 탐색기형으로 변경 + 정렬 추가, 모바일 폴더 시트 높이 확대, 좁은 화면 폴더명 잘림 수정 |
+| v0.10.2 | 2026-09-06 | NAS 폴더 로딩 대폭 개선(scandir N+1 제거), 재귀 보기 심볼릭 링크 통과, 차트 폴더 자동태깅 매칭률 개선 |
 | v0.10.1 | 2026-09-05 | 운영 로그가 안 쌓이던 문제 수정, 폴더 선택 시 하위 전체 자동 로딩 제한, 사이드바 라이브러리 표시 정리, 환경변수 재정의 표시 |
 | v0.10.0 | 2026-09-02 | 사이드바 폴더 트리, 폴더 인스펙터 패널, 모바일 폴더 바텀시트, 심볼릭 링크 폴더 403 수정, 파일 단위 자동태깅 컴필레이션 대응, 캐시 메모리 상한 |
 | v0.9.8 | 2026-09-01 | 모바일 태깅 버튼 진입 시 마지막 작업 폴더 복원, 시작 폴더 자동선택이 마지막 폴더를 덮어쓰던 문제 수정 |
