@@ -569,7 +569,7 @@
                   <span v-if="browserStore.folderSortKey === 'name'" class="ml-0.5 text-indigo-500">{{ browserStore.folderSortOrder === 'asc' ? '↑' : '↓' }}</span>
                 </button>
                 <button
-                  class="shrink-0 w-40 text-right hover:text-gray-900 dark:hover:text-white transition-colors"
+                  class="shrink-0 w-auto sm:w-40 text-right hover:text-gray-900 dark:hover:text-white transition-colors"
                   :title="t('browser.sortByModifiedHint')"
                   @click="browserStore.setFolderSort('modified_time')"
                 >
@@ -589,7 +589,7 @@
                 >
                   <span class="text-yellow-400 text-base shrink-0">📁</span>
                   <span class="flex-1 min-w-0 text-sm text-gray-700 dark:text-gray-300 group-hover:text-blue-700 dark:group-hover:text-blue-300 truncate" :title="folder.name">{{ folder.name }}</span>
-                  <span class="shrink-0 w-40 text-right text-[11px] font-mono text-gray-400 dark:text-gray-500">{{ folder.modified_time ? formatFolderTime(folder.modified_time) : '' }}</span>
+                  <span class="hidden sm:block shrink-0 w-40 text-right text-[11px] font-mono text-gray-400 dark:text-gray-500">{{ folder.modified_time ? formatFolderTime(folder.modified_time) : '' }}</span>
                   <span class="shrink-0 text-gray-300 dark:text-gray-600 group-hover:text-blue-400">›</span>
                 </button>
               </div>

@@ -16,8 +16,8 @@
         >
           <div
             v-if="open"
-            class="absolute inset-x-0 bottom-0 h-[70vh] flex flex-col bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl overflow-hidden"
-            style="padding-bottom: env(safe-area-inset-bottom, 0px);"
+            class="absolute inset-x-0 bottom-0 flex flex-col bg-white dark:bg-gray-900 rounded-t-2xl shadow-2xl overflow-hidden"
+            style="top: max(2.5rem, env(safe-area-inset-top, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px);"
           >
             <!-- 드래그 핸들 -->
             <div class="shrink-0 pt-2 pb-1 flex justify-center">
