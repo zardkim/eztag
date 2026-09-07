@@ -140,6 +140,8 @@ export default {
     autoTagByFilename: 'Auto Tag by Filename',
     selectSource: 'Select Source',
     subfolders: 'Subfolders',
+    colFolderName: 'Folder name',
+    sortByModifiedHint: 'Sort by modified date — may take a moment on NAS with many subfolders',
     showAllSubfolderFiles: 'Show all subfolder files ({n})',
     audioLabel: 'Music',
     exportHtml: 'Create Album Card',

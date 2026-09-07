@@ -557,16 +557,42 @@
                 @click="loadAllSubfolderFiles"
               >{{ t('browser.showAllSubfolderFiles', { n: browserStore.subfolders.length }) }}</button>
             </div>
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="folder in (browserStore.subfolders ?? [])"
-                :key="folder.path"
-                class="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-600 transition-colors text-left group"
-                @click="enterSubfolder(folder)"
-              >
-                <span class="text-yellow-400 text-base shrink-0">📁</span>
-                <span class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-blue-700 dark:group-hover:text-blue-300 max-w-[280px] truncate">{{ folder.name }}</span>
-              </button>
+            <!-- 탐색기형 한 줄 목록 -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+              <!-- 정렬 헤더 -->
+              <div class="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-700 text-[11px] font-medium text-gray-500 dark:text-gray-400 select-none">
+                <button
+                  class="flex-1 min-w-0 text-left hover:text-gray-900 dark:hover:text-white transition-colors"
+                  @click="browserStore.setFolderSort('name')"
+                >
+                  {{ t('browser.colFolderName') }}
+                  <span v-if="browserStore.folderSortKey === 'name'" class="ml-0.5 text-indigo-500">{{ browserStore.folderSortOrder === 'asc' ? '↑' : '↓' }}</span>
+                </button>
+                <button
+                  class="shrink-0 w-40 text-right hover:text-gray-900 dark:hover:text-white transition-colors"
+                  :title="t('browser.sortByModifiedHint')"
+                  @click="browserStore.setFolderSort('modified_time')"
+                >
+                  <span v-if="browserStore.subfolderMetaLoading" class="text-gray-400">…</span>
+                  {{ t('browser.colModified') }}
+                  <span v-if="browserStore.folderSortKey === 'modified_time'" class="ml-0.5 text-indigo-500">{{ browserStore.folderSortOrder === 'asc' ? '↑' : '↓' }}</span>
+                </button>
+              </div>
+
+              <!-- 폴더 행 -->
+              <div class="max-h-[420px] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+                <button
+                  v-for="folder in browserStore.sortedSubfolders"
+                  :key="folder.path"
+                  class="w-full flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-left group"
+                  @click="enterSubfolder(folder)"
+                >
+                  <span class="text-yellow-400 text-base shrink-0">📁</span>
+                  <span class="flex-1 min-w-0 text-sm text-gray-700 dark:text-gray-300 group-hover:text-blue-700 dark:group-hover:text-blue-300 truncate" :title="folder.name">{{ folder.name }}</span>
+                  <span class="shrink-0 w-40 text-right text-[11px] font-mono text-gray-400 dark:text-gray-500">{{ folder.modified_time ? formatFolderTime(folder.modified_time) : '' }}</span>
+                  <span class="shrink-0 text-gray-300 dark:text-gray-600 group-hover:text-blue-400">›</span>
+                </button>
+              </div>
             </div>
             <div v-if="browserStore.files.length > 0" class="mt-3 border-t border-gray-100 dark:border-gray-800"></div>
           </div>
@@ -1567,6 +1593,15 @@ async function onSaved() {
     const file = browserStore.files.find(f => f.path === prevSelectedPath)
     if (file) browserStore.selectFile(file)
   }
+}
+
+// 하위 폴더 수정일 표시 (백엔드는 epoch seconds 로 준다)
+function formatFolderTime(ts) {
+  if (!ts) return ''
+  const d = new Date(ts * 1000)
+  if (isNaN(d.getTime())) return ''
+  const p2 = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`
 }
 
 function enterSubfolder(folder) {

@@ -29,7 +29,11 @@ export const useBrowserStore = defineStore('browser', () => {
   const extraFiles = ref([])   // [{ filename, path, file_type, file_size, modified_time, is_eztag? }, ...]
   const albumDescription = ref(null)
   const hasEztagReport = ref(false)  // 폴더에 eztag 생성 HTML 파일 존재 여부
-  const subfolders = ref([])   // [{ name, path }, ...] (meta=true 일 때만 has_children/has_audio 포함)
+  const subfolders = ref([])   // [{ name, path }, ...] (meta=true 일 때만 has_children/has_audio/modified_time 포함)
+  // 하위 폴더 목록 정렬 — 'name' | 'modified_time'
+  const folderSortKey = ref(localStorage.getItem('eztag-folder-sort-key') || 'name')
+  const folderSortOrder = ref(localStorage.getItem('eztag-folder-sort-order') || 'asc')
+  const subfolderMetaLoading = ref(false)
   const loading = ref(false)
   const error = ref(null)
   const fileWarning = ref(null)
@@ -47,6 +51,57 @@ export const useBrowserStore = defineStore('browser', () => {
   const isAllChecked = computed(() =>
     files.value.length > 0 && files.value.every(f => checkedPaths.value.has(f.path))
   )
+
+  // 하위 폴더 정렬. 수정일은 meta=true 로 받아야 있으므로, 값이 없으면 이름순으로 폴백한다.
+  const sortedSubfolders = computed(() => {
+    const dir = folderSortOrder.value === 'desc' ? -1 : 1
+    const list = [...subfolders.value]
+    if (folderSortKey.value === 'modified_time') {
+      return list.sort((a, b) => {
+        const av = a.modified_time ?? null
+        const bv = b.modified_time ?? null
+        if (av === null && bv === null) return a.name.localeCompare(b.name, 'ko') * dir
+        if (av === null) return 1      // 값 없는 항목은 항상 뒤로
+        if (bv === null) return -1
+        return (av - bv) * dir
+      })
+    }
+    return list.sort((a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true }) * dir)
+  })
+
+  /**
+   * 하위 폴더의 수정일을 채운다 (meta=true 재요청).
+   * 자식 수만큼 추가 syscall 이 발생하므로, 사용자가 수정일 정렬을 고를 때만 부른다.
+   */
+  async function loadSubfolderMeta() {
+    const path = selectedFolder.value?.path
+    if (!path || subfolders.value.length === 0) return
+    if (subfolders.value.some(f => f.modified_time !== undefined)) return  // 이미 받아둠
+    subfolderMetaLoading.value = true
+    try {
+      const { data } = await browseApi.getChildren(path, false, true)
+      const byPath = new Map((data || []).map(d => [d.path, d]))
+      subfolders.value = subfolders.value.map(f => ({ ...f, ...(byPath.get(f.path) || {}) }))
+    } catch {
+      // 실패해도 이름순 폴백으로 계속 동작한다
+    } finally {
+      subfolderMetaLoading.value = false
+    }
+  }
+
+  function setFolderSort(key) {
+    if (folderSortKey.value === key) {
+      folderSortOrder.value = folderSortOrder.value === 'asc' ? 'desc' : 'asc'
+    } else {
+      folderSortKey.value = key
+      folderSortOrder.value = 'asc'
+    }
+    try {
+      localStorage.setItem('eztag-folder-sort-key', folderSortKey.value)
+      localStorage.setItem('eztag-folder-sort-order', folderSortOrder.value)
+    } catch {}
+    if (key === 'modified_time') loadSubfolderMeta()
+  }
 
   // 파일 정렬 비교함수 생성
   function _makeSorter(key, dir) {
@@ -443,6 +498,8 @@ export const useBrowserStore = defineStore('browser', () => {
     checkedPaths, checkedFiles, isAllChecked,
     sortKey, sortOrder, filterText, breadcrumb, currentArea, mobileMenuOpen, wizardOpen, wizardPendingPreset,
     isRecursiveMode, folderGroups,
+    folderSortKey, folderSortOrder, sortedSubfolders, subfolderMetaLoading,
+    setFolderSort, loadSubfolderMeta,
     loadFiles, selectFolder, selectFolderRecursive, loadRecursiveFiles,
     selectFile, selectExtraFile, toggleCheck, toggleAll, setCheckedPaths,
     updateFile, updateFiles, invalidateFilesCache, resetFolder,

@@ -140,6 +140,8 @@ export default {
     autoTagByFilename: '파일명 자동태그',
     selectSource: '소스 선택',
     subfolders: '하위 폴더',
+    colFolderName: '폴더 이름',
+    sortByModifiedHint: '수정일로 정렬 — 하위 폴더가 많으면 NAS에서 잠시 걸릴 수 있습니다',
     showAllSubfolderFiles: '하위 폴더 전체 보기 ({n}개)',
     audioLabel: '음악',
     exportHtml: '앨범 카드 생성',

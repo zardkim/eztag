@@ -190,7 +190,9 @@ def get_children(
     """지정 경로의 하위 디렉터리 목록.
 
     meta=False (기본): 부모 폴더를 **한 번만** 읽고 이름/경로만 돌려준다.
-    meta=True        : 자식마다 _quick_scan 을 돌려 has_children / has_audio 를 채운다.
+    meta=True        : 자식마다 has_children / has_audio / modified_time 을 채운다.
+                       자식 수만큼 추가 syscall 이 발생하므로 필요할 때만 켠다
+                       (예: 사용자가 수정일 정렬을 고른 경우).
 
     예전에는 meta 가 항상 켜진 셈이라, 하위 폴더 N개짜리 폴더를 열 때
     scandir 를 N+1 회 호출했다. 로컬 SSD 에서는 티가 안 나지만
@@ -229,6 +231,12 @@ def get_children(
             item = {"name": entry.name, "path": entry.path}
             if meta:
                 item["has_children"], item["has_audio"] = _quick_scan(entry.path, excluded_set)
+                # 수정일도 meta 쪽에만 둔다. entry.stat() 은 자식마다 1회 syscall 이라
+                # NAS 에서는 _quick_scan 과 같은 N+1 왕복이 된다.
+                try:
+                    item["modified_time"] = entry.stat().st_mtime
+                except OSError:
+                    item["modified_time"] = None
             children.append(item)
     except PermissionError:
         pass

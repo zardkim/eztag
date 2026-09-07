@@ -54,7 +54,7 @@ export const authApi = {
 // Browse
 export const browseApi = {
   getRoots: (withChildren = false, force = false) => client.get('/browse/roots', { params: { with_children: withChildren, force } }),
-  getChildren: (path, force = false) => client.get('/browse/children', { params: { path, force } }),
+  getChildren: (path, force = false, meta = false) => client.get('/browse/children', { params: { path, force, meta } }),
   getFiles: (path, force = false) => client.get('/browse/files', { params: { path, force } }),
   getCovers: (path) => client.get('/browse/covers', { params: { path } }),
   writeTags: (data) => client.post('/browse/write-tags', data),
