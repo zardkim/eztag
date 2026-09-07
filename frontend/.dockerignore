@@ -1,0 +1,8 @@
+# 빌드 컨텍스트에서 제외 (없으면 로컬 node_modules 145MB 가 통째로 전송된다)
+node_modules
+dist
+.env
+.env.*
+!.env.example
+npm-debug.log*
+.DS_Store

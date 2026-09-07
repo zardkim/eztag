@@ -1,0 +1,10 @@
+# 빌드 컨텍스트에서 제외 (없으면 로컬 .venv 153MB 가 통째로 전송된다)
+.venv
+venv
+__pycache__
+*.pyc
+.env
+.env.*
+!.env.example
+.cache
+.playwright-cli
