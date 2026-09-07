@@ -3,7 +3,7 @@
 
   <br/>
 
-  [![Version](https://img.shields.io/badge/version-0.10.3-orange)](https://github.com/zardkim/eztag/releases)
+  [![Version](https://img.shields.io/badge/version-0.10.4-orange)](https://github.com/zardkim/eztag/releases)
   [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)](https://fastapi.tiangolo.com/)
   [![Vue.js](https://img.shields.io/badge/Vue.js-3.x-brightgreen)](https://vuejs.org/)
@@ -264,7 +264,8 @@ docker-compose pull && docker-compose up -d
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **v0.10.3** | 2026-09-07 | Explorer-style subfolder list with sorting, taller mobile folder sheet, fixed folder name truncation on narrow screens |
+| **v0.10.4** | 2026-09-07 | Explorer-style subfolder list with sorting, taller mobile folder sheet, fixed hanging arm64 image build |
+| v0.10.3 (결함) | 2026-09-07 | Explorer-style subfolder list with sorting, taller mobile folder sheet, fixed folder name truncation on narrow screens |
 | v0.10.2 | 2026-09-06 | Much faster folder loading on NAS (N+1 scandir removed), recursive view now follows symlinks, better auto-tag matching for chart folders |
 | v0.10.1 | 2026-09-05 | Fixed runtime logs never being written, limited automatic recursive folder loading, cleaned up sidebar library roots, env-override indicator in Settings |
 | v0.10.0 | 2026-09-02 | Sidebar folder tree, folder inspector panel, mobile folder bottom sheet, symlinked-folder 403 fix, per-file auto-tagging for compilations, cache memory limits |
