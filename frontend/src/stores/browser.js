@@ -40,10 +40,40 @@ export const useBrowserStore = defineStore('browser', () => {
   const checkedPaths = ref(new Set())
   const breadcrumb = ref([])   // [{ name, path }, ...]
 
-  // 정렬/필터 상태
-  const sortKey = ref('disc_no')     // 정렬 기준 필드명
-  const sortOrder = ref('asc')       // 'asc' | 'desc'
+  // 정렬/필터 상태 — 정렬 기준은 폴더 정렬과 같이 localStorage 에 유지한다
+  const sortKey = ref(localStorage.getItem('eztag-file-sort-key') || 'disc_no')   // 정렬 기준 필드명
+  const sortOrder = ref(localStorage.getItem('eztag-file-sort-order') || 'asc')   // 'asc' | 'desc'
   const filterText = ref('')
+
+  // 파일 목록 정렬 기준 변경 — 같은 키를 다시 고르면 오름/내림을 토글한다
+  function setSort(key) {
+    if (sortKey.value === key) {
+      sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+    } else {
+      sortKey.value = key
+      sortOrder.value = 'asc'
+    }
+    try {
+      localStorage.setItem('eztag-file-sort-key', sortKey.value)
+      localStorage.setItem('eztag-file-sort-order', sortOrder.value)
+    } catch {}
+  }
+
+  // 기준만 변경하고 방향은 유지한다 (정렬 바의 select 용 —
+  // 방향 토글이 바로 옆에 있어서 임의로 오름차순으로 되돌리면 오작동처럼 보인다)
+  function setSortKey(key) {
+    sortKey.value = key
+    try {
+      localStorage.setItem('eztag-file-sort-key', sortKey.value)
+    } catch {}
+  }
+
+  function setSortOrder(order) {
+    sortOrder.value = order === 'desc' ? 'desc' : 'asc'
+    try {
+      localStorage.setItem('eztag-file-sort-order', sortOrder.value)
+    } catch {}
+  }
 
   const checkedFiles = computed(() =>
     files.value.filter(f => checkedPaths.value.has(f.path))
@@ -103,6 +133,12 @@ export const useBrowserStore = defineStore('browser', () => {
     if (key === 'modified_time') loadSubfolderMeta()
   }
 
+  // 문자열 비교 — 하위 폴더 정렬과 동일하게 로케일/숫자 인식으로 비교한다.
+  // 단순 `<` 비교는 '10 - foo.mp3' 가 '2 - foo.mp3' 보다 앞에 오므로 파일명 정렬에서 특히 어긋난다.
+  function _cmpText(a, b) {
+    return String(a ?? '').localeCompare(String(b ?? ''), 'ko', { numeric: true, sensitivity: 'base' })
+  }
+
   // 파일 정렬 비교함수 생성
   function _makeSorter(key, dir) {
     const NUMERIC = new Set(['disc_no', 'track_no', 'year', 'bitrate', 'sample_rate', 'duration', 'modified_time', 'file_size'])
@@ -114,13 +150,17 @@ export const useBrowserStore = defineStore('browser', () => {
         cmp = (av - bv) * dir
         if (isNaN(cmp)) cmp = 0  // 둘 다 null이면 Infinity-Infinity=NaN → 0으로 정규화해 보조 정렬 적용
       } else if (key === 'title') {
-        const av = (a.title || a.filename || '').toLowerCase()
-        const bv = (b.title || b.filename || '').toLowerCase()
-        cmp = av < bv ? -dir : av > bv ? dir : 0
+        cmp = _cmpText(a.title || a.filename, b.title || b.filename) * dir
       } else {
-        const av = (a[key] || '').toLowerCase()
-        const bv = (b[key] || '').toLowerCase()
-        cmp = av < bv ? -dir : av > bv ? dir : 0
+        // 태그가 비어 있는 파일(미태깅)은 오름/내림 어느 쪽에서도 뒤로 보낸다.
+        // NUMERIC 분기의 Infinity 처리, sortedSubfolders 와 같은 규칙.
+        const av = a[key], bv = b[key]
+        const aEmpty = !String(av ?? '').trim()
+        const bEmpty = !String(bv ?? '').trim()
+        if (aEmpty && bEmpty) cmp = 0
+        else if (aEmpty) cmp = 1
+        else if (bEmpty) cmp = -1
+        else cmp = _cmpText(av, bv) * dir
       }
       if (cmp === 0 && key === 'disc_no') {
         const at = a.track_no ?? Infinity
@@ -499,7 +539,7 @@ export const useBrowserStore = defineStore('browser', () => {
     sortKey, sortOrder, filterText, breadcrumb, currentArea, mobileMenuOpen, wizardOpen, wizardPendingPreset,
     isRecursiveMode, folderGroups,
     folderSortKey, folderSortOrder, sortedSubfolders, subfolderMetaLoading,
-    setFolderSort, loadSubfolderMeta,
+    setFolderSort, loadSubfolderMeta, setSort, setSortKey, setSortOrder,
     loadFiles, selectFolder, selectFolderRecursive, loadRecursiveFiles,
     selectFile, selectExtraFile, toggleCheck, toggleAll, setCheckedPaths,
     updateFile, updateFiles, invalidateFilesCache, resetFolder,

@@ -603,6 +603,42 @@
             <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap line-clamp-4" :title="browserStore.albumDescription">{{ browserStore.albumDescription }}</p>
           </div>
 
+          <!-- ── 정렬 바 (모바일·데스크톱 공통) ──
+               데스크톱 테이블 헤더 클릭과 같은 상태(sortKey/sortOrder)를 쓴다.
+               가로 스크롤되는 테이블 래퍼 바깥에 둬야 스크롤을 따라 밀려나지 않는다. -->
+          <div
+            v-if="browserStore.files.length > 0"
+            class="flex items-center gap-2 px-4 pt-2 pb-1 flex-wrap"
+          >
+            <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider shrink-0">{{ t('browser.sortBy') }}</span>
+            <select
+              class="px-2 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400 max-w-[48vw] sm:max-w-none"
+              :value="browserStore.sortKey"
+              @change="browserStore.setSortKey($event.target.value)"
+            >
+              <option v-for="opt in sortOptions" :key="opt.key" :value="opt.key">{{ opt.label }}</option>
+            </select>
+            <!-- 오름/내림 토글 -->
+            <div class="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shrink-0">
+              <button
+                class="px-2 py-1 text-xs transition-colors"
+                :class="browserStore.sortOrder === 'asc'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                :title="t('browser.sortAsc')"
+                @click="browserStore.setSortOrder('asc')"
+              >↑ <span class="hidden sm:inline">{{ t('browser.sortAscShort') }}</span></button>
+              <button
+                class="px-2 py-1 text-xs border-l border-gray-200 dark:border-gray-700 transition-colors"
+                :class="browserStore.sortOrder === 'desc'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                :title="t('browser.sortDesc')"
+                @click="browserStore.setSortOrder('desc')"
+              >↓ <span class="hidden sm:inline">{{ t('browser.sortDescShort') }}</span></button>
+            </div>
+          </div>
+
           <!-- 필터 결과 없음 -->
           <div v-if="browserStore.files.length > 0 && browserStore.displayFiles.length === 0" class="flex items-center justify-center h-24">
             <p class="text-gray-400 text-sm">{{ t('browser.noFilterResults') }}</p>
@@ -1634,13 +1670,27 @@ function forceReload() {
 
 // ── 헤더 클릭 정렬 ──────────────────────────────────────────
 function sortByCol(key) {
-  if (browserStore.sortKey === key) {
-    browserStore.sortOrder = browserStore.sortOrder === 'asc' ? 'desc' : 'asc'
-  } else {
-    browserStore.sortKey = key
-    browserStore.sortOrder = 'asc'
-  }
+  browserStore.setSort(key)
 }
+
+// 정렬 바 선택 목록 — 테이블 헤더가 설정할 수 있는 모든 키를 포함해야 한다.
+// (빠지면 헤더 클릭 후 select 가 표시할 값을 잃는다)
+const sortOptions = computed(() => [
+  { key: 'filename',      label: t('browser.colFilename') },
+  { key: 'title',         label: t('common.title') },
+  { key: 'artist',        label: t('common.artist') },
+  { key: 'album_artist',  label: t('browser.colAlbumArtist') },
+  { key: 'album_title',   label: t('common.album') },
+  { key: 'genre',         label: t('browser.colGenre') },
+  { key: 'year',          label: t('browser.colYear') },
+  { key: 'disc_no',       label: t('browser.colDisc') },
+  { key: 'track_no',      label: t('browser.colTrack') },
+  { key: 'file_format',   label: t('browser.colCodec') },
+  { key: 'bitrate',       label: t('browser.colBitrate') },
+  { key: 'sample_rate',   label: t('browser.colFrequency') },
+  { key: 'duration',      label: t('browser.colDuration') },
+  { key: 'modified_time', label: t('browser.colModified') },
+])
 function sortIcon(key) {
   if (browserStore.sortKey !== key) return '↕'
   return browserStore.sortOrder === 'asc' ? '↑' : '↓'
