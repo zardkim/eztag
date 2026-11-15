@@ -360,9 +360,18 @@
             <img src="/logo-icon.svg" class="w-3 h-3 rounded-sm" alt="" />
             {{ $t('browser.eztagOrganized') }}
           </span>
+          <!-- 우측 그룹 — ml-auto 를 그룹에 한 번만 걸어야 한다.
+               두 항목에 각각 걸면 남는 공간이 둘로 나뉘어 가운데로 밀린다. -->
+          <div class="ml-auto shrink-0 flex items-center gap-1.5">
+          <!-- 정렬 (PC 전용 — 경로 줄 우측). 모바일은 목록 위 한 줄로 따로 그린다. -->
+          <FileSortControl
+            v-if="browserStore.files.length > 0"
+            compact
+            class="hidden md:flex"
+          />
           <!-- 폴더 인스펙터 토글 -->
           <button
-            class="ml-auto shrink-0 w-6 h-6 flex items-center justify-center rounded transition-colors"
+            class="shrink-0 w-6 h-6 flex items-center justify-center rounded transition-colors"
             :class="showPanel === 'folder'
               ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'
               : 'text-emerald-600/70 hover:text-emerald-600 dark:text-emerald-400/70 dark:hover:text-emerald-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
@@ -373,6 +382,7 @@
               <path d="M1.5 4.5v7a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V5.5a1 1 0 0 0-1-1H8L6.5 3h-4a1 1 0 0 0-1 1Z" stroke="currentColor" stroke-width="1.2" />
             </svg>
           </button>
+          </div>
         </template>
         <span v-else class="text-gray-400 italic text-[11px]">{{ $t('browser.selectFolder') }}</span>
       </div>
@@ -603,41 +613,13 @@
             <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap line-clamp-4" :title="browserStore.albumDescription">{{ browserStore.albumDescription }}</p>
           </div>
 
-          <!-- ── 정렬 바 (모바일·데스크톱 공통) ──
-               데스크톱 테이블 헤더 클릭과 같은 상태(sortKey/sortOrder)를 쓴다.
+          <!-- ── 정렬 바 (모바일 전용) ──
+               PC 에서는 같은 컨트롤을 경로 줄 우측에 축약형으로 그린다.
                가로 스크롤되는 테이블 래퍼 바깥에 둬야 스크롤을 따라 밀려나지 않는다. -->
-          <div
+          <FileSortControl
             v-if="browserStore.files.length > 0"
-            class="flex items-center gap-2 px-4 pt-2 pb-1 flex-wrap"
-          >
-            <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider shrink-0">{{ t('browser.sortBy') }}</span>
-            <select
-              class="px-2 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400 max-w-[48vw] sm:max-w-none"
-              :value="browserStore.sortKey"
-              @change="browserStore.setSortKey($event.target.value)"
-            >
-              <option v-for="opt in sortOptions" :key="opt.key" :value="opt.key">{{ opt.label }}</option>
-            </select>
-            <!-- 오름/내림 토글 -->
-            <div class="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shrink-0">
-              <button
-                class="px-2 py-1 text-xs transition-colors"
-                :class="browserStore.sortOrder === 'asc'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
-                :title="t('browser.sortAsc')"
-                @click="browserStore.setSortOrder('asc')"
-              >↑ <span class="hidden sm:inline">{{ t('browser.sortAscShort') }}</span></button>
-              <button
-                class="px-2 py-1 text-xs border-l border-gray-200 dark:border-gray-700 transition-colors"
-                :class="browserStore.sortOrder === 'desc'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
-                :title="t('browser.sortDesc')"
-                @click="browserStore.setSortOrder('desc')"
-              >↓ <span class="hidden sm:inline">{{ t('browser.sortDescShort') }}</span></button>
-            </div>
-          </div>
+            class="md:hidden px-4 pt-2 pb-1"
+          />
 
           <!-- 필터 결과 없음 -->
           <div v-if="browserStore.files.length > 0 && browserStore.displayFiles.length === 0" class="flex items-center justify-center h-24">
@@ -1135,6 +1117,7 @@ import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import BatchTagPanel from '../components/BatchTagPanel.vue'
+import FileSortControl from '../components/FileSortControl.vue'
 import FolderInspectorPanel from '../components/FolderInspectorPanel.vue'
 import SpotifySearchDialog from '../components/SpotifySearchDialog.vue'
 import RenameByTagsModal from '../components/RenameByTagsModal.vue'
@@ -1673,24 +1656,6 @@ function sortByCol(key) {
   browserStore.setSort(key)
 }
 
-// 정렬 바 선택 목록 — 테이블 헤더가 설정할 수 있는 모든 키를 포함해야 한다.
-// (빠지면 헤더 클릭 후 select 가 표시할 값을 잃는다)
-const sortOptions = computed(() => [
-  { key: 'filename',      label: t('browser.colFilename') },
-  { key: 'title',         label: t('common.title') },
-  { key: 'artist',        label: t('common.artist') },
-  { key: 'album_artist',  label: t('browser.colAlbumArtist') },
-  { key: 'album_title',   label: t('common.album') },
-  { key: 'genre',         label: t('browser.colGenre') },
-  { key: 'year',          label: t('browser.colYear') },
-  { key: 'disc_no',       label: t('browser.colDisc') },
-  { key: 'track_no',      label: t('browser.colTrack') },
-  { key: 'file_format',   label: t('browser.colCodec') },
-  { key: 'bitrate',       label: t('browser.colBitrate') },
-  { key: 'sample_rate',   label: t('browser.colFrequency') },
-  { key: 'duration',      label: t('browser.colDuration') },
-  { key: 'modified_time', label: t('browser.colModified') },
-])
 function sortIcon(key) {
   if (browserStore.sortKey !== key) return '↕'
   return browserStore.sortOrder === 'asc' ? '↑' : '↓'
