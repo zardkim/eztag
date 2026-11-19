@@ -144,6 +144,8 @@ export default {
     selectSource: 'Select Source',
     subfolders: 'Subfolders',
     colFolderName: 'Folder name',
+    folderSearchPlaceholder: 'Search folders...',
+    folderSearchCount: '{n}/{total}',
     sortByModifiedHint: 'Sort by modified date — may take a moment on NAS with many subfolders',
     showAllSubfolderFiles: 'Show all subfolder files ({n})',
     audioLabel: 'Music',

@@ -580,12 +580,32 @@
 
           <!-- 하위 폴더 그리드 -->
           <div v-if="(browserStore.subfolders?.length ?? 0) > 0" class="px-4 pt-3 pb-2">
-            <div class="flex items-center gap-2 mb-2">
-              <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{{ t('browser.subfolders') }}</p>
+            <div class="flex items-center gap-2 mb-2 flex-wrap">
+              <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider shrink-0">{{ t('browser.subfolders') }}</p>
+              <!-- 폴더 검색 — 하위 폴더가 많은 아티스트 폴더에서 찾아 들어갈 때 쓴다 -->
+              <div class="relative shrink-0">
+                <input
+                  v-model="browserStore.folderFilterText"
+                  type="text"
+                  autocomplete="off"
+                  class="w-36 sm:w-56 pl-6 pr-6 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  :placeholder="t('browser.folderSearchPlaceholder')"
+                />
+                <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-gray-400 pointer-events-none">🔍</span>
+                <button
+                  v-if="browserStore.folderFilterText"
+                  class="absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center rounded-full text-[10px] text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                  :title="t('common.cancel')"
+                  @click="browserStore.folderFilterText = ''"
+                >✕</button>
+              </div>
+              <span v-if="browserStore.folderFilterText" class="text-[10px] text-gray-400 shrink-0">
+                {{ t('browser.folderSearchCount', { n: browserStore.sortedSubfolders.length, total: browserStore.subfolders.length }) }}
+              </span>
               <!-- 자동 재귀는 하위 폴더가 많으면 건너뛴다. 직접 전체를 보고 싶을 때의 진입점. -->
               <button
                 v-if="!browserStore.isRecursiveMode && browserStore.selectedFolder"
-                class="ml-auto px-2 py-0.5 rounded-lg text-[11px] text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                class="ml-auto px-2 py-0.5 rounded-lg text-[11px] text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors shrink-0"
                 @click="loadAllSubfolderFiles"
               >{{ t('browser.showAllSubfolderFiles', { n: browserStore.subfolders.length }) }}</button>
             </div>
@@ -618,6 +638,10 @@
                 class="divide-y divide-gray-100 dark:divide-gray-800"
                 :class="browserStore.files.length > 0 ? 'max-h-[420px] overflow-y-auto' : ''"
               >
+                <p
+                  v-if="browserStore.folderFilterText && browserStore.sortedSubfolders.length === 0"
+                  class="px-3 py-6 text-center text-xs text-gray-400"
+                >{{ t('browser.noFilterResults') }}</p>
                 <button
                   v-for="folder in browserStore.sortedSubfolders"
                   :key="folder.path"

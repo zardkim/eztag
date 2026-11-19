@@ -144,6 +144,8 @@ export default {
     selectSource: '소스 선택',
     subfolders: '하위 폴더',
     colFolderName: '폴더 이름',
+    folderSearchPlaceholder: '폴더 검색...',
+    folderSearchCount: '{n}/{total}개',
     sortByModifiedHint: '수정일로 정렬 — 하위 폴더가 많으면 NAS에서 잠시 걸릴 수 있습니다',
     showAllSubfolderFiles: '하위 폴더 전체 보기 ({n}개)',
     audioLabel: '음악',

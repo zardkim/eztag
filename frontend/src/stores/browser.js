@@ -44,6 +44,8 @@ export const useBrowserStore = defineStore('browser', () => {
   const hasEztagReport = ref(false)  // 폴더에 eztag 생성 HTML 파일 존재 여부
   const subfolders = ref([])   // [{ name, path }, ...] (meta=true 일 때만 has_children/has_audio/modified_time 포함)
   // 하위 폴더 목록 정렬 — 'name' | 'modified_time'
+  // 하위 폴더 목록 검색어 (폴더를 옮기면 비운다)
+  const folderFilterText = ref('')
   const folderSortKey = ref(localStorage.getItem('eztag-folder-sort-key') || 'name')
   const folderSortOrder = ref(localStorage.getItem('eztag-folder-sort-order') || 'asc')
   const subfolderMetaLoading = ref(false)
@@ -98,7 +100,10 @@ export const useBrowserStore = defineStore('browser', () => {
   // 하위 폴더 정렬. 수정일은 meta=true 로 받아야 있으므로, 값이 없으면 이름순으로 폴백한다.
   const sortedSubfolders = computed(() => {
     const dir = folderSortOrder.value === 'desc' ? -1 : 1
-    const list = [...subfolders.value]
+    const q = folderFilterText.value.trim().toLowerCase()
+    const list = q
+      ? subfolders.value.filter(f => (f.name || '').toLowerCase().includes(q))
+      : [...subfolders.value]
     if (folderSortKey.value === 'modified_time') {
       return list.sort((a, b) => {
         const av = a.modified_time ?? null
@@ -426,6 +431,7 @@ export const useBrowserStore = defineStore('browser', () => {
     if (area) currentArea.value = area
     checkedPaths.value = new Set()
     filterText.value = ''
+    folderFilterText.value = ''
     subfolders.value = []
     extraFiles.value = []
     albumDescription.value = null
@@ -455,6 +461,7 @@ export const useBrowserStore = defineStore('browser', () => {
     breadcrumb.value = []
     checkedPaths.value = new Set()
     filterText.value = ''
+    folderFilterText.value = ''
     folderGroups.value = []
     isRecursiveMode.value = false
     albumDescription.value = null
@@ -474,6 +481,7 @@ export const useBrowserStore = defineStore('browser', () => {
     if (area) currentArea.value = area
     checkedPaths.value = new Set()
     filterText.value = ''
+    folderFilterText.value = ''
     subfolders.value = []
     extraFiles.value = []
     albumDescription.value = null
@@ -579,7 +587,7 @@ export const useBrowserStore = defineStore('browser', () => {
     checkedPaths, checkedFiles, isAllChecked,
     sortKey, sortOrder, filterText, breadcrumb, currentArea, mobileMenuOpen, wizardOpen, wizardPendingPreset,
     isRecursiveMode, folderGroups, suppressAutoCombine, treeRefreshSignal, requestTreeRefresh,
-    folderSortKey, folderSortOrder, sortedSubfolders, subfolderMetaLoading,
+    folderSortKey, folderSortOrder, sortedSubfolders, subfolderMetaLoading, folderFilterText,
     setFolderSort, loadSubfolderMeta, setSort, setSortKey, setSortOrder,
     loadFiles, selectFolder, selectFolderRecursive, loadRecursiveFiles, reloadCurrent, exitRecursive,
     selectFile, selectExtraFile, toggleCheck, toggleAll, setCheckedPaths,
