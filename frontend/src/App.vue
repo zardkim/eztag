@@ -159,28 +159,8 @@
           title="폴더 트리 열기"
           @click="toggleSidebar"
         ><span class="text-base">📂</span></button>
-        <RouterLink
-          v-for="item in bottomNav"
-          :key="item.to"
-          :to="item.to"
-          class="flex items-center gap-2 px-2 py-2 rounded-lg text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
-          :class="sidebarCollapsed ? 'justify-center' : ''"
-          :title="sidebarCollapsed ? $t(item.labelKey) : ''"
-          active-class="bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white"
-        >
-          <span class="text-base shrink-0">{{ item.icon }}</span>
-          <span v-if="!sidebarCollapsed">{{ $t(item.labelKey) }}</span>
-        </RouterLink>
-
-        <button
-          class="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 transition-colors"
-          :class="sidebarCollapsed ? 'justify-center' : ''"
-          :title="sidebarCollapsed ? (locale === 'ko' ? '한국어' : 'English') : ''"
-          @click="toggleLanguage"
-        >
-          <span class="text-base shrink-0">🌐</span>
-          <span v-if="!sidebarCollapsed" class="flex-1 text-left">{{ locale === 'ko' ? '한국어' : 'English' }}</span>
-        </button>
+        <!-- 설정/언어는 아래 유저 메뉴 안으로 옮겼다 (데스크톱).
+             모바일 하단 시트는 그대로 둔다. -->
 
         <!-- 유저 메뉴 (데스크톱) -->
         <div class="relative" ref="userMenuRef">
@@ -211,6 +191,19 @@
                 <p class="text-xs font-semibold text-gray-900 dark:text-white truncate">{{ authStore.user?.username }}</p>
                 <p class="text-[10px] text-gray-400">{{ authStore.user?.role }}</p>
               </div>
+              <RouterLink
+                v-for="item in bottomNav"
+                :key="item.to"
+                :to="item.to"
+                class="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+                active-class="bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white"
+                @click="userMenuOpen = false"
+              >{{ item.icon }} {{ $t(item.labelKey) }}</RouterLink>
+              <button
+                class="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+                @click="toggleLanguage"
+              >🌐 {{ locale === 'ko' ? '한국어' : 'English' }}</button>
+              <div class="my-1 border-t border-gray-100 dark:border-gray-700" />
               <button
                 class="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
                 @click="openPasswordModal"

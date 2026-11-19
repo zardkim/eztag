@@ -97,7 +97,6 @@ export default {
     deselectGroup: '선택됨',
     titleBadge: '타이틀',
     colFilename: '파일명',
-    moreActions: '더보기',
     sortBy: '정렬',
     sortAscShort: '오름',
     sortDescShort: '내림',
