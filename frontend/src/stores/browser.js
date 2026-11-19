@@ -58,7 +58,6 @@ export const useBrowserStore = defineStore('browser', () => {
   // 정렬/필터 상태 — 정렬 기준은 폴더 정렬과 같이 localStorage 에 유지한다
   const sortKey = ref(localStorage.getItem('eztag-file-sort-key') || 'disc_no')   // 정렬 기준 필드명
   const sortOrder = ref(localStorage.getItem('eztag-file-sort-order') || 'asc')   // 'asc' | 'desc'
-  const filterText = ref('')
 
   // 파일 목록 정렬 기준 변경 — 같은 키를 다시 고르면 오름/내림을 토글한다
   function setSort(key) {
@@ -196,37 +195,18 @@ export const useBrowserStore = defineStore('browser', () => {
 
   // 필터링 + 정렬된 파일 목록
   const displayFiles = computed(() => {
-    let list = files.value
-
-    const q = filterText.value.trim().toLowerCase()
-    if (q) {
-      list = list.filter(f =>
-        (f.title || f.filename || '').toLowerCase().includes(q) ||
-        (f.artist || '').toLowerCase().includes(q) ||
-        (f.album_title || '').toLowerCase().includes(q)
-      )
-    }
-
     const dir = sortOrder.value === 'asc' ? 1 : -1
-    return [...list].sort(_makeSorter(sortKey.value, dir))
+    return [...files.value].sort(_makeSorter(sortKey.value, dir))
   })
 
   // 폴더 그룹별 필터링 + 정렬 (하위폴더 포함 로드 시)
   const displayGroups = computed(() => {
     if (!folderGroups.value.length) return []
-    const q = filterText.value.trim().toLowerCase()
     const dir = sortOrder.value === 'asc' ? 1 : -1
     const sorter = _makeSorter(sortKey.value, dir)
-    return folderGroups.value.map(g => {
-      let gfiles = q
-        ? g.files.filter(f =>
-            (f.title || f.filename || '').toLowerCase().includes(q) ||
-            (f.artist || '').toLowerCase().includes(q) ||
-            (f.album_title || '').toLowerCase().includes(q)
-          )
-        : [...g.files]
-      return { ...g, files: gfiles.sort(sorter) }
-    }).filter(g => g.files.length > 0)
+    return folderGroups.value
+      .map(g => ({ ...g, files: [...g.files].sort(sorter) }))
+      .filter(g => g.files.length > 0)
   })
 
   async function loadFiles(path, force = false) {
@@ -430,7 +410,6 @@ export const useBrowserStore = defineStore('browser', () => {
     selectedExtraFile.value = null
     if (area) currentArea.value = area
     checkedPaths.value = new Set()
-    filterText.value = ''
     folderFilterText.value = ''
     subfolders.value = []
     extraFiles.value = []
@@ -460,7 +439,6 @@ export const useBrowserStore = defineStore('browser', () => {
     extraFiles.value = []
     breadcrumb.value = []
     checkedPaths.value = new Set()
-    filterText.value = ''
     folderFilterText.value = ''
     folderGroups.value = []
     isRecursiveMode.value = false
@@ -480,7 +458,6 @@ export const useBrowserStore = defineStore('browser', () => {
     selectedExtraFile.value = null
     if (area) currentArea.value = area
     checkedPaths.value = new Set()
-    filterText.value = ''
     folderFilterText.value = ''
     subfolders.value = []
     extraFiles.value = []
@@ -585,7 +562,7 @@ export const useBrowserStore = defineStore('browser', () => {
     selectedFolder, selectedFile, selectedExtraFile, files, extraFiles, albumDescription, hasEztagReport, subfolders, displayFiles, displayGroups,
     loading, error, fileWarning,
     checkedPaths, checkedFiles, isAllChecked,
-    sortKey, sortOrder, filterText, breadcrumb, currentArea, mobileMenuOpen, wizardOpen, wizardPendingPreset,
+    sortKey, sortOrder, breadcrumb, currentArea, mobileMenuOpen, wizardOpen, wizardPendingPreset,
     isRecursiveMode, folderGroups, suppressAutoCombine, treeRefreshSignal, requestTreeRefresh,
     folderSortKey, folderSortOrder, sortedSubfolders, subfolderMetaLoading, folderFilterText,
     setFolderSort, loadSubfolderMeta, setSort, setSortKey, setSortOrder,

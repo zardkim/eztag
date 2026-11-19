@@ -672,11 +672,6 @@
             class="md:hidden px-4 pt-2 pb-1"
           />
 
-          <!-- 필터 결과 없음 -->
-          <div v-if="browserStore.files.length > 0 && browserStore.displayFiles.length === 0" class="flex items-center justify-center h-24">
-            <p class="text-gray-400 text-sm">{{ t('browser.noFilterResults') }}</p>
-          </div>
-
           <!-- ── 모바일 extra 파일 (html, 이미지 등) ── -->
           <div v-if="browserStore.extraFiles.length > 0" class="md:hidden px-3 pt-2 pb-1 flex flex-wrap gap-1.5">
             <button
