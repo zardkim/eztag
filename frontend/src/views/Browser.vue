@@ -72,6 +72,7 @@
             @click="showLrcDialog = true"
           >🎵 LRC</button>
           <button
+            v-if="YOUTUBE_ENABLED"
             class="btn-toolbar !bg-red-100 !text-red-700 hover:!bg-red-200 dark:!bg-red-900/30 dark:!text-red-400 shrink-0 disabled:opacity-50"
             :disabled="searchingYoutube"
             @click="startYoutubeSearch"
@@ -231,6 +232,7 @@
 
                   <!-- YouTube MV -->
                   <button
+                    v-if="YOUTUBE_ENABLED"
                     class="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-left disabled:opacity-50"
                     :disabled="searchingYoutube"
                     @click="startYoutubeSearch(); browserStore.mobileMenuOpen = false"
@@ -418,7 +420,7 @@
 
     <!-- YouTube MV 검색 진행 패널 (마법사 실행 중에는 숨김) -->
     <Transition enter-from-class="opacity-0 -translate-y-1" leave-to-class="opacity-0 -translate-y-1" enter-active-class="transition duration-200" leave-active-class="transition duration-150">
-      <div v-if="(searchingYoutube || ytProgress.done) && wizardPhase !== 'running'" class="shrink-0 bg-red-50 dark:bg-red-900/20 border-b border-red-100 dark:border-red-800">
+      <div v-if="YOUTUBE_ENABLED && (searchingYoutube || ytProgress.done) && wizardPhase !== 'running'" class="shrink-0 bg-red-50 dark:bg-red-900/20 border-b border-red-100 dark:border-red-800">
         <!-- 진행 표시 -->
         <div class="px-4 py-2 flex items-center gap-3">
           <svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-red-500 shrink-0">
@@ -721,7 +723,7 @@
                     :title="t('filenameAutoTag.noMatchBadgeTitle')"
                   >{{ t('filenameAutoTag.noMatchBadge') }}</span>
                   <button
-                    v-if="file.youtube_url"
+                    v-if="YOUTUBE_ENABLED && file.youtube_url"
                     class="shrink-0 inline-flex items-center justify-center text-red-500 hover:text-red-600 transition-colors"
                     :title="t('browser.ytWatch')"
                     @click.stop="openYtDialog(file.youtube_url)"
@@ -819,7 +821,7 @@
                   <th class="text-left px-3 py-2 font-semibold min-w-[100px]">{{ t('browser.colComment') }}</th>
                   <th class="text-center px-2 py-2 font-semibold w-16 cursor-pointer hover:bg-sky-400 dark:hover:bg-sky-800 transition-colors" @click="sortByCol('file_format')">{{ t('browser.colCodec') }}<span class="ml-0.5 opacity-70">{{ sortIcon('file_format') }}</span></th>
                   <th class="text-center px-2 py-2 font-semibold w-12">LRC</th>
-                  <th class="text-center px-2 py-2 font-semibold w-10">YT</th>
+                  <th v-if="YOUTUBE_ENABLED" class="text-center px-2 py-2 font-semibold w-10">YT</th>
                   <th class="text-center px-2 py-2 font-semibold w-16">{{ t('browser.colTagVersion') }}</th>
                   <th class="text-center px-2 py-2 font-semibold w-20 cursor-pointer hover:bg-sky-400 dark:hover:bg-sky-800 transition-colors" @click="sortByCol('bitrate')">{{ t('browser.colBitrate') }}<span class="ml-0.5 opacity-70">{{ sortIcon('bitrate') }}</span></th>
                   <th class="text-center px-2 py-2 font-semibold w-20 cursor-pointer hover:bg-sky-400 dark:hover:bg-sky-800 transition-colors" @click="sortByCol('sample_rate')">{{ t('browser.colFrequency') }}<span class="ml-0.5 opacity-70">{{ sortIcon('sample_rate') }}</span></th>
@@ -831,7 +833,7 @@
               <template v-if="browserStore.displayGroups.length > 0">
                 <tbody v-for="group in browserStore.displayGroups" :key="group.folder_path">
                   <tr class="bg-gray-50 dark:bg-gray-800/80 border-y border-gray-200 dark:border-gray-700/60 select-none">
-                    <td colspan="18" class="px-4 py-1.5">
+                    <td :colspan="tableColspan" class="px-4 py-1.5">
                       <div class="flex items-center gap-2">
                         <span class="text-yellow-400 text-xs shrink-0">📁</span>
                         <span class="text-xs font-semibold text-gray-600 dark:text-gray-300">{{ group.relative_path || group.folder_name }}</span>
@@ -890,7 +892,7 @@
                     <td class="px-2 py-2 text-center">
                       <span v-if="file.has_lrc" class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400">LRC</span>
                     </td>
-                    <td class="px-2 py-2 text-center">
+                    <td v-if="YOUTUBE_ENABLED" class="px-2 py-2 text-center">
                       <div v-if="file.youtube_url" class="group/yt inline-flex items-center justify-center gap-0.5">
                         <button class="inline-flex items-center justify-center text-red-500 hover:text-red-600 opacity-70 hover:opacity-100 transition-opacity" :title="t('browser.ytWatch')" @click.stop="openYtDialog(file.youtube_url)">
                           <svg viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
@@ -976,7 +978,7 @@
                   <td class="px-2 py-2 text-center">
                     <span v-if="file.has_lrc" class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400">LRC</span>
                   </td>
-                  <td class="px-2 py-2 text-center">
+                  <td v-if="YOUTUBE_ENABLED" class="px-2 py-2 text-center">
                     <div v-if="file.youtube_url" class="group/yt inline-flex items-center justify-center gap-0.5">
                       <button
                         class="inline-flex items-center justify-center text-red-500 hover:text-red-600 opacity-70 hover:opacity-100 transition-opacity"
@@ -1048,7 +1050,7 @@
     <!-- YouTube 영상 다이얼로그 -->
     <Teleport to="body">
       <div
-        v-if="ytDialogVideoId"
+        v-if="YOUTUBE_ENABLED && ytDialogVideoId"
         class="fixed inset-0 bg-black/80 z-[500] flex items-center justify-center p-4"
         @click.self="ytDialogVideoId = null"
       >
@@ -1164,6 +1166,12 @@ import { usePullToRefresh } from '../composables/usePullToRefresh.js'
 
 const { t, locale } = useI18n()
 const router = useRouter()
+// YouTube 검색/연동 기능 비활성화 (2026-11, 요청에 따라 사용 중지).
+// 코드는 남겨두고 진입점만 막는다 — 되살리려면 이 값을 true 로.
+const YOUTUBE_ENABLED = false
+// 표 열 수 — YT 열을 빼면 18 → 17 이 된다. 그룹 머리글 colspan 이 어긋나면 줄이 깨진다.
+const tableColspan = computed(() => (YOUTUBE_ENABLED ? 18 : 17))
+
 const browserStore = useBrowserStore()
 const toastStore = useToastStore()
 const historyStore = useHistoryStore()
@@ -1865,7 +1873,7 @@ function openWizardSetup() {
 const WIZARD_DEFAULT_STEPS_BROWSER = [
   { id: 'autoTag',   icon: '🏷️', providerKeys: [], enabled: true },
   { id: 'lrc',       icon: '🎵',  lrcSources: ['alsong'], enabled: true },
-  { id: 'youtube',   icon: '▶️',  enabled: true },
+  // { id: 'youtube', icon: '▶️', enabled: true },  // YouTube 기능 비활성화
   { id: 'rename',    icon: '🔤',  renamePattern: '', enabled: true },
   { id: 'albumCard', icon: '🎴',  enabled: true },
 ]

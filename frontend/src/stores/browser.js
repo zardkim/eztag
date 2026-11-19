@@ -33,6 +33,10 @@ export const useBrowserStore = defineStore('browser', () => {
   // 사용자가 "이 폴더만 보기"를 누른 경우, 같은 폴더에서 다시 자동 합치기를 하지 않는다.
   // 폴더를 옮기면 해제된다.
   const suppressAutoCombine = ref(false)
+  // 사이드바 폴더 트리 새로고침 신호. 폴더 이름/구조가 바뀌면 올린다 —
+  // 트리는 App.vue 에 있고 변경은 Browser 쪽 패널에서 일어나서 직접 부를 수 없다.
+  const treeRefreshSignal = ref(0)
+  function requestTreeRefresh() { treeRefreshSignal.value++ }
   const folderGroups = ref([])         // [{ folder_path, folder_name, relative_path, files }]
   const files = ref([])
   const extraFiles = ref([])   // [{ filename, path, file_type, file_size, modified_time, is_eztag? }, ...]
@@ -574,7 +578,7 @@ export const useBrowserStore = defineStore('browser', () => {
     loading, error, fileWarning,
     checkedPaths, checkedFiles, isAllChecked,
     sortKey, sortOrder, filterText, breadcrumb, currentArea, mobileMenuOpen, wizardOpen, wizardPendingPreset,
-    isRecursiveMode, folderGroups, suppressAutoCombine,
+    isRecursiveMode, folderGroups, suppressAutoCombine, treeRefreshSignal, requestTreeRefresh,
     folderSortKey, folderSortOrder, sortedSubfolders, subfolderMetaLoading,
     setFolderSort, loadSubfolderMeta, setSort, setSortKey, setSortOrder,
     loadFiles, selectFolder, selectFolderRecursive, loadRecursiveFiles, reloadCurrent, exitRecursive,

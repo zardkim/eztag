@@ -443,6 +443,12 @@ const router = useRouter()
 const sidebarCollapsed = ref(localStorage.getItem('eztag-sidebar-collapsed') === 'true')
 const workspaceSidebarRef = ref(null)
 
+// 폴더 이름/구조가 바뀌면 사이드바 트리를 다시 읽는다.
+// refreshRoots 가 children: 캐시를 통째로 비우므로 부모 경로 캐시까지 정리된다.
+watch(() => browserStore.treeRefreshSignal, () => {
+  workspaceSidebarRef.value?.refreshTree()
+})
+
 // 모바일 시트 상태
 const mobileUserOpen = ref(false)
 const mobileShowFolderPicker = ref(false)

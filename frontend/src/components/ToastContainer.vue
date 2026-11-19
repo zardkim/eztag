@@ -1,9 +1,13 @@
 <template>
   <Teleport to="body">
-    <div class="fixed top-4 right-4 z-[99999] flex flex-col gap-2 pointer-events-none" style="max-width:360px; width:calc(100vw - 2rem);">
+    <!-- 하단 중앙. 모바일은 하단 네비(4rem)와 안전영역을 피해 띄운다. -->
+    <div
+      class="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col items-center gap-2 pointer-events-none"
+      style="max-width:360px; width:calc(100vw - 2rem); margin-bottom: env(safe-area-inset-bottom, 0px);"
+    >
       <TransitionGroup
-        enter-from-class="opacity-0 translate-x-4"
-        leave-to-class="opacity-0 translate-x-4"
+        enter-from-class="opacity-0 translate-y-2"
+        leave-to-class="opacity-0 translate-y-2"
         enter-active-class="transition duration-200"
         leave-active-class="transition duration-150"
         move-class="transition duration-200"
@@ -11,7 +15,7 @@
         <div
           v-for="toast in store.toasts"
           :key="toast.id"
-          class="pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-xl shadow-xl border text-sm"
+          class="pointer-events-auto w-full flex items-start gap-3 px-4 py-3 rounded-xl shadow-xl border text-sm"
           :class="toastClass(toast.type)"
         >
           <span class="shrink-0 text-base leading-none mt-0.5">{{ toastIcon(toast.type) }}</span>

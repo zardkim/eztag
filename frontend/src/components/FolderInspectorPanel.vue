@@ -201,6 +201,7 @@ function onFolderRenamed(data) {
   browserStore.selectedFolder = newFolder
   browserStore.breadcrumb = newCrumb
   browserStore.loadFiles(newFolder.path, true)
+  browserStore.requestTreeRefresh()   // 좌측 트리에도 새 이름 반영
   showRenameFolderModal.value = false
   toastStore.success(t('sidebar.renameSuccess', { name: data.new_name }))
 }

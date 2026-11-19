@@ -373,7 +373,7 @@ const STORAGE_KEY = 'eztag-wizard-steps'
 const DEFAULT_STEPS = [
   { id: 'autoTag',   icon: '🏷️', providerKeys: [], enabled: true },
   { id: 'lrc',       icon: '🎵',  lrcSources: ['alsong'], enabled: true },
-  { id: 'youtube',   icon: '▶️',  enabled: true },
+  // { id: 'youtube', icon: '▶️', enabled: true },  // YouTube 기능 비활성화(2026-11)
   { id: 'rename',    icon: '🔤',  renamePattern: '', enabled: true },
   { id: 'albumCard', icon: '🎴',  enabled: true },
 ]

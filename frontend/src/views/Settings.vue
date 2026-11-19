@@ -319,7 +319,8 @@
               </div>
             </div>
             <!-- YouTube MV -->
-            <div class="border border-red-100 dark:border-red-900/40 rounded-lg p-4 mt-4">
+            <!-- YouTube 설정 — 기능 비활성화(2026-11). 되살리려면 v-if 제거. -->
+            <div v-if="false" class="border border-red-100 dark:border-red-900/40 rounded-lg p-4 mt-4">
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2">
                   <svg class="w-6 h-6 text-red-600 shrink-0" viewBox="0 0 24 24" fill="currentColor">

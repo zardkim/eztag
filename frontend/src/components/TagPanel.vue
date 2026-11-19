@@ -99,9 +99,10 @@
           <span v-if="isTitleTrack" class="text-[10px] font-bold text-orange-500 bg-orange-50 dark:bg-orange-900/20 px-1.5 py-0.5 rounded">{{ $t('tagPanel.titleBadge') }}</span>
         </label>
 
-        <!-- YouTube URL + 자동 검색 -->
-        <label class="text-xs text-gray-500 block mb-1">{{ $t('tagPanel.ytUrlLabel') }}</label>
-        <div class="flex gap-1.5 mb-1">
+        <!-- YouTube URL + 자동 검색 — 기능 비활성화(2026-11).
+             저장 페이로드의 youtube_url 은 건드리지 않는다(기존 링크 보존). -->
+        <label v-if="false" class="text-xs text-gray-500 block mb-1">{{ $t('tagPanel.ytUrlLabel') }}</label>
+        <div v-if="false" class="flex gap-1.5 mb-1">
           <input v-model="youtubeUrl" class="field flex-1 text-sm min-w-0" placeholder="https://youtu.be/..." />
           <button
             class="shrink-0 px-2.5 py-1 text-xs font-medium bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
@@ -133,8 +134,8 @@
           </div>
         </div>
 
-        <!-- 현재 선택된 URL 미리보기 -->
-        <div v-if="youtubeUrl" class="mb-2">
+        <!-- 현재 선택된 URL 미리보기 (비활성화) -->
+        <div v-if="false && youtubeUrl" class="mb-2">
           <a :href="youtubeUrl" target="_blank" class="text-[11px] text-blue-500 hover:underline truncate block">{{ youtubeUrl }}</a>
         </div>
 

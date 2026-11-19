@@ -205,6 +205,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { workspaceApi, browseApi } from '../api/index.js'
+import { useBrowserStore } from '../stores/browser.js'
 
 const props = defineProps({
   sourcePath: { type: String, required: true },
@@ -213,6 +214,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'moved'])
 
 const { t } = useI18n()
+const browserStore = useBrowserStore()
 
 const sourceFolderName = computed(() => {
   const parts = props.sourcePath.split('/')
@@ -391,6 +393,7 @@ async function doDeleteFolder(folder) {
   crudError.value = ''
   try {
     await browseApi.deleteFolder(folder.path)
+    browserStore.requestTreeRefresh()
     if (selectedPath.value === folder.path) selectedPath.value = ''
     await loadChildren(currentPath.value)
   } catch (e) {
@@ -411,6 +414,7 @@ async function doMove() {
       source_path: props.sourcePath,
       dest_path: selectedPath.value,
     })
+    browserStore.requestTreeRefresh()
     emit('moved', { dest: data.dest })
   } catch (e) {
     if (e.response?.status === 409) {
