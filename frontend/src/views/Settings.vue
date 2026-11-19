@@ -304,6 +304,26 @@
                   </select>
                 </div>
               </div>
+              <!-- Discogs — 외국 앨범/재발매/기념반 -->
+              <div class="bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2.5">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <img src="/logo/discogs.svg" class="w-6 h-6 rounded-md object-cover shrink-0" alt="Discogs" />
+                    <span class="text-sm text-gray-600 dark:text-gray-300">Discogs</span>
+                    <span class="text-xs text-gray-400">{{ $t('settings.metadata.discogsHint') }}</span>
+                  </div>
+                  <button class="flex items-center gap-2 cursor-pointer" @click="form.discogs_enabled = !form.discogs_enabled; saveMetaConfig()">
+                    <span class="text-xs" :class="form.discogs_enabled ? 'text-green-500' : 'text-gray-400'">{{ form.discogs_enabled ? 'ON' : 'OFF' }}</span>
+                    <span class="relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200" :class="form.discogs_enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'">
+                      <span class="inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200 mt-0.5" :class="form.discogs_enabled ? 'translate-x-4' : 'translate-x-0.5'"></span>
+                    </span>
+                  </button>
+                </div>
+                <div v-if="form.discogs_enabled" class="mt-2">
+                  <input v-model="form.discogs_token" type="password" class="field w-full font-mono text-xs" placeholder="(선택) Discogs personal token" @blur="saveMetaConfig" />
+                  <p class="text-[10px] text-gray-400 mt-1">{{ $t('settings.metadata.discogsTokenHint') }}</p>
+                </div>
+              </div>
               <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2.5">
                 <div class="flex items-center gap-2">
                   <img src="/logo/melon.jpg" class="w-6 h-6 rounded-md object-cover shrink-0" alt="Melon" />
@@ -1010,6 +1030,8 @@ const form = reactive({
   apple_music_enabled: false,
   apple_music_storefront: 'kr',
   apple_music_classical_enabled: false,
+  discogs_enabled: false,
+  discogs_token: '',
   apple_music_classical_storefront: 'us',
   melon_enabled: true,
   youtube_enabled: false,
@@ -1122,6 +1144,8 @@ async function loadConfig() {
     form.apple_music_enabled = c.apple_music_enabled?.value === 'true'
     form.apple_music_storefront = c.apple_music_storefront?.value ?? 'kr'
     form.apple_music_classical_enabled = c.apple_music_classical_enabled?.value === 'true'
+    form.discogs_enabled = c.discogs_enabled?.value === 'true'
+    form.discogs_token = c.discogs_token?.value || ''
     form.apple_music_classical_storefront = c.apple_music_classical_storefront?.value ?? 'us'
     form.melon_enabled = (c.melon_enabled?.value ?? 'true') === 'true'
     form.youtube_enabled = c.youtube_enabled?.value === 'true'
@@ -1176,6 +1200,8 @@ async function saveMetaConfig() {
       apple_music_enabled: String(form.apple_music_enabled),
       apple_music_storefront: form.apple_music_storefront,
       apple_music_classical_enabled: String(form.apple_music_classical_enabled),
+      discogs_enabled: String(form.discogs_enabled),
+      discogs_token: form.discogs_token || '',
       apple_music_classical_storefront: form.apple_music_classical_storefront,
       melon_enabled: String(form.melon_enabled),
       youtube_enabled: String(form.youtube_enabled),
@@ -1326,6 +1352,7 @@ const WIZARD_DEFAULT_STEPS = [
 const wizardLrcSources = [
   { key: 'alsong', label: '알송' },
   { key: 'bugs',   label: 'Bugs' },
+  { key: 'discogs', label: 'Discogs' },
   { key: 'lrclib', label: 'LRCLIB' },
 ]
 

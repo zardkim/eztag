@@ -297,6 +297,7 @@ const emit = defineEmits(['update:modelValue', 'start', 'nextStep', 'skipStep', 
 const lrcSources = [
   { key: 'alsong', label: '알송' },
   { key: 'bugs', label: 'Bugs' },
+  { key: 'discogs', label: 'Discogs' },
   { key: 'lrclib', label: 'LRCLIB' },
 ]
 

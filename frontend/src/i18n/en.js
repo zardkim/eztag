@@ -458,6 +458,8 @@ export default {
       comingSoon: 'Coming Soon',
       pending: 'Pending',
       available: 'Available',
+      discogsHint: 'Foreign albums, reissues, anniversary editions',
+      discogsTokenHint: 'Token is optional. Works without it; adding one raises the rate limit from 25/min to 60/min.',
       spotifyHint: 'Register an app and get credentials',
       storefront: 'Country Store',
       save: 'Save Metadata Settings',

@@ -458,6 +458,8 @@ export default {
       comingSoon: '추후 지원',
       pending: '준비 중',
       available: '사용 가능',
+      discogsHint: '외국 앨범·재발매·기념반',
+      discogsTokenHint: '토큰은 선택입니다. 없어도 동작하며, 넣으면 요청 한도가 25/분 → 60/분이 됩니다.',
       spotifyHint: '에서 앱 등록 후 발급',
       storefront: '국가 스토어',
       save: '메타데이터 설정 저장',

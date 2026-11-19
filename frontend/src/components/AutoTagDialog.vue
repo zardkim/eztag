@@ -702,6 +702,7 @@ const PROVIDER_META = {
   bugs:                  { key: 'bugs',                  label: 'Bugs',                  logo: '/logo/bugs.jpg',                 activeBg: 'bg-orange-50 dark:bg-orange-900/30',   activeText: 'text-orange-700 dark:text-orange-300',   activeBorder: 'border-orange-400 dark:border-orange-600' },
   apple_music:           { key: 'apple_music',           label: 'Apple Music',           logo: '/logo/apple%20music.jpg',        activeBg: 'bg-red-50 dark:bg-red-900/30',         activeText: 'text-red-700 dark:text-red-300',         activeBorder: 'border-red-400 dark:border-red-600' },
   apple_music_classical: { key: 'apple_music_classical', label: 'Apple Music Classical', logo: '/logo/Apple%20Music%20Classical.jpg', activeBg: 'bg-pink-50 dark:bg-pink-900/30',   activeText: 'text-pink-700 dark:text-pink-300',       activeBorder: 'border-pink-400 dark:border-pink-600' },
+  discogs:               { key: 'discogs',               label: 'Discogs',               logo: '/logo/discogs.svg',              activeBg: 'bg-neutral-100 dark:bg-neutral-800',   activeText: 'text-neutral-800 dark:text-neutral-200', activeBorder: 'border-neutral-400 dark:border-neutral-500' },
   melon:                 { key: 'melon',                 label: 'Melon',                 logo: '/logo/melon.jpg',                activeBg: 'bg-emerald-50 dark:bg-emerald-900/30', activeText: 'text-emerald-700 dark:text-emerald-300', activeBorder: 'border-emerald-400 dark:border-emerald-600' },
 }
 
@@ -711,7 +712,7 @@ function providerMeta(key) { return PROVIDER_META[key] || { label: key, logo: ''
 function providerLabel(key) { return PROVIDER_META[key]?.label || key || '' }
 function providerLogo(key) { return PROVIDER_META[key]?.logo || null }
 function providerBadgeClass(provider) {
-  return { spotify: 'bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400', bugs: 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400', melon: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400', apple_music: 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400', apple_music_classical: 'bg-pink-100 dark:bg-pink-900/40 text-pink-600 dark:text-pink-400' }[provider] || 'bg-gray-100 dark:bg-gray-800 text-gray-500'
+  return { spotify: 'bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400', bugs: 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400', melon: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400', apple_music: 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400', apple_music_classical: 'bg-pink-100 dark:bg-pink-900/40 text-pink-600 dark:text-pink-400', discogs: 'bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200' }[provider] || 'bg-gray-100 dark:bg-gray-800 text-gray-500'
 }
 
 function toggleProvider(key) {
@@ -790,6 +791,7 @@ async function loadProviders() {
       melon:                 (c.melon_enabled?.value ?? 'true') === 'true',
       apple_music:           c.apple_music_enabled?.value === 'true',
       apple_music_classical: c.apple_music_classical_enabled?.value === 'true',
+      discogs: c.discogs_enabled?.value === 'true',
     }
     allProviders.value = Object.entries(enabled).filter(([, v]) => v).map(([k]) => PROVIDER_META[k]).filter(Boolean)
   } catch {
@@ -1032,7 +1034,7 @@ const searchModes = computed(() => [
 ])
 
 const albProviders = computed(() =>
-  allProviders.value.filter(p => ['spotify', 'bugs', 'melon', 'apple_music', 'apple_music_classical'].includes(p.key))
+  allProviders.value.filter(p => ['spotify', 'bugs', 'melon', 'apple_music', 'apple_music_classical', 'discogs'].includes(p.key))
 )
 
 function toggleAlbSource(key) {

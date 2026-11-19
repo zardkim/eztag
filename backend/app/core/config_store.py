@@ -37,6 +37,10 @@ DEFAULTS: dict[str, tuple] = {
     "apple_music_classical_storefront": ("us", "Apple Music Classical 국가 코드 (us/gb/de 등)"),
     "melon_enabled": ("true", "Melon 메타데이터 검색 활성화"),
     "bugs_enabled": ("true", "Bugs 메타데이터 검색 활성화"),
+    # 외국 앨범(재발매/기념반/박스셋) 보강용 — 기본 off.
+    # Discogs 는 25/분, MusicBrainz 는 1초당 1회 제한이라 켜면 검색이 그만큼 느려진다.
+    "discogs_enabled": ("false", "Discogs 메타데이터 검색 활성화"),
+    "discogs_token": ("", "Discogs 개인 토큰 (선택 — 넣으면 25/분 → 60/분)"),
     # YouTube MV 검색
     "youtube_enabled": ("false", "YouTube 뮤직비디오 자동 검색 활성화"),
     "youtube_api_key": ("", "YouTube Data API v3 키"),
