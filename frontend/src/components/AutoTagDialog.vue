@@ -1300,9 +1300,7 @@ async function applyAlbum() {
 
     const folderPath = browserStore.selectedFolder?.path
     if (folderPath) {
-      browserStore.invalidateFilesCache(folderPath)
-      if (browserStore.folderGroups.length > 0) await browserStore.loadRecursiveFiles(folderPath)
-      else await browserStore.loadFiles(folderPath, true)
+      await browserStore.reloadCurrent(folderPath)
     }
 
     alb.applyCount = localFiles.value.length

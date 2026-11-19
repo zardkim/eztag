@@ -81,7 +81,6 @@ export default {
     ytWatch: 'Watch Music Video',
     ytDeleteLink: 'Delete YouTube URL',
     ytDeleteFailed: 'Delete failed',
-    ytNoFiles: 'No files found.',
     ytNotConfigured: 'YouTube is not configured. Enable YouTube and enter an API key in Settings → Metadata.',
     undoLabel: 'Undo',
     undoTitle: 'Undo: {label}',

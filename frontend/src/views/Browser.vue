@@ -590,7 +590,12 @@
               </div>
 
               <!-- 폴더 행 -->
-              <div class="max-h-[420px] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+              <!-- 파일이 같이 있을 때만 높이를 제한한다. 폴더만 있는 화면에서
+                   420px 로 묶으면 바깥 공간이 남는데도 안쪽 스크롤로 반만 보인다. -->
+              <div
+                class="divide-y divide-gray-100 dark:divide-gray-800"
+                :class="browserStore.files.length > 0 ? 'max-h-[420px] overflow-y-auto' : ''"
+              >
                 <button
                   v-for="folder in browserStore.sortedSubfolders"
                   :key="folder.path"
@@ -1307,9 +1312,7 @@ async function loadAllSubfolderFiles() {
 async function onAutoTagDone() {
   const folderPath = browserStore.selectedFolder?.path
   if (folderPath) {
-    browserStore.invalidateFilesCache(folderPath)
-    if (browserStore.isRecursiveMode) await browserStore.loadRecursiveFiles(folderPath)
-    else await browserStore.loadFiles(folderPath, true)
+    await browserStore.reloadCurrent(folderPath)
   }
 }
 
@@ -1332,8 +1335,7 @@ function onPanelSearchTag(paths) {
 async function onFilenameAutoTagDone() {
   const folderPath = browserStore.selectedFolder?.path
   if (folderPath) {
-    browserStore.invalidateFilesCache(folderPath)
-    await browserStore.loadFiles(folderPath, true)
+    await browserStore.reloadCurrent(folderPath)
   }
 }
 
@@ -1605,8 +1607,7 @@ async function onSaved() {
   const path = browserStore.selectedFolder?.path
   if (!path) return
   const prevSelectedPath = browserStore.selectedFile?.path
-  browserStore.invalidateFilesCache(path)
-  await browserStore.loadFiles(path, true)
+  await browserStore.reloadCurrent(path)
   // 저장 후 선택 파일 복원 — loadFiles가 selectedFile을 null로 초기화하기 때문
   if (prevSelectedPath) {
     const file = browserStore.files.find(f => f.path === prevSelectedPath)
@@ -1647,8 +1648,7 @@ async function exportFolderHtml() {
 function forceReload() {
   const path = browserStore.selectedFolder?.path
   if (!path) return
-  browserStore.invalidateFilesCache(path)
-  browserStore.loadFiles(path, true)
+  browserStore.reloadCurrent(path)
 }
 
 // ── 헤더 클릭 정렬 ──────────────────────────────────────────
@@ -1771,8 +1771,7 @@ async function onRenamed(result) {
   // 폴더 캐시 무효화 후 새로고침 (사이드바 파일목록 포함)
   const path = browserStore.selectedFolder?.path
   if (path) {
-    browserStore.invalidateFilesCache(path)
-    await browserStore.loadFiles(path, true)
+    await browserStore.reloadCurrent(path)
     // 선택 체크 초기화
     browserStore.setCheckedPaths(new Set())
   }
@@ -2107,8 +2106,7 @@ async function runWizard() {
             wizardStepsResults.value[i] = { type: 'rename', total: files.length }
             const folderPath = browserStore.selectedFolder?.path
             if (folderPath) {
-              browserStore.invalidateFilesCache(folderPath)
-              await browserStore.loadFiles(folderPath, true)
+              await browserStore.reloadCurrent(folderPath)
             }
           } catch { /* ignore */ }
         }
@@ -2129,8 +2127,7 @@ async function runWizard() {
         exportingHtml.value = true
         try {
           await browseApi.exportFolderHtml(path, locale.value)
-          browserStore.invalidateFilesCache(path)
-          browserStore.loadFiles(path, true)
+          browserStore.reloadCurrent(path)
         } catch { /* ignore */ } finally {
           exportingHtml.value = false
         }
@@ -2154,12 +2151,7 @@ async function runWizard() {
 
 // 완료 후 파일 목록 갱신: 그룹 모드이면 loadRecursiveFiles, 아니면 loadFiles
 async function _reloadAfterJob(folderPath) {
-  browserStore.invalidateFilesCache(folderPath)
-  if (browserStore.folderGroups.length > 0) {
-    await browserStore.loadRecursiveFiles(folderPath)
-  } else {
-    await browserStore.loadFiles(folderPath, true)
-  }
+  await browserStore.reloadCurrent(folderPath)
 }
 
 // LRC 완료 감지: 파일 목록 갱신 + 토스트

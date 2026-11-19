@@ -6,12 +6,6 @@ import { browseApi } from '../api/index.js'
 const _filesCache = new Map()   // path → { files, subfolders, warning, ts }
 const FILES_TTL_MS = 3 * 60 * 1000  // 3분
 
-// 직접 오디오 파일이 없는 폴더를 열었을 때 자동으로 하위 전체를 읽을지 판단하는 한계값.
-// 원래 의도는 "Disc 1 / Disc 2" 처럼 앨범이 디스크별로 쪼개진 경우였는데(v0.8.25),
-// 제한이 없어서 아티스트 폴더(앨범 수십 개)를 눌러도 전곡을 재귀로 읽어버렸다.
-// 오디오를 가진 하위 폴더가 이보다 많으면 재귀하지 않고 하위 폴더 그리드를 보여준다.
-const AUTO_RECURSE_MAX_SUBFOLDERS = 5
-
 // 백그라운드 스캔 완료 대기 타이머 (모듈 레벨 — store 인스턴스 외부)
 let _scanPollTimer = null
 let _scanRetryCount = 0
@@ -216,6 +210,11 @@ export const useBrowserStore = defineStore('browser', () => {
     if (selectedFolder.value?.path !== path) {
       _scanRetryCount = 0
     }
+    // 이 함수는 폴더 하나의 파일만 읽는다. 재귀 상태를 남겨두면
+    // displayGroups 가 예전 그룹을 계속 그려서 새 목록 위에 겹친다
+    // (재귀 모드에서 새로고침/태그저장 시 발생했다).
+    isRecursiveMode.value = false
+    folderGroups.value = []
     // 캐시 확인
     if (!force) {
       const entry = _filesCache.get(path)
@@ -274,15 +273,11 @@ export const useBrowserStore = defineStore('browser', () => {
         _scanRetryCount = 0
       }
 
-      // 직접 오디오 파일이 없고 오디오가 있는 하위 폴더가 "몇 개뿐"이면 자동으로 재귀 로드.
-      // 많으면(아티스트 폴더 등) 재귀하지 않고 하위 폴더 그리드를 보여준다 —
-      // 사용자는 그리드에서 들어가거나 "하위 폴더 전체 보기"로 직접 재귀할 수 있다.
-      // has_audio 는 더 이상 기본 응답에 없다(N+1 제거) — 하위 폴더 개수로 판정한다.
-      // Disc 1/Disc 2 는 2개, 아티스트 폴더는 수십 개라 실질적으로 동일하게 갈린다.
-      if (fileList.length === 0 && subs.length > 0 && subs.length <= AUTO_RECURSE_MAX_SUBFOLDERS) {
-        loadRecursiveFiles(path)
-        return
-      }
+      // 자동 재귀는 하지 않는다. 선택한 폴더의 파일만 보여주고,
+      // 하위 폴더는 목록으로 그린다. 하위 전체를 보고 싶으면
+      // "하위 폴더 전체 보기" 버튼으로 명시적으로 부른다.
+      // (예전에는 하위 폴더가 5개 이하면 자동 재귀했는데, Disc 1/Disc 2 를
+      //  노린 것이었지만 아티스트 폴더를 눌러도 전곡이 쏟아졌다)
 
       // 캐시 저장 (오류 없을 때만)
       if (!warning) {
@@ -325,6 +320,19 @@ export const useBrowserStore = defineStore('browser', () => {
         }
       }
     } catch (_) { /* 사일런트 실패 */ }
+  }
+
+  /**
+   * 현재 폴더를 다시 읽는다. 재귀 모드면 재귀 로드를 유지한다.
+   * 호출처마다 isRecursiveMode / folderGroups.length 로 제각각 판정하던 것을 모았다.
+   */
+  async function reloadCurrent(path = null) {
+    const target = path || selectedFolder.value?.path
+    if (!target) return
+    const wasRecursive = isRecursiveMode.value || folderGroups.value.length > 0
+    invalidateFilesCache(target)
+    if (wasRecursive) await loadRecursiveFiles(target)
+    else await loadFiles(target, true)
   }
 
   function invalidateFilesCache(path) {
@@ -540,7 +548,7 @@ export const useBrowserStore = defineStore('browser', () => {
     isRecursiveMode, folderGroups,
     folderSortKey, folderSortOrder, sortedSubfolders, subfolderMetaLoading,
     setFolderSort, loadSubfolderMeta, setSort, setSortKey, setSortOrder,
-    loadFiles, selectFolder, selectFolderRecursive, loadRecursiveFiles,
+    loadFiles, selectFolder, selectFolderRecursive, loadRecursiveFiles, reloadCurrent,
     selectFile, selectExtraFile, toggleCheck, toggleAll, setCheckedPaths,
     updateFile, updateFiles, invalidateFilesCache, resetFolder,
   }

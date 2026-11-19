@@ -81,7 +81,6 @@ export default {
     ytWatch: '뮤직비디오 보기',
     ytDeleteLink: 'YouTube URL 삭제',
     ytDeleteFailed: '삭제 실패',
-    ytNoFiles: '파일이 없습니다.',
     ytNotConfigured: 'YouTube가 설정되지 않았습니다. 설정 → 메타데이터 소스에서 YouTube를 활성화하고 API 키를 입력하세요.',
     undoLabel: '되돌리기',
     undoTitle: '되돌리기: {label}',
@@ -816,7 +815,6 @@ export default {
   picker: {
     titleFolder: '📂 폴더 선택',
     titleFile: '📂 라이브러리에서 불러오기',
-    parentFolder: '상위 폴더',
     libraryRoot: '라이브러리 루트',
     folderSection: '폴더',
     open: '열기',

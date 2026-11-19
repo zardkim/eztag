@@ -231,8 +231,7 @@ async function removeFile(file) {
     if (browserStore.selectedExtraFile?.path === file.path) browserStore.selectExtraFile(null)
     const path = folder.value?.path
     if (path) {
-      browserStore.invalidateFilesCache(path)
-      browserStore.loadFiles(path, true)
+      browserStore.reloadCurrent(path)
     }
     toastStore.success(t('sidebar.deleteSuccess', { filename: file.filename }))
   } catch (e) {

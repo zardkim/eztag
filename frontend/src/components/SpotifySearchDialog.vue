@@ -806,12 +806,7 @@ async function applyAll() {
     // 캐시 무효화 + 파일 목록 재로드 (album_description 반영)
     const folderPath = browserStore.selectedFolder?.path
     if (folderPath) {
-      browserStore.invalidateFilesCache(folderPath)
-      if (browserStore.folderGroups.length > 0) {
-        await browserStore.loadRecursiveFiles(folderPath)
-      } else {
-        await browserStore.loadFiles(folderPath, true)
-      }
+      await browserStore.reloadCurrent(folderPath)
     }
 
     emit('applied')
