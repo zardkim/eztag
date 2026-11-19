@@ -6,6 +6,18 @@ import { browseApi } from '../api/index.js'
 const _filesCache = new Map()   // path → { files, subfolders, warning, ts }
 const FILES_TTL_MS = 3 * 60 * 1000  // 3분
 
+// 디스크로 쪼개진 앨범 판정 — "Disc 1 / Disc 2", "CD1 / CD2", "디스크1" 등.
+// 이런 폴더는 앨범 하나가 디스크별로 나뉜 것이므로 한 번에 보여주는 쪽이 맞다.
+// Vol.N / Part N 은 별개 앨범인 경우가 많아 일부러 제외한다.
+const DISC_FOLDER_RE = /^(disc|disk|cd|디스크)\s*[.\-_]?\s*\d{1,2}(\s*[-–—]\s*.+)?$/i
+
+/** 하위 폴더가 "전부" 디스크 폴더이고 2개 이상일 때만 참. 하나라도 아니면 거짓 —
+ *  'CD1 / Bonus / Scans' 같은 구성까지 합쳐버리면 안 된다. */
+function isDiscSplitAlbum(subs) {
+  if (!Array.isArray(subs) || subs.length < 2) return false
+  return subs.every(f => DISC_FOLDER_RE.test(String(f?.name ?? '').trim()))
+}
+
 // 백그라운드 스캔 완료 대기 타이머 (모듈 레벨 — store 인스턴스 외부)
 let _scanPollTimer = null
 let _scanRetryCount = 0
@@ -18,6 +30,9 @@ export const useBrowserStore = defineStore('browser', () => {
   const wizardOpen = ref(false)      // 마법사 다이얼로그 열림 상태
   const wizardPendingPreset = ref(null)  // 모바일 하단바에서 선택한 프리셋 (null=설정모드, object=즉시실행)
   const isRecursiveMode = ref(false)  // 하위폴더 전체 보기 모드
+  // 사용자가 "이 폴더만 보기"를 누른 경우, 같은 폴더에서 다시 자동 합치기를 하지 않는다.
+  // 폴더를 옮기면 해제된다.
+  const suppressAutoCombine = ref(false)
   const folderGroups = ref([])         // [{ folder_path, folder_name, relative_path, files }]
   const files = ref([])
   const extraFiles = ref([])   // [{ filename, path, file_type, file_size, modified_time, is_eztag? }, ...]
@@ -273,11 +288,14 @@ export const useBrowserStore = defineStore('browser', () => {
         _scanRetryCount = 0
       }
 
-      // 자동 재귀는 하지 않는다. 선택한 폴더의 파일만 보여주고,
-      // 하위 폴더는 목록으로 그린다. 하위 전체를 보고 싶으면
-      // "하위 폴더 전체 보기" 버튼으로 명시적으로 부른다.
-      // (예전에는 하위 폴더가 5개 이하면 자동 재귀했는데, Disc 1/Disc 2 를
-      //  노린 것이었지만 아티스트 폴더를 눌러도 전곡이 쏟아졌다)
+      // 디스크로 쪼개진 앨범(Disc 1/Disc 2, CD1/CD2 …)만 자동으로 합쳐서 보여준다.
+      // 예전에는 "하위 폴더 5개 이하"로 판정해서 아티스트 폴더를 눌러도 전곡이
+      // 쏟아졌다. 이제는 이름이 전부 디스크 패턴일 때만 합친다.
+      // await 해야 한다 — 안 하면 아래 finally 가 먼저 돌아 스피너가 일찍 사라진다.
+      if (!suppressAutoCombine.value && fileList.length === 0 && isDiscSplitAlbum(subs)) {
+        await loadRecursiveFiles(path)
+        return
+      }
 
       // 캐시 저장 (오류 없을 때만)
       if (!warning) {
@@ -333,6 +351,15 @@ export const useBrowserStore = defineStore('browser', () => {
     invalidateFilesCache(target)
     if (wasRecursive) await loadRecursiveFiles(target)
     else await loadFiles(target, true)
+  }
+
+  /** "이 폴더만 보기" — 합쳐 보기를 끄고 선택한 폴더만 다시 읽는다. */
+  async function exitRecursive() {
+    const path = selectedFolder.value?.path
+    if (!path) return
+    suppressAutoCombine.value = true
+    invalidateFilesCache(path)
+    await loadFiles(path, true)
   }
 
   function invalidateFilesCache(path) {
@@ -401,6 +428,7 @@ export const useBrowserStore = defineStore('browser', () => {
     hasEztagReport.value = false
     isRecursiveMode.value = false
     folderGroups.value = []
+    suppressAutoCombine.value = false
     if (crumb !== null) {
       breadcrumb.value = crumb
     } else {
@@ -448,6 +476,7 @@ export const useBrowserStore = defineStore('browser', () => {
     hasEztagReport.value = false
     isRecursiveMode.value = false
     folderGroups.value = []
+    suppressAutoCombine.value = false
     if (folder) {
       // crumb이 명시적으로 전달되면 사용, 없으면 현재 breadcrumb에 추가
       if (crumb !== null) {
@@ -545,10 +574,10 @@ export const useBrowserStore = defineStore('browser', () => {
     loading, error, fileWarning,
     checkedPaths, checkedFiles, isAllChecked,
     sortKey, sortOrder, filterText, breadcrumb, currentArea, mobileMenuOpen, wizardOpen, wizardPendingPreset,
-    isRecursiveMode, folderGroups,
+    isRecursiveMode, folderGroups, suppressAutoCombine,
     folderSortKey, folderSortOrder, sortedSubfolders, subfolderMetaLoading,
     setFolderSort, loadSubfolderMeta, setSort, setSortKey, setSortOrder,
-    loadFiles, selectFolder, selectFolderRecursive, loadRecursiveFiles, reloadCurrent,
+    loadFiles, selectFolder, selectFolderRecursive, loadRecursiveFiles, reloadCurrent, exitRecursive,
     selectFile, selectExtraFile, toggleCheck, toggleAll, setCheckedPaths,
     updateFile, updateFiles, invalidateFilesCache, resetFolder,
   }

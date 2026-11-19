@@ -556,6 +556,26 @@
             ⚠️ {{ browserStore.fileWarning }}
           </div>
 
+          <!-- ── 합쳐 보기 안내 줄 ──
+               디스크 분할 앨범(Disc1/Disc2 …)은 자동으로 합쳐 보여준다.
+               합쳐 본 상태에서는 하위 폴더 목록이 사라지므로, 디스크 하나만
+               보고 싶을 때 돌아갈 출구가 반드시 있어야 한다. -->
+          <div
+            v-if="browserStore.isRecursiveMode && browserStore.folderGroups.length > 0"
+            class="mx-4 mt-3 px-3 py-2 flex items-center gap-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800"
+          >
+            <span class="text-sm shrink-0">💿</span>
+            <span class="text-xs text-indigo-700 dark:text-indigo-300 truncate">
+              {{ t('browser.recursiveSummary', {
+                   folders: browserStore.folderGroups.length,
+                   files: browserStore.files.length }) }}
+            </span>
+            <button
+              class="ml-auto shrink-0 px-2 py-0.5 rounded-lg text-[11px] text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
+              @click="browserStore.exitRecursive()"
+            >{{ t('browser.recursiveExit') }}</button>
+          </div>
+
           <!-- 하위 폴더 그리드 -->
           <div v-if="(browserStore.subfolders?.length ?? 0) > 0" class="px-4 pt-3 pb-2">
             <div class="flex items-center gap-2 mb-2">
