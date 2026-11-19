@@ -56,11 +56,6 @@
             class="btn-toolbar !bg-orange-100 !text-orange-700 hover:!bg-orange-200 dark:!bg-orange-900/30 dark:!text-orange-400 disabled:opacity-40 shrink-0"
             @click="showRenameModal = true"
           >🔤 {{ t('browser.rename') }}</button>
-          <button
-            v-if="browserStore.currentArea === 'workspace'"
-            class="btn-toolbar !bg-orange-100 !text-orange-700 hover:!bg-orange-200 dark:!bg-orange-900/30 dark:!text-orange-400 shrink-0"
-            @click="showMoveToLibraryModal = true"
-          >{{ t('browser.moveToLibrary.button') }}</button>
 
           <!-- 구분선 -->
           <div class="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0"></div>
@@ -77,16 +72,6 @@
             :disabled="searchingYoutube"
             @click="startYoutubeSearch"
           ><svg viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 shrink-0 inline-block mr-1"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>{{ searchingYoutube ? t('browser.ytBtnProgress', { current: ytProgress.current, total: ytProgress.total }) : t('browser.ytBtn') }}</button>
-
-          <!-- 구분선 -->
-          <div class="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0"></div>
-
-          <!-- 앨범카드 생성 -->
-          <button
-            class="btn-toolbar !bg-teal-100 !text-teal-700 hover:!bg-teal-200 dark:!bg-teal-900/30 dark:!text-teal-400 disabled:opacity-40 shrink-0"
-            :disabled="exportingHtml"
-            @click="exportFolderHtml"
-          >🎴 {{ exportingHtml ? '...' : t('browser.exportHtml') }}</button>
 
           <!-- 구분선 -->
           <div class="w-px h-4 bg-gray-200 dark:bg-gray-700 shrink-0"></div>
@@ -124,6 +109,37 @@
               >
                 <span class="text-base">⚙️</span>
                 <span>{{ t('wizard.preset.openSetup') }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 더보기 — 자주 쓰지 않는 동작. 색은 메뉴 안에서도 그대로 유지한다. -->
+          <div class="relative shrink-0" ref="moreMenuRef">
+            <button
+              class="btn-toolbar shrink-0 flex items-center gap-1"
+              :class="showMoreMenu ? 'btn-toolbar-active' : ''"
+              :title="t('browser.moreActions')"
+              @click="showMoreMenu = !showMoreMenu"
+            >⋯</button>
+            <div
+              v-if="showMoreMenu"
+              class="fixed top-10 w-60 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-[200] py-1.5"
+              :style="moreMenuPos"
+            >
+              <button
+                class="w-full flex items-center gap-2 px-3 py-2 text-sm text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors text-left disabled:opacity-40"
+                :disabled="exportingHtml"
+                @click="showMoreMenu = false; exportFolderHtml()"
+              >
+                <span class="text-base">🎴</span>
+                <span>{{ exportingHtml ? '...' : t('browser.exportHtml') }}</span>
+              </button>
+              <button
+                v-if="browserStore.currentArea === 'workspace'"
+                class="w-full flex items-center gap-2 px-3 py-2 text-sm text-orange-700 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/30 transition-colors text-left"
+                @click="showMoreMenu = false; showMoveToLibraryModal = true"
+              >
+                <span>{{ t('browser.moveToLibrary.button') }}</span>
               </button>
             </div>
           </div>
@@ -1478,11 +1494,13 @@ onMounted(async () => {
   await loadLrcConfig()
   document.addEventListener('click', onClickOutside, true)
   document.addEventListener('click', onClickOutsideWizardMenu, true)
+  document.addEventListener('click', onClickOutsideMoreMenu, true)
   document.addEventListener('keydown', _onKeyDown, true)
 })
 onUnmounted(() => {
   document.removeEventListener('click', onClickOutside, true)
   document.removeEventListener('click', onClickOutsideWizardMenu, true)
+  document.removeEventListener('click', onClickOutsideMoreMenu, true)
   document.removeEventListener('keydown', _onKeyDown, true)
   document.removeEventListener('mousemove', onDragMove)
   document.removeEventListener('mouseup', onDragEnd)
@@ -1898,6 +1916,16 @@ function openWizardWithPreset(preset) {
   if (!enabledSteps.length) return
   onWizardStart(enabledSteps)
   browserStore.wizardOpen = true
+}
+
+const moreMenuRef = ref(null)
+const showMoreMenu = ref(false)
+const moreMenuPos = computed(() => showMoreMenu.value ? dropdownPos(moreMenuRef) : {})
+
+function onClickOutsideMoreMenu(e) {
+  if (moreMenuRef.value && !moreMenuRef.value.contains(e.target)) {
+    showMoreMenu.value = false
+  }
 }
 
 function onClickOutsideWizardMenu(e) {

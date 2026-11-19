@@ -97,6 +97,7 @@ export default {
     deselectGroup: 'Selected',
     titleBadge: 'Title',
     colFilename: 'File name',
+    moreActions: 'More',
     sortBy: 'Sort',
     sortAscShort: 'Asc',
     sortDescShort: 'Desc',
