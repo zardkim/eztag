@@ -298,6 +298,7 @@ const lrcSources = [
   { key: 'alsong', label: '알송' },
   { key: 'bugs', label: 'Bugs' },
   { key: 'discogs', label: 'Discogs' },
+  { key: 'musicbrainz', label: 'MusicBrainz' },
   { key: 'lrclib', label: 'LRCLIB' },
 ]
 

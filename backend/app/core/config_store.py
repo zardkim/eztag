@@ -41,6 +41,7 @@ DEFAULTS: dict[str, tuple] = {
     # Discogs 는 25/분, MusicBrainz 는 1초당 1회 제한이라 켜면 검색이 그만큼 느려진다.
     "discogs_enabled": ("false", "Discogs 메타데이터 검색 활성화"),
     "discogs_token": ("", "Discogs 개인 토큰 (선택 — 넣으면 25/분 → 60/분)"),
+    "musicbrainz_enabled": ("false", "MusicBrainz 메타데이터 검색 활성화"),
     # YouTube MV 검색
     "youtube_enabled": ("false", "YouTube 뮤직비디오 자동 검색 활성화"),
     "youtube_api_key": ("", "YouTube Data API v3 키"),

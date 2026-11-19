@@ -29,6 +29,7 @@ from app.core.metadata import apple_music_classical as amc_mod
 from app.core.metadata import melon as ml_mod
 from app.core.metadata import bugs as bg_mod
 from app.core.metadata import discogs as dc_mod
+from app.core.metadata import musicbrainz as mbz_mod
 from app.core.filename_parser import parse_filename_by_pattern
 from app.core.metadata.matcher import find_best_match, normalize_search_query
 from app.core.tag_reader import read_tags as _read_tags
@@ -122,6 +123,16 @@ def search_metadata(
         except Exception as e:
             logger.warning(f"Discogs search error: {e}")
 
+    # MusicBrainz — 디스크 구성이 정확해 박스셋/합본에 강하다 (1초당 1회 제한)
+    if (provider is None or provider == "musicbrainz") and get_config(db, "musicbrainz_enabled") == "true":
+        try:
+            if type == "track":
+                results.extend(mbz_mod.search_tracks(q, limit=limit))
+            else:
+                results.extend(mbz_mod.search_albums(q, limit=limit))
+        except Exception as e:
+            logger.warning(f"MusicBrainz search error: {e}")
+
     return {"query": q, "type": type, "total": len(results), "results": results}
 
 
@@ -182,6 +193,17 @@ def get_album_tracks(
         result = dc_mod.get_album_tracks(album_id, token=get_config(db, "discogs_token") or "")
         return {
             "provider":    "discogs",
+            "provider_id": album_id,
+            "album":       result.get("album", {}),
+            "tracks":      result.get("tracks", []),
+        }
+
+    if provider == "musicbrainz":
+        if get_config(db, "musicbrainz_enabled") != "true":
+            raise HTTPException(status_code=503, detail="MusicBrainz가 비활성화 상태입니다")
+        result = mbz_mod.get_album_tracks(album_id)
+        return {
+            "provider":    "musicbrainz",
             "provider_id": album_id,
             "album":       result.get("album", {}),
             "tracks":      result.get("tracks", []),
@@ -501,6 +523,11 @@ def _search_tracks_by_providers(q: str, providers: list, db: Session) -> list:
             results.extend(dc_mod.search_tracks(q, limit=5, token=get_config(db, "discogs_token") or ""))
         except Exception as e:
             logger.warning(f"Discogs search error for '{q}': {e}")
+    if "musicbrainz" in providers and get_config(db, "musicbrainz_enabled") == "true":
+        try:
+            results.extend(mbz_mod.search_tracks(q, limit=5))
+        except Exception as e:
+            logger.warning(f"MusicBrainz search error for '{q}': {e}")
     return results
 
 

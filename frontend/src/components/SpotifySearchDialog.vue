@@ -428,6 +428,7 @@ const PROVIDER_META = {
   apple_music:           { key: 'apple_music',           label: 'Apple Music',           logo: '/logo/apple%20music.jpg',                  activeBg: 'bg-red-50 dark:bg-red-900/30',          activeText: 'text-red-700 dark:text-red-300',          activeBorder: 'border-red-400 dark:border-red-600' },
   apple_music_classical: { key: 'apple_music_classical', label: 'Apple Music Classical', logo: '/logo/Apple%20Music%20Classical.jpg',       activeBg: 'bg-pink-50 dark:bg-pink-900/30',        activeText: 'text-pink-700 dark:text-pink-300',        activeBorder: 'border-pink-400 dark:border-pink-600' },
   discogs:               { key: 'discogs',               label: 'Discogs',               logo: '/logo/discogs.svg',                        activeBg: 'bg-neutral-100 dark:bg-neutral-800',    activeText: 'text-neutral-800 dark:text-neutral-200',  activeBorder: 'border-neutral-400 dark:border-neutral-500' },
+  musicbrainz:           { key: 'musicbrainz',           label: 'MusicBrainz',           logo: '/logo/musicbrainz.svg',                    activeBg: 'bg-fuchsia-50 dark:bg-fuchsia-900/30',  activeText: 'text-fuchsia-700 dark:text-fuchsia-300', activeBorder: 'border-fuchsia-400 dark:border-fuchsia-600' },
   melon:                 { key: 'melon',                 label: 'Melon',                 logo: '/logo/melon.jpg',                          activeBg: 'bg-emerald-50 dark:bg-emerald-900/30',  activeText: 'text-emerald-700 dark:text-emerald-300',  activeBorder: 'border-emerald-400 dark:border-emerald-600' },
 }
 
@@ -447,7 +448,7 @@ function toggleProvider(key) {
 
 // ── 소스 표시 헬퍼 ────────────────────────────
 function providerLabel(provider) {
-  return { spotify: 'Spotify', bugs: 'Bugs', melon: 'Melon', apple_music: 'Apple Music', apple_music_classical: 'AM Classical', discogs: 'Discogs' }[provider] || provider || ''
+  return { spotify: 'Spotify', bugs: 'Bugs', melon: 'Melon', apple_music: 'Apple Music', apple_music_classical: 'AM Classical', discogs: 'Discogs', musicbrainz: 'MusicBrainz' }[provider] || provider || ''
 }
 function providerLogo(provider) {
   return PROVIDER_META[provider]?.logo || null
@@ -460,6 +461,7 @@ function providerBadgeClass(provider) {
     apple_music:           'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400',
     apple_music_classical: 'bg-pink-100 dark:bg-pink-900/40 text-pink-600 dark:text-pink-400',
     discogs: 'bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200',
+    musicbrainz: 'bg-fuchsia-100 dark:bg-fuchsia-900/40 text-fuchsia-600 dark:text-fuchsia-400',
   }[provider] || 'bg-gray-100 dark:bg-gray-800 text-gray-500'
 }
 const compareHeaderClass = computed(() => {
@@ -497,6 +499,7 @@ onMounted(async () => {
       apple_music:           c.apple_music_enabled?.value === 'true',
       apple_music_classical: c.apple_music_classical_enabled?.value === 'true',
       discogs: c.discogs_enabled?.value === 'true',
+      musicbrainz: c.musicbrainz_enabled?.value === 'true',
       melon:                 (c.melon_enabled?.value ?? 'true') === 'true',
     }
     // 기본 선택: initialProviders prop 우선, 없으면 활성화된 소스 전체
@@ -507,7 +510,7 @@ onMounted(async () => {
       ? props.initialProviders.filter(p => providerConfig.value[p])
       : allEnabled
   } catch {
-    providerConfig.value = { spotify: true, bugs: true, apple_music: false, apple_music_classical: false, melon: true, discogs: false }
+    providerConfig.value = { spotify: true, bugs: true, apple_music: false, apple_music_classical: false, melon: true, discogs: false, musicbrainz: false }
     selectedProviders.value = props.initialProviders ?? ['spotify', 'bugs', 'melon']
   }
 

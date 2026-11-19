@@ -1297,6 +1297,7 @@ const PROVIDER_META = {
   apple_music:           { label: 'Apple Music',           logo: '/logo/apple%20music.jpg' },
   apple_music_classical: { label: 'Apple Music Classical', logo: '/logo/Apple%20Music%20Classical.jpg' },
   discogs:               { label: 'Discogs',               logo: '/logo/discogs.svg' },
+  musicbrainz:           { label: 'MusicBrainz',           logo: '/logo/musicbrainz.svg' },
 }
 
 async function loadProviders() {
@@ -1310,6 +1311,7 @@ async function loadProviders() {
       apple_music:           c.apple_music_enabled?.value === 'true',
       apple_music_classical: c.apple_music_classical_enabled?.value === 'true',
       discogs: c.discogs_enabled?.value === 'true',
+      musicbrainz: c.musicbrainz_enabled?.value === 'true',
     }
     availableProviders.value = Object.entries(enabled)
       .filter(([, v]) => v)
