@@ -93,8 +93,7 @@
             class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer transition-colors group"
             @click="selectAlbum(result)"
           >
-            <img v-if="result.cover_url" :src="result.cover_url" class="w-14 h-14 rounded-lg object-cover shrink-0 shadow" />
-            <div v-else class="w-14 h-14 rounded-lg bg-gray-200 dark:bg-gray-700 shrink-0 flex items-center justify-center text-gray-400">🎵</div>
+            <CoverImage :src="result.cover_url" img-class="w-14 h-14 rounded-lg object-cover shrink-0 shadow" />
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-1.5 flex-wrap">
                 <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ result.album_title || result.title }}</p>
@@ -132,7 +131,7 @@
 
           <!-- 앨범 정보 헤더 -->
           <div class="px-5 py-4 bg-gray-50 dark:bg-gray-800 flex gap-4 items-start border-b border-gray-200 dark:border-gray-700">
-            <img v-if="selectedAlbum.cover_url" :src="selectedAlbum.cover_url" class="w-20 h-20 rounded-xl object-cover shadow shrink-0" />
+            <CoverImage :src="selectedAlbum.cover_url" img-class="w-20 h-20 rounded-xl object-cover shadow shrink-0" icon-size="1.75rem" />
             <div class="flex-1 min-w-0 text-sm">
               <div class="flex items-center gap-2 mb-0.5">
                 <p class="font-bold text-gray-900 dark:text-white text-base truncate">{{ selectedAlbum.album_title || selectedAlbum.title }}</p>
@@ -342,6 +341,7 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted } from 'vue'
+import CoverImage from './CoverImage.vue'
 import { useI18n } from 'vue-i18n'
 import { metadataApi, browseApi, albumsApi } from '../api/index.js'
 import { useBrowserStore } from '../stores/browser.js'

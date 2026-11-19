@@ -40,6 +40,23 @@ router = APIRouter(prefix="/api/metadata", tags=["metadata"])
 
 # ── 헬퍼 ──────────────────────────────────────────────────────────────────
 
+# 커버 이미지는 반드시 User-Agent 를 붙여 받는다.
+# Discogs 이미지 CDN(i.discogs.com)은 UA 가 없으면 403 을 돌려준다 —
+# requests 기본 UA 로는 커버가 조용히 안 붙었다.
+_IMG_UA = "eztag/1.0 (+https://github.com/zardkim/eztag)"
+
+
+def _fetch_image(url: str, timeout: int = 15):
+    """커버 이미지를 받아 (bytes, content_type) 로 돌려준다."""
+    import requests as _r
+    resp = _r.get(url, headers={"User-Agent": _IMG_UA}, timeout=timeout, allow_redirects=True)
+    resp.raise_for_status()
+    ctype = (resp.headers.get("content-type") or "image/jpeg").split(";")[0].strip()
+    if not ctype.startswith("image/"):
+        raise ValueError(f"이미지가 아닌 응답: {ctype}")
+    return resp.content, ctype
+
+
 def _get_spotify_creds(db: Session) -> tuple[str, str]:
     return (
         get_config(db, "spotify_client_id") or "",
@@ -296,10 +313,7 @@ def apply_metadata(track_id: int, body: ApplyMetaBody, db: Session = Depends(get
         try:
             import requests as _req
             from pathlib import Path as _Path
-            resp = _req.get(body.cover_url, timeout=15)
-            resp.raise_for_status()
-            img_data = resp.content
-            content_type = resp.headers.get("content-type", "image/jpeg").split(";")[0].strip()
+            img_data, content_type = _fetch_image(body.cover_url)
             # Front Cover(type 3)만 교체 (write_cover 내부에서 처리)
             ok = _write_cover(track.file_path, img_data, content_type, 3)
             if ok:
@@ -373,10 +387,7 @@ def apply_metadata_by_path(
             import requests as _req
             from pathlib import Path as _Path
             from app.core.tag_writer import write_cover as _write_cover
-            resp = _req.get(body.cover_url, timeout=15)
-            resp.raise_for_status()
-            img_data = resp.content
-            content_type = resp.headers.get("content-type", "image/jpeg").split(";")[0].strip()
+            img_data, content_type = _fetch_image(body.cover_url)
             ok = _write_cover(body.path, img_data, content_type, 3)
             if ok and track:
                 track.has_cover = True
@@ -431,10 +442,7 @@ def apply_album_cover(
 
     # 커버 이미지 1회 다운로드
     try:
-        resp = _req.get(body.cover_url, timeout=15)
-        resp.raise_for_status()
-        img_data = resp.content
-        content_type = resp.headers.get("content-type", "image/jpeg").split(";")[0].strip()
+        img_data, content_type = _fetch_image(body.cover_url)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"커버 다운로드 실패: {e}")
 
@@ -617,10 +625,7 @@ def auto_tag_by_filename(
         그래서 기본값은 임베드만 한다.
         """
         try:
-            resp = _requests.get(cover_url, timeout=15)
-            resp.raise_for_status()
-            img_data = resp.content
-            content_type = resp.headers.get("content-type", "image/jpeg").split(";")[0].strip()
+            img_data, content_type = _fetch_image(cover_url)
             _write_cover_fn(path_str, img_data, content_type, 3)
             if write_folder_cover:
                 ext = "png" if "png" in content_type else "jpg"

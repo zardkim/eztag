@@ -311,6 +311,12 @@
                     <img src="/logo/discogs.svg" class="w-6 h-6 rounded-md object-cover shrink-0" alt="Discogs" />
                     <span class="text-sm text-gray-600 dark:text-gray-300">Discogs</span>
                     <span class="text-xs text-gray-400">{{ $t('settings.metadata.discogsHint') }}</span>
+                    <button
+                      type="button"
+                      class="w-4 h-4 shrink-0 rounded-full border border-gray-300 dark:border-gray-600 text-[10px] leading-none text-gray-400 hover:text-blue-500 hover:border-blue-400 transition-colors"
+                      :title="$t('settings.metadata.discogsHelpTitle')"
+                      @click.stop="showDiscogsHelp = true"
+                    >?</button>
                   </div>
                   <button class="flex items-center gap-2 cursor-pointer" @click="form.discogs_enabled = !form.discogs_enabled; saveMetaConfig()">
                     <span class="text-xs" :class="form.discogs_enabled ? 'text-green-500' : 'text-gray-400'">{{ form.discogs_enabled ? 'ON' : 'OFF' }}</span>
@@ -321,7 +327,11 @@
                 </div>
                 <div v-if="form.discogs_enabled" class="mt-2">
                   <input v-model="form.discogs_token" type="password" class="field w-full font-mono text-xs" placeholder="(선택) Discogs personal token" @blur="saveMetaConfig" />
-                  <p class="text-[10px] text-gray-400 mt-1">{{ $t('settings.metadata.discogsTokenHint') }}</p>
+                  <p class="text-[10px] text-gray-400 mt-1">
+                    {{ $t('settings.metadata.discogsTokenHint') }}
+                    <a href="https://www.discogs.com/settings/developers" target="_blank" rel="noopener"
+                       class="text-blue-500 hover:underline">discogs.com/settings/developers</a>
+                  </p>
                 </div>
               </div>
               <!-- MusicBrainz — 디스크 구성이 정확해 박스셋/합본에 강하다 -->
@@ -984,6 +994,33 @@
     </div>
 
   </div>
+
+    <!-- Discogs 토큰 도움말 -->
+    <Teleport to="body">
+      <div v-if="showDiscogsHelp" class="fixed inset-0 z-[400] flex items-center justify-center p-4" @click="showDiscogsHelp = false">
+        <div class="absolute inset-0 bg-black/50"></div>
+        <div class="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto" @click.stop>
+          <div class="flex items-center gap-2 px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+            <img src="/logo/discogs.svg" class="w-6 h-6 rounded-md shrink-0" alt="" />
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white flex-1">{{ $t('settings.metadata.discogsHelpTitle') }}</h3>
+            <button class="text-gray-400 hover:text-gray-700 dark:hover:text-white text-lg leading-none" @click="showDiscogsHelp = false">✕</button>
+          </div>
+          <div class="px-5 py-4 space-y-3 text-sm text-gray-700 dark:text-gray-300">
+            <p class="whitespace-pre-line leading-relaxed">{{ $t('settings.metadata.discogsHelpBody') }}</p>
+            <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+              <p class="text-xs text-amber-800 dark:text-amber-300 whitespace-pre-line leading-relaxed">{{ $t('settings.metadata.discogsHelpCover') }}</p>
+            </div>
+            <ol class="list-decimal list-inside space-y-1.5 text-xs text-gray-600 dark:text-gray-400">
+              <li v-for="(step, i) in $tm('settings.metadata.discogsHelpSteps')" :key="i">{{ $rt(step) }}</li>
+            </ol>
+            <a href="https://www.discogs.com/settings/developers" target="_blank" rel="noopener"
+               class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-colors">
+              {{ $t('settings.metadata.discogsHelpOpen') }} ↗
+            </a>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 </template>
 
 <script setup>
@@ -1067,6 +1104,7 @@ const lrcSourceSaving = ref(false)
 const showSpotifyId     = ref(false)
 const showSpotifySecret = ref(false)
 const showYoutubeKey    = ref(false)
+const showDiscogsHelp   = ref(false)
 // const showAICoverKey    = ref(false) // AI 커버아트 (개발 중단)
 
 async function saveLrcSources() {

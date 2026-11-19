@@ -42,8 +42,7 @@
               class="flex items-center gap-3 bg-gray-50 dark:bg-gray-800 rounded-lg p-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               @click="loadAlbumTracks(item)"
             >
-              <img v-if="item.cover_url" :src="item.cover_url" class="w-12 h-12 rounded object-cover shrink-0" />
-              <div v-else class="w-12 h-12 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0 text-xl">💿</div>
+              <CoverImage :src="item.cover_url" img-class="w-12 h-12 rounded object-cover shrink-0" icon="💿" />
               <div class="min-w-0 flex-1">
                 <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ item.album_title }}</p>
                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ item.album_artist }}{{ item.year ? ` · ${item.year}` : '' }}</p>
@@ -89,7 +88,7 @@
               :key="item.spotify_id"
               class="flex items-center gap-3 bg-gray-50 dark:bg-gray-800 rounded-lg p-3"
             >
-              <img v-if="item.cover_url" :src="item.cover_url" class="w-10 h-10 rounded object-cover shrink-0" />
+              <CoverImage :src="item.cover_url" img-class="w-10 h-10 rounded object-cover shrink-0" icon-size="1rem" />
               <div class="min-w-0 flex-1">
                 <p class="text-sm text-gray-900 dark:text-white truncate">{{ item.title }}</p>
                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ item.artist }} · {{ item.album_title }}{{ item.year ? ` · ${item.year}` : '' }}</p>
@@ -115,6 +114,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import CoverImage from './CoverImage.vue'
 import { useI18n } from 'vue-i18n'
 import { metadataApi } from '../api/metadata.js'
 import { useBrowserStore } from '../stores/browser.js'

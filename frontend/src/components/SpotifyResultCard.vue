@@ -5,12 +5,7 @@
   >
     <!-- 상단: 커버 + 기본 정보 -->
     <div class="flex gap-3 p-3">
-      <img
-        v-if="result.cover_url"
-        :src="result.cover_url"
-        class="w-16 h-16 rounded object-cover shrink-0 shadow"
-      />
-      <div v-else class="w-16 h-16 rounded bg-gray-200 dark:bg-gray-700 shrink-0 flex items-center justify-center text-gray-400 text-xl">🎵</div>
+      <CoverImage :src="result.cover_url" img-class="w-16 h-16 rounded object-cover shrink-0 shadow" icon-size="1.5rem" />
 
       <div class="flex-1 min-w-0">
         <!-- 제목 + 뱃지 -->
@@ -103,6 +98,7 @@
 </template>
 
 <script setup>
+import CoverImage from './CoverImage.vue'
 defineProps({
   result: { type: Object, required: true },
   applied: { type: Boolean, default: false },

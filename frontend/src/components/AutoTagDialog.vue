@@ -452,8 +452,7 @@
               class="flex items-center gap-3 px-3 py-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 active:bg-blue-50 dark:active:bg-blue-900/10 cursor-pointer transition-colors group"
               @click="selectAlbum(result)"
             >
-              <img v-if="result.cover_url" :src="result.cover_url" class="w-12 h-12 sm:w-14 sm:h-14 rounded-lg object-cover shrink-0 shadow" />
-              <div v-else class="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-gray-200 dark:bg-gray-700 shrink-0 flex items-center justify-center text-gray-400 text-xl">🎵</div>
+              <CoverImage :src="result.cover_url" img-class="w-12 h-12 sm:w-14 sm:h-14 rounded-lg object-cover shrink-0 shadow" />
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5 flex-wrap mb-0.5">
                   <span class="inline-flex items-center gap-1 text-[10px] pl-1 pr-1.5 py-0.5 rounded shrink-0" :class="providerBadgeClass(result.provider)">
@@ -482,8 +481,7 @@
           <div class="flex-1 overflow-y-auto">
             <!-- 앨범 정보 헤더 -->
             <div class="px-4 sm:px-5 py-3 sm:py-4 bg-gray-50 dark:bg-gray-800 flex gap-3 sm:gap-4 items-center border-b border-gray-200 dark:border-gray-700">
-              <img v-if="alb.selectedAlbum.cover_url" :src="alb.selectedAlbum.cover_url" class="w-14 h-14 sm:w-20 sm:h-20 rounded-xl object-cover shadow shrink-0" />
-              <div v-else class="w-14 h-14 sm:w-20 sm:h-20 rounded-xl bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-2xl shrink-0">💿</div>
+              <CoverImage :src="alb.selectedAlbum.cover_url" img-class="w-14 h-14 sm:w-20 sm:h-20 rounded-xl object-cover shadow shrink-0" icon-size="1.75rem" icon="💿" />
               <div class="flex-1 min-w-0 text-sm">
                 <div class="flex items-center gap-2 mb-0.5 flex-wrap">
                   <span class="inline-flex items-center gap-1 text-[10px] pl-1 pr-1.5 py-0.5 rounded shrink-0" :class="providerBadgeClass(alb.selectedAlbum.provider)">
@@ -667,6 +665,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, nextTick } from 'vue'
+import CoverImage from './CoverImage.vue'
 import { useI18n } from 'vue-i18n'
 import { browseApi, metadataApi, albumsApi } from '../api/index.js'
 import { metadataApi as metaApiFull } from '../api/metadata.js'
