@@ -1,10 +1,14 @@
 <template>
-  <div ref="homeContainerRef" class="flex flex-col h-full overflow-y-auto bg-gray-50 dark:bg-gray-950">
+  <div ref="homeContainerRef" class="h-full overflow-y-auto bg-gray-50 dark:bg-gray-950">
+   <div class="w-full max-w-3xl mx-auto flex flex-col">
     <div class="p-4 pb-3 pt-5">
       <h1 class="text-lg font-bold text-gray-900 dark:text-white mb-3">{{ t('home.title') }}</h1>
-      <!-- 작업공간/라이브러리를 한 트리(2섹션)로 보여주므로 버튼은 하나로 충분하다 -->
+      <!-- 폴더 열기는 모바일 전용이다.
+           FolderTreeSheet 자체가 lg:hidden 이라 PC 에서는 눌러도 아무것도 뜨지 않았고,
+           PC 는 좌측 사이드바에 폴더 트리가 항상 떠 있어 버튼이 필요 없다.
+           반대로 모바일에서는 이 시트가 폴더 트리로 가는 유일한 길이라 남겨둔다. -->
       <button
-        class="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-sm font-semibold transition-colors"
+        class="lg:hidden w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-sm font-semibold transition-colors"
         @click="showFolderSheet = true"
       >
         <svg class="w-4 h-4" viewBox="0 0 16 16" fill="none">
@@ -15,6 +19,12 @@
     </div>
 
     <FolderTreeSheet :open="showFolderSheet" @close="showFolderSheet = false" />
+
+    <!-- 사용 팁 슬라이드 -->
+    <div class="px-4 mb-4">
+      <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{{ t('home.tipsTitle') }}</div>
+      <TipsSlider />
+    </div>
 
     <!-- 현재 열린 폴더 -->
     <div v-if="browserStore.selectedFolder" class="px-4 mb-4">
@@ -73,7 +83,7 @@
     </Teleport>
 
     <!-- 최근 폴더 -->
-    <div class="px-4 flex-1">
+    <div class="px-4">
       <div class="flex items-center justify-between mb-2">
         <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('home.recentFolders') }}</div>
         <button
@@ -122,6 +132,28 @@
         </div>
       </div>
     </div>
+
+    <!-- 같은 제작자의 다른 앱 -->
+    <div class="px-4 pb-8">
+      <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{{ t('home.alsoByTitle') }}</div>
+      <a
+        href="https://github.com/zardkim/muzplayer"
+        target="_blank"
+        rel="noopener"
+        class="group flex items-center gap-3 p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-950/40 dark:to-violet-950/30 hover:border-indigo-400 dark:hover:border-indigo-600 transition-colors"
+      >
+        <div class="w-11 h-11 rounded-xl bg-indigo-500 text-white flex items-center justify-center text-2xl shrink-0 shadow">🎧</div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-1.5 mb-0.5">
+            <p class="text-sm font-semibold text-gray-900 dark:text-white">muzplayer</p>
+            <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-300">{{ t('home.muzBadge') }}</span>
+          </div>
+          <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-2">{{ t('home.muzDesc') }}</p>
+        </div>
+        <span class="shrink-0 text-indigo-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">↗</span>
+      </a>
+    </div>
+   </div>
   </div>
 </template>
 
@@ -131,6 +163,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useBrowserStore } from '../stores/browser.js'
 import FolderTreeSheet from '../components/FolderTreeSheet.vue'
+import TipsSlider from '../components/TipsSlider.vue'
 import { userPrefsApi } from '../api/index.js'
 import { usePullToRefresh } from '../composables/usePullToRefresh.js'
 
