@@ -1,12 +1,12 @@
 <template>
   <div
-    class="relative overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"
+    class="relative h-full overflow-hidden rounded-2xl border-2 border-sky-200 dark:border-sky-800/80 bg-gradient-to-br from-sky-50 via-cyan-50 to-teal-50 dark:from-sky-950/40 dark:via-cyan-950/30 dark:to-teal-950/20"
     @mouseenter="paused = true"
     @mouseleave="paused = false"
     @touchstart.passive="paused = true"
   >
     <!-- 슬라이드 -->
-    <div class="relative h-[132px] sm:h-[116px]">
+    <div class="relative h-[132px] sm:h-[116px] lg:h-[124px]">
       <Transition
         enter-active-class="transition duration-300 ease-out"
         leave-active-class="transition duration-300 ease-in absolute inset-0"
@@ -16,19 +16,19 @@
       >
         <div :key="index" class="h-full flex items-start gap-3 p-4">
           <div
-            class="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center text-xl"
+            class="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center text-xl shadow-sm"
             :class="current.tone"
           >{{ current.icon }}</div>
           <div class="min-w-0 flex-1">
             <p class="text-sm font-semibold text-gray-900 dark:text-white mb-1">{{ current.title }}</p>
-            <p class="text-xs leading-relaxed text-gray-500 dark:text-gray-400 line-clamp-3">{{ current.body }}</p>
+            <p class="text-xs leading-relaxed text-gray-600 dark:text-gray-300 line-clamp-3">{{ current.body }}</p>
           </div>
         </div>
       </Transition>
     </div>
 
     <!-- 하단 컨트롤 -->
-    <div class="flex items-center gap-2 px-3 py-2 border-t border-gray-100 dark:border-gray-800">
+    <div class="flex items-center gap-2 px-3 py-2 border-t border-sky-200/70 dark:border-sky-800/50">
       <button
         class="w-6 h-6 shrink-0 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         :aria-label="t('home.tipPrev')"
@@ -39,7 +39,7 @@
           v-for="(tip, i) in tips"
           :key="i"
           class="h-1.5 rounded-full transition-all"
-          :class="i === index ? 'w-4 bg-blue-500' : 'w-1.5 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400'"
+          :class="i === index ? 'w-4 bg-sky-500' : 'w-1.5 bg-sky-300/70 dark:bg-sky-700/70 hover:bg-sky-400'"
           :aria-label="`${i + 1}`"
           @click="select(i)"
         />

@@ -32,6 +32,7 @@ export default {
     currentFolder: '현재 폴더',
     fileCount: '{n}개 파일 · 탭하여 편집',
     recentFolders: '최근 폴더',
+    noRecentInArea: '최근 연 폴더가 없습니다',
     clearRecent: '목록 지우기',
     emptyTitle: '최근 작업한 폴더가 없습니다',
     emptyHint: '아래 폴더 열기 버튼으로 폴더를 열어보세요',

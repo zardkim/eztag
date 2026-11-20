@@ -32,6 +32,7 @@ export default {
     currentFolder: 'Current Folder',
     fileCount: '{n} files · Tap to edit',
     recentFolders: 'Recent Folders',
+    noRecentInArea: 'No recent folders here',
     clearRecent: 'Clear',
     emptyTitle: 'No recent folders',
     emptyHint: 'Use the Open Folder button below to get started',

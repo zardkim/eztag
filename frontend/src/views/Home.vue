@@ -1,6 +1,6 @@
 <template>
   <div ref="homeContainerRef" class="h-full overflow-y-auto bg-gray-50 dark:bg-gray-950">
-   <div class="w-full max-w-3xl mx-auto flex flex-col">
+   <div class="w-full max-w-[1400px] mx-auto flex flex-col">
     <div class="p-4 pb-3 pt-5">
       <h1 class="text-lg font-bold text-gray-900 dark:text-white mb-3">{{ t('home.title') }}</h1>
       <!-- 폴더 열기는 모바일 전용이다.
@@ -19,12 +19,6 @@
     </div>
 
     <FolderTreeSheet :open="showFolderSheet" @close="showFolderSheet = false" />
-
-    <!-- 사용 팁 슬라이드 -->
-    <div class="px-4 mb-4">
-      <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{{ t('home.tipsTitle') }}</div>
-      <TipsSlider />
-    </div>
 
     <!-- 현재 열린 폴더 -->
     <div v-if="browserStore.selectedFolder" class="px-4 mb-4">
@@ -82,7 +76,7 @@
       </Transition>
     </Teleport>
 
-    <!-- 최근 폴더 -->
+    <!-- 최근 폴더 — PC 는 작업공간/라이브러리를 나눠 두 칸으로, 모바일은 합쳐서 한 줄로 -->
     <div class="px-4">
       <div class="flex items-center justify-between mb-2">
         <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ t('home.recentFolders') }}</div>
@@ -94,64 +88,87 @@
       </div>
 
       <!-- 빈 상태 -->
-      <div v-if="recentFolders.length === 0" class="py-16 flex flex-col items-center text-center">
+      <div v-if="recentFolders.length === 0" class="py-14 flex flex-col items-center text-center">
         <div class="w-20 h-20 rounded-3xl bg-gray-100 dark:bg-gray-900 flex items-center justify-center text-4xl mb-4">📁</div>
         <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('home.emptyTitle') }}</p>
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1.5">{{ t('home.emptyHint') }}</p>
       </div>
 
-      <!-- 폴더 목록 -->
-      <div v-else class="space-y-2 pb-8">
-        <div
-          v-for="item in recentFolders"
-          :key="item.path"
-          class="flex items-center gap-3 p-3.5 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 active:scale-[.98] transition-all"
-          @click="openFolder(item)"
-        >
-          <div
-            class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
-            :class="item.area === 'workspace' ? 'bg-orange-100 dark:bg-orange-900/40' : item.area === 'library' ? 'bg-blue-100 dark:bg-blue-900/40' : 'bg-gray-100 dark:bg-gray-800'"
-          >{{ item.area === 'workspace' ? '📂' : item.area === 'library' ? '📚' : '📁' }}</div>
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-1.5 mb-0.5">
-              <span
-                v-if="item.area === 'workspace'"
-                class="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400"
-              >WS</span>
-              <span
-                v-else-if="item.area === 'library'"
-                class="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400"
-              >LIB</span>
-              <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ item.name }}</p>
+      <template v-else>
+        <!-- PC: 영역별 2열 -->
+        <div class="hidden lg:grid grid-cols-2 gap-5">
+          <section
+            v-for="col in recentColumns"
+            :key="col.area"
+            class="rounded-2xl border p-4"
+            :class="col.area === 'workspace'
+              ? 'border-orange-200 dark:border-orange-900/60 bg-orange-50/40 dark:bg-orange-950/20'
+              : 'border-blue-200 dark:border-blue-900/60 bg-blue-50/40 dark:bg-blue-950/20'"
+          >
+            <div class="flex items-center gap-2 mb-3">
+              <span class="text-base">{{ col.area === 'workspace' ? '📂' : '📚' }}</span>
+              <h2 class="text-xs font-bold tracking-wide"
+                  :class="col.area === 'workspace' ? 'text-orange-700 dark:text-orange-300' : 'text-blue-700 dark:text-blue-300'"
+              >{{ col.label }}</h2>
+              <span class="text-[10px] text-gray-400">{{ col.items.length }}</span>
             </div>
-            <p class="text-xs text-gray-400">{{ formatTime(item.timestamp) }}</p>
-          </div>
-          <svg class="w-4 h-4 text-gray-300 dark:text-gray-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-          </svg>
+            <div v-if="col.items.length === 0" class="py-8 text-center text-xs text-gray-400 dark:text-gray-500">
+              {{ t('home.noRecentInArea') }}
+            </div>
+            <div v-else class="space-y-2">
+              <RecentFolderRow
+                v-for="item in col.items"
+                :key="item.path"
+                :item="item"
+                :time="formatTime(item.timestamp)"
+                :show-badge="false"
+                @open="openFolder"
+              />
+            </div>
+          </section>
         </div>
-      </div>
+
+        <!-- 모바일: 합친 목록 -->
+        <div class="lg:hidden space-y-2">
+          <RecentFolderRow
+            v-for="item in recentFolders"
+            :key="item.path"
+            :item="item"
+            :time="formatTime(item.timestamp)"
+            @open="openFolder"
+          />
+        </div>
+      </template>
     </div>
 
-    <!-- 같은 제작자의 다른 앱 -->
-    <div class="px-4 pb-8">
-      <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{{ t('home.alsoByTitle') }}</div>
-      <a
-        href="https://github.com/zardkim/muzplayer"
-        target="_blank"
-        rel="noopener"
-        class="group flex items-center gap-3 p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-950/40 dark:to-violet-950/30 hover:border-indigo-400 dark:hover:border-indigo-600 transition-colors"
-      >
-        <div class="w-11 h-11 rounded-xl bg-indigo-500 text-white flex items-center justify-center text-2xl shrink-0 shadow">🎧</div>
-        <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-1.5 mb-0.5">
-            <p class="text-sm font-semibold text-gray-900 dark:text-white">muzplayer</p>
-            <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-300">{{ t('home.muzBadge') }}</span>
+    <!-- 하단: 사용 팁 + 다른 앱 배너 (PC 는 나란히, 모바일은 세로) -->
+    <div class="px-4 pt-6 pb-8 grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <!-- 사용 팁 -->
+      <div class="min-w-0">
+        <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{{ t('home.tipsTitle') }}</div>
+        <TipsSlider />
+      </div>
+
+      <!-- 같은 제작자의 다른 앱 -->
+      <div class="min-w-0">
+        <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{{ t('home.alsoByTitle') }}</div>
+        <a
+          href="https://github.com/zardkim/muzplayer"
+          target="_blank"
+          rel="noopener"
+          class="group h-full flex items-start gap-3 p-4 rounded-2xl border-2 border-indigo-200 dark:border-indigo-800/80 bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-950/40 dark:to-violet-950/30 hover:border-indigo-400 dark:hover:border-indigo-600 transition-colors"
+        >
+          <div class="w-11 h-11 rounded-xl bg-indigo-500 text-white flex items-center justify-center text-2xl shrink-0 shadow">🎧</div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1.5 mb-1">
+              <p class="text-sm font-semibold text-gray-900 dark:text-white">muzplayer</p>
+              <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-300">{{ t('home.muzBadge') }}</span>
+            </div>
+            <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-3">{{ t('home.muzDesc') }}</p>
           </div>
-          <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-2">{{ t('home.muzDesc') }}</p>
-        </div>
-        <span class="shrink-0 text-indigo-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">↗</span>
-      </a>
+          <span class="shrink-0 text-indigo-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">↗</span>
+        </a>
+      </div>
     </div>
    </div>
   </div>
@@ -164,6 +181,7 @@ import { useI18n } from 'vue-i18n'
 import { useBrowserStore } from '../stores/browser.js'
 import FolderTreeSheet from '../components/FolderTreeSheet.vue'
 import TipsSlider from '../components/TipsSlider.vue'
+import RecentFolderRow from '../components/RecentFolderRow.vue'
 import { userPrefsApi } from '../api/index.js'
 import { usePullToRefresh } from '../composables/usePullToRefresh.js'
 
@@ -178,6 +196,15 @@ const RECENT_KEY = 'eztag-recent-folders'
 const showFolderSheet = ref(false)
 
 const recentFolders = ref([])
+
+// PC 에서는 작업공간/라이브러리를 나눠 보여준다.
+// area 가 없는 옛 기록은 라이브러리 쪽에 둔다(기본 영역).
+const recentColumns = computed(() => [
+  { area: 'workspace', label: t('sidebar.workspaceSection'),
+    items: recentFolders.value.filter(f => f.area === 'workspace') },
+  { area: 'library',   label: t('sidebar.librarySection'),
+    items: recentFolders.value.filter(f => f.area !== 'workspace') },
+])
 
 async function loadRecent() {
   try {
