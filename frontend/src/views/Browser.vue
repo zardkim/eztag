@@ -651,11 +651,19 @@
                 <button
                   v-for="folder in browserStore.sortedSubfolders"
                   :key="folder.path"
-                  class="w-full flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-left group"
+                  :data-folder-path="folder.path"
+                  class="w-full flex items-center gap-2 px-3 py-2 transition-colors text-left group"
+                  :class="folder.path === browserStore.highlightFolderPath
+                    ? 'bg-amber-50 dark:bg-amber-900/20 ring-1 ring-inset ring-amber-300 dark:ring-amber-700'
+                    : 'bg-white dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-900/20'"
                   @click="enterSubfolder(folder)"
                 >
                   <span class="text-yellow-400 text-base shrink-0">📁</span>
                   <span class="flex-1 min-w-0 text-sm text-gray-700 dark:text-gray-300 group-hover:text-blue-700 dark:group-hover:text-blue-300 truncate" :title="folder.name">{{ folder.name }}</span>
+                  <span
+                    v-if="folder.path === browserStore.highlightFolderPath"
+                    class="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                  >{{ t('browser.lastOpened') }}</span>
                   <span class="hidden sm:block shrink-0 w-40 text-right text-[11px] font-mono text-gray-400 dark:text-gray-500">{{ folder.modified_time ? formatFolderTime(folder.modified_time) : '' }}</span>
                   <span class="shrink-0 text-gray-300 dark:text-gray-600 group-hover:text-blue-400">›</span>
                 </button>
@@ -1157,7 +1165,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import BatchTagPanel from '../components/BatchTagPanel.vue'
@@ -1564,8 +1572,13 @@ function crumbRelPath(idx) {
 }
 
 function navigateToCrumb(crumb, index) {
+  // 올라간 폴더의 목록에 실제로 보일 항목은 "경로상 바로 다음 칸"이다.
+  // 라이브러리 > 아이유 > 05집 에서 '라이브러리'를 누르면 목록에 뜨는 건 '아이유'다.
+  const camefrom = browserStore.breadcrumb[index + 1]?.path || null
   const newCrumb = browserStore.breadcrumb.slice(0, index + 1)
   browserStore.selectFolder({ name: crumb.name, path: crumb.path }, newCrumb)
+  // selectFolder 가 상태를 비우므로 반드시 그 뒤에 설정한다
+  browserStore.highlightFolderPath = camefrom
 }
 
 function onRowClick(file) {
@@ -1699,6 +1712,19 @@ function forceReload() {
   if (!path) return
   browserStore.reloadCurrent(path)
 }
+
+// 강조된 폴더(브레드크럼으로 올라오며 내려왔던 곳)를 화면 안으로 스크롤.
+// 목록이 비동기로 채워지므로 경로와 목록 양쪽을 지켜본다.
+watch(
+  () => [browserStore.highlightFolderPath, browserStore.sortedSubfolders.length],
+  async ([path, n]) => {
+    if (!path || !n) return
+    await nextTick()
+    const el = document.querySelector(`[data-folder-path="${CSS.escape(path)}"]`)
+    if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  },
+  { flush: 'post' },
+)
 
 // ── 헤더 클릭 정렬 ──────────────────────────────────────────
 function sortByCol(key) {

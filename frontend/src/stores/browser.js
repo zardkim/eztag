@@ -46,6 +46,9 @@ export const useBrowserStore = defineStore('browser', () => {
   // 하위 폴더 목록 정렬 — 'name' | 'modified_time'
   // 하위 폴더 목록 검색어 (폴더를 옮기면 비운다)
   const folderFilterText = ref('')
+  // 브레드크럼으로 상위 폴더에 올라갔을 때, 방금 내려왔던 하위 폴더를 표시해 준다.
+  // (폴더가 많으면 어디에 있다 왔는지 찾기 어렵다)
+  const highlightFolderPath = ref(null)
   const folderSortKey = ref(localStorage.getItem('eztag-folder-sort-key') || 'name')
   const folderSortOrder = ref(localStorage.getItem('eztag-folder-sort-order') || 'asc')
   const subfolderMetaLoading = ref(false)
@@ -411,6 +414,7 @@ export const useBrowserStore = defineStore('browser', () => {
     if (area) currentArea.value = area
     checkedPaths.value = new Set()
     folderFilterText.value = ''
+    highlightFolderPath.value = null
     subfolders.value = []
     extraFiles.value = []
     albumDescription.value = null
@@ -440,6 +444,7 @@ export const useBrowserStore = defineStore('browser', () => {
     breadcrumb.value = []
     checkedPaths.value = new Set()
     folderFilterText.value = ''
+    highlightFolderPath.value = null
     folderGroups.value = []
     isRecursiveMode.value = false
     albumDescription.value = null
@@ -459,6 +464,7 @@ export const useBrowserStore = defineStore('browser', () => {
     if (area) currentArea.value = area
     checkedPaths.value = new Set()
     folderFilterText.value = ''
+    highlightFolderPath.value = null
     subfolders.value = []
     extraFiles.value = []
     albumDescription.value = null
@@ -565,6 +571,7 @@ export const useBrowserStore = defineStore('browser', () => {
     sortKey, sortOrder, breadcrumb, currentArea, mobileMenuOpen, wizardOpen, wizardPendingPreset,
     isRecursiveMode, folderGroups, suppressAutoCombine, treeRefreshSignal, requestTreeRefresh,
     folderSortKey, folderSortOrder, sortedSubfolders, subfolderMetaLoading, folderFilterText,
+    highlightFolderPath,
     setFolderSort, loadSubfolderMeta, setSort, setSortKey, setSortOrder,
     loadFiles, selectFolder, selectFolderRecursive, loadRecursiveFiles, reloadCurrent, exitRecursive,
     selectFile, selectExtraFile, toggleCheck, toggleAll, setCheckedPaths,

@@ -155,6 +155,7 @@ export default {
     selectSource: '소스 선택',
     subfolders: '하위 폴더',
     colFolderName: '폴더 이름',
+    lastOpened: '최근 열어봄',
     folderSearchPlaceholder: '폴더 검색...',
     folderSearchCount: '{n}/{total}개',
     sortByModifiedHint: '수정일로 정렬 — 하위 폴더가 많으면 NAS에서 잠시 걸릴 수 있습니다',
