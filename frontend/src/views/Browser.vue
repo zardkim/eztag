@@ -173,6 +173,12 @@
           @click="forceReload()"
         >🔄</button>
         <div class="flex-1"></div>
+        <!-- 정렬 (모바일 — 전체선택 툴바와 같은 줄 우측) -->
+        <FileSortControl
+          v-if="browserStore.selectedFolder && !browserStore.loading && browserStore.files.length > 0"
+          compact
+          class="shrink-0"
+        />
         <!-- 라이브러리로 버튼 (워크스페이스 전용) -->
         <button
           v-if="browserStore.currentArea === 'workspace'"
@@ -663,14 +669,6 @@
             <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">{{ t('browser.albumIntro') }}</p>
             <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap line-clamp-4" :title="browserStore.albumDescription">{{ browserStore.albumDescription }}</p>
           </div>
-
-          <!-- ── 정렬 바 (모바일 전용) ──
-               PC 에서는 같은 컨트롤을 경로 줄 우측에 축약형으로 그린다.
-               가로 스크롤되는 테이블 래퍼 바깥에 둬야 스크롤을 따라 밀려나지 않는다. -->
-          <FileSortControl
-            v-if="browserStore.files.length > 0"
-            class="md:hidden px-4 pt-2 pb-1"
-          />
 
           <!-- ── 모바일 extra 파일 (html, 이미지 등) ── -->
           <div v-if="browserStore.extraFiles.length > 0" class="md:hidden px-3 pt-2 pb-1 flex flex-wrap gap-1.5">

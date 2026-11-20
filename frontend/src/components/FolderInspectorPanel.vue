@@ -73,7 +73,7 @@
             <img :src="`/api/browse/extra-file?path=${encodeURIComponent(img.path)}`" :alt="img.filename" class="w-full h-full object-cover" />
             <span class="absolute inset-x-0 bottom-0 px-1 py-0.5 bg-black/55 text-white text-[9px] truncate text-left">{{ img.filename }}</span>
             <span
-              class="absolute top-1 right-1 w-4 h-4 rounded flex items-center justify-center bg-black/50 text-white text-[10px] opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+              class="absolute top-1 right-1 w-4 h-4 rounded flex items-center justify-center bg-black/50 text-white text-[10px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-red-500"
               :title="$t('common.delete')"
               @click.stop="removeFile(img)"
             >✕</span>
@@ -98,7 +98,7 @@
             <span class="text-[9px] px-1 py-0.5 rounded font-mono uppercase shrink-0 bg-yellow-100 dark:bg-yellow-900/40 text-yellow-600 dark:text-yellow-400">html</span>
             <span class="flex-1 truncate" :title="f.filename">{{ f.filename }}</span>
             <button
-              class="shrink-0 w-4 h-4 flex items-center justify-center text-gray-300 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+              class="shrink-0 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-red-400 transition-colors opacity-100 sm:opacity-0 sm:w-4 sm:h-4 sm:text-gray-300 sm:group-hover:opacity-100"
               :title="$t('common.delete')"
               @click.stop="removeFile(f)"
             >✕</button>
@@ -115,11 +115,16 @@
           <div
             v-for="f in lrcFiles"
             :key="f.path"
-            class="flex items-center gap-1.5 px-2 py-1 rounded text-[11px] text-gray-400 dark:text-gray-600"
+            class="group flex items-center gap-1.5 px-2 py-1 rounded text-[11px] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             :title="f.filename"
           >
             <span class="text-[9px] px-1 py-0.5 rounded font-mono uppercase shrink-0 bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400">lrc</span>
             <span class="flex-1 truncate" :title="f.filename">{{ f.filename }}</span>
+            <button
+              class="shrink-0 w-5 h-5 sm:w-4 sm:h-4 flex items-center justify-center text-gray-400 hover:text-red-400 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+              :title="$t('common.delete')"
+              @click.stop="removeFile(f)"
+            >✕</button>
           </div>
         </div>
       </div>
@@ -167,7 +172,7 @@ import { useBrowserStore } from '../stores/browser.js'
 import { useToastStore } from '../stores/toast.js'
 import RenameFolderModal from './RenameFolderModal.vue'
 
-defineEmits(['close'])
+const emit = defineEmits(['close'])
 
 const { t } = useI18n()
 const browserStore = useBrowserStore()
@@ -222,6 +227,13 @@ function openImage(file) {
 }
 
 function openHtml(file) {
+  // 모바일에서는 이 패널이 좌측 영역을 덮고 있어(hidden sm:block) HTML 뷰어가
+  // 열려도 보이지 않는다. 좁은 화면에서는 패널을 닫아 뷰어를 드러낸다.
+  //
+  // 닫기를 "먼저" 해야 한다. Browser 의 closePanel 이 selectFile(null) 을
+  // 부르고, selectFile 은 selectedExtraFile 까지 비운다. 순서가 반대면
+  // 방금 고른 HTML 이 곧바로 지워져 뷰어가 끝내 열리지 않는다.
+  if (window.matchMedia('(max-width: 639px)').matches) emit('close')
   browserStore.selectExtraFile(file)
 }
 

@@ -458,7 +458,9 @@ def get_files(
     except PermissionError:
         warning = "일부 항목에 접근 권한이 없습니다."
 
-    # 이미지 / HTML 파일 수집
+    # 이미지 / HTML / LRC 파일 수집
+    #   .lrc 는 위에서 has_lrc 판정용으로만 모았고 extra_files 에는 넣지 않아,
+    #   폴더 정보 패널의 LRC 목록이 항상 비어 있었다(프런트 코드는 있는데 데이터가 없었다).
     extra_files = []
     try:
         for item in sorted(p.iterdir()):
@@ -490,6 +492,15 @@ def get_files(
                     "path": str(item),
                     "file_type": "html",
                     "is_eztag": is_eztag,
+                    "file_size": stat.st_size,
+                    "modified_time": stat.st_mtime,
+                })
+            elif ext == ".lrc":
+                stat = item.stat()
+                extra_files.append({
+                    "filename": item.name,
+                    "path": str(item),
+                    "file_type": "lrc",
                     "file_size": stat.st_size,
                     "modified_time": stat.st_mtime,
                 })
