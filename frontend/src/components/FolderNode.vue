@@ -5,7 +5,7 @@
     <div
       class="w-full flex items-center gap-1 pr-1.5 rounded transition-colors group"
       :class="[
-        mobile ? 'py-2 text-[13px]' : 'py-[3px] text-xs',
+        mobile ? 'py-3 text-[15px] border-b border-gray-100 dark:border-gray-800/70' : 'py-[3px] text-xs',
         isSelected
           ? 'bg-indigo-50 text-indigo-700 font-medium dark:bg-indigo-950/50 dark:text-indigo-300'
           : 'text-gray-800 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800',
@@ -15,34 +15,36 @@
       <!-- 펼치기/접기 캐럿 (클릭 시 트리만 토글) -->
       <span
         class="shrink-0 flex items-center justify-center cursor-pointer transition-transform text-gray-400 dark:text-gray-600"
-        :class="[mobile ? 'w-7 h-7 -my-1' : 'w-3.5 h-3.5', open ? 'rotate-90' : '']"
+        :class="[mobile ? 'w-9 h-9 -my-2' : 'w-3.5 h-3.5', open ? 'rotate-90' : '']"
         @click="toggleExpand"
       >
-        <svg v-if="expandable" class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
+        <svg v-if="expandable" :class="mobile ? 'w-5 h-5' : 'w-3.5 h-3.5'" viewBox="0 0 16 16" fill="none">
           <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
       </span>
 
       <!-- 폴더 이름 (클릭 시 폴더 선택) -->
       <button
-        class="flex-1 flex items-center gap-1 text-left min-w-0"
+        class="flex-1 flex items-center text-left min-w-0"
+        :class="mobile ? 'gap-2.5' : 'gap-1'"
         @click="selectNode"
       >
         <!-- 폴더 아이콘 색상으로 영역을 구분한다 (작업공간=주황 / 라이브러리=파랑).
              선택 여부와 무관하게 유지해야 구분이 깨지지 않는다. -->
         <span
-          class="shrink-0 w-3.5 h-3.5 flex items-center justify-center"
-          :class="areaIconClass"
+          class="shrink-0 flex items-center justify-center"
+          :class="[areaIconClass, mobile ? 'w-5 h-5' : 'w-3.5 h-3.5']"
         >
-          <svg v-if="open" class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
+          <svg v-if="open" :class="mobile ? 'w-5 h-5' : 'w-3.5 h-3.5'" viewBox="0 0 16 16" fill="none">
             <path d="M1.5 4.5v7a1 1 0 0 0 1 1h11a1 1 0 0 0 .96-.72l1.1-4A1 1 0 0 0 14.6 6H4.1a1 1 0 0 0-.96.72L1.5 12" stroke="currentColor" stroke-width="1.2" />
             <path d="M1.5 4.5v-1a1 1 0 0 1 1-1h4L8 4.5h4.5a1 1 0 0 1 1 1v1" stroke="currentColor" stroke-width="1.2" />
           </svg>
-          <svg v-else class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
+          <svg v-else :class="mobile ? 'w-5 h-5' : 'w-3.5 h-3.5'" viewBox="0 0 16 16" fill="none">
             <path d="M1.5 4.5v7a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V5.5a1 1 0 0 0-1-1H8L6.5 3h-4a1 1 0 0 0-1 1Z" stroke="currentColor" stroke-width="1.2" />
           </svg>
         </span>
-        <span :class="mobile ? 'line-clamp-2 break-all' : 'truncate'" :title="node.name">{{ node.name }}</span>
+        <span class="flex-1 min-w-0" :class="mobile ? 'line-clamp-2 break-all' : 'truncate'" :title="node.name">{{ node.name }}</span>
+        <span v-if="mobile" class="shrink-0 text-gray-300 dark:text-gray-600 text-sm pl-1">›</span>
       </button>
     </div>
 
@@ -101,7 +103,7 @@ const children = ref(_cached ?? [])
 const loadedAt = ref(_cached ? Date.now() : 0)
 
 const isSelected = computed(() => props.selectedPath === props.node.path)
-const indentStep = computed(() => (props.mobile ? 10 : 14))
+const indentStep = computed(() => (props.mobile ? 14 : 14))
 
 // /browse/children 은 기본적으로 has_children 을 주지 않는다(N+1 제거).
 // 모르는 상태(undefined)는 "펼칠 수 있음"으로 보고 캐럿을 낙관적으로 보여준 뒤,

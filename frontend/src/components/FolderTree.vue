@@ -39,10 +39,13 @@
              루트가 하나뿐이면 그 루트의 자식을 바로 아래에 펼치므로(hoist),
              헤더 자체가 루트 폴더를 여는 진입점이 된다. -->
         <button
-          class="w-full text-left px-2 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.06em] transition-colors"
-          :class="section.root && browserStore.selectedFolder?.path === section.root.path
-            ? 'text-indigo-600 dark:text-indigo-400'
-            : 'text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400'"
+          class="w-full text-left font-semibold uppercase tracking-[0.06em] transition-colors"
+          :class="[
+            mobile ? 'px-3 pt-4 pb-2 text-[11px]' : 'px-2 pt-2.5 pb-1 text-[10px]',
+            section.root && browserStore.selectedFolder?.path === section.root.path
+              ? 'text-indigo-600 dark:text-indigo-400'
+              : 'text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400',
+          ]"
           :title="section.root ? section.root.path : ''"
           @click="section.root && selectRoot(section)"
         >{{ $t(section.labelKey) }}</button>
@@ -90,6 +93,11 @@ const loading = ref(false)
 // 루트가 없는 영역은 섹션 헤더까지 통째로 숨긴다 (빈 헤더를 남기지 않음)
 const visibleSections = computed(() => sections.value.filter(s => s.root || s.nodes.length > 0))
 
+/** 파일 브라우저로 이동. 이미 그 화면이면 아무것도 하지 않는다. */
+function goBrowser() {
+  if (route.path !== '/browser') router.push('/browser')
+}
+
 function onFolderSelect({ node, area, crumb }) {
   // 선택된 폴더의 하위 캐시 무효화 → 외부 변경사항 즉시 반영
   sessionCache.delete(`children:${node.path}`)
@@ -97,10 +105,10 @@ function onFolderSelect({ node, area, crumb }) {
   // area를 빠뜨리면 store의 `if (area)` 가드 때문에 이전 영역이 그대로 남고,
   // crumb을 빠뜨리면 breadcrumb이 이전 경로에 계속 누적된다.
   browserStore.selectFolder({ name: node.name, path: node.path }, crumb, area)
+  // 이동을 먼저 건다. emit('select') 는 모바일 시트를 닫아 이 컴포넌트를
+  // 언마운트시키므로, 그 뒤에 라우팅을 하면 타이밍에 따라 유실될 수 있다.
+  goBrowser()
   emit('select', { node, area })
-  if (route.path !== '/browser') {
-    router.push('/browser')
-  }
 }
 
 // 섹션 헤더 클릭 → 라이브러리/작업공간 루트 폴더 자체를 연다
@@ -108,8 +116,8 @@ function selectRoot(section) {
   const r = section.root
   sessionCache.delete(`children:${r.path}`)
   browserStore.selectFolder({ name: r.name, path: r.path }, [r], section.key)
+  goBrowser()
   emit('select', { node: r, area: section.key })
-  if (route.path !== '/browser') router.push('/browser')
 }
 
 function toNodes(roots, area) {

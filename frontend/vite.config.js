@@ -14,6 +14,9 @@ export default defineConfig(({ mode }) => {
       vue(),
       VitePWA({
         registerType: 'autoUpdate',
+        // 등록은 main.js 에서 직접 한다(업데이트 시 새로고침 처리 포함).
+        // 자동 주입 스크립트는 등록만 하고 갱신을 처리하지 않아 옛 번들이 남았다.
+        injectRegister: null,
         includeAssets: ['favicon.ico', 'logo-icon.svg'],
         manifest: {
           name: 'eztag - Music Tag Manager',
