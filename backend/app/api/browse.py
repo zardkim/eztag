@@ -1818,15 +1818,23 @@ def get_dest_children(
     if not p.is_dir():
         raise HTTPException(status_code=400, detail="Not a directory")
 
+    # 제외 폴더 설정을 여기서도 지킨다.
+    # /browse/children 과 /workspace/*/children 은 적용하는데 이 엔드포인트만
+    # 빠져 있어, 트리에서는 숨겨진 폴더가 "다른 위치로 이동" 피커에는 보였다.
+    excluded = get_excluded_folders(db)
+
+    def _skip(name: str) -> bool:
+        return name.startswith(".") or name in excluded
+
     children = []
     try:
         for item in sorted(p.iterdir()):
-            if not item.is_dir() or item.name.startswith("."):
+            if not item.is_dir() or _skip(item.name):
                 continue
             has_children = False
             try:
                 sub_items = list(item.iterdir())
-                has_children = any(x.is_dir() and not x.name.startswith(".") for x in sub_items)
+                has_children = any(x.is_dir() and not _skip(x.name) for x in sub_items)
             except PermissionError:
                 pass
             children.append({

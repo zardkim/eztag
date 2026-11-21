@@ -265,8 +265,9 @@ async function loadChildren(path) {
   cancelRename()
   crudError.value = ''
   try {
+    // /workspace/library/children 은 이제 하위 폴더 배열을 그대로 돌려준다
     const { data } = await workspaceApi.libraryChildren(path)
-    folders.value = data.folders
+    folders.value = Array.isArray(data) ? data : (data.folders ?? [])
   } catch (e) {
     folders.value = []
   } finally {

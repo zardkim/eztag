@@ -132,7 +132,6 @@ export const workspaceApi = {
   libraryRoots: () => client.get('/workspace/library/roots'),
   libraryChildren: (path) => client.get('/workspace/library/children', { params: { path } }),
   workspaceRoots: () => client.get('/workspace/workspace/roots'),
-  workspaceChildren: (path) => client.get('/workspace/workspace/children', { params: { path } }),
 }
 
 // AI Cover Art (개발 중단)

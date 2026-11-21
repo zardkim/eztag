@@ -793,45 +793,42 @@ def workspace_children(
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    """워크스페이스 폴더의 하위 목록 (폴더 + 오디오 파일)."""
-    AUDIO_EXTS_LOCAL = {".mp3", ".flac", ".m4a", ".aac", ".ogg", ".wav", ".wma"}
+    """워크스페이스 폴더의 하위 폴더 목록.
+
+    /browse/children · /browse/dest-children 과 같은 "하위 디렉터리 배열" 형태로
+    맞춘다. 예전에는 {path, folders, files} 객체였는데 호출부는 folders 만 썼다.
+
+    has_audio 는 더 이상 내려주지 않는다. 자식마다 rglob("*") 로 전체 트리를
+    훑어야 해서 NAS 에서 특히 느렸고, 쓰는 곳도 없었다
+    (/browse/children 은 같은 이유로 이미 제거된 상태였다).
+    """
     p = _validate_workspace_path(path, db)
     if not p.is_dir():
         raise HTTPException(status_code=404, detail="폴더를 찾을 수 없습니다")
 
     excluded = get_excluded_folders(db)
-    items = sorted(p.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower()))
-    result_dirs = []
-    result_files = []
-
-    for item in items:
-        if item.name.startswith(".") or item.name in excluded:
-            continue
-        if item.is_dir():
-            has_audio = any(
-                f.suffix.lower() in AUDIO_EXTS_LOCAL
-                for f in item.rglob("*") if f.is_file()
-            )
-            result_dirs.append({
+    children = []
+    try:
+        for item in sorted(p.iterdir(), key=lambda x: x.name.lower()):
+            if not item.is_dir() or item.name.startswith(".") or item.name in excluded:
+                continue
+            try:
+                has_children = any(
+                    x.is_dir() and not x.name.startswith(".") and x.name not in excluded
+                    for x in item.iterdir()
+                )
+            except PermissionError:
+                has_children = False
+            children.append({
                 "name": item.name,
                 "path": str(item),
                 "type": "folder",
-                "has_children": any(True for x in item.iterdir() if x.is_dir() and not x.name.startswith(".") and x.name not in excluded),
-                "has_audio": has_audio,
+                "has_children": has_children,
             })
-        elif item.is_file() and item.suffix.lower() in AUDIO_EXTS_LOCAL:
-            result_files.append({
-                "name": item.name,
-                "path": str(item),
-                "type": "file",
-                "ext": item.suffix.lower().lstrip("."),
-            })
+    except PermissionError:
+        pass
 
-    return {
-        "path": str(p),
-        "folders": result_dirs,
-        "files": result_files,
-    }
+    return children
 
 
 @router.get("/library/roots")
@@ -867,41 +864,39 @@ def library_children(
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    """라이브러리 폴더의 하위 목록 (폴더 + 오디오 파일)."""
+    """라이브러리 폴더의 하위 폴더 목록.
+
+    /browse/children · /browse/dest-children 과 같은 "하위 디렉터리 배열" 형태로
+    맞춘다. 예전에는 {path, folders, files} 객체였는데 호출부는 folders 만 썼다.
+
+    has_audio 는 더 이상 내려주지 않는다. 자식마다 rglob("*") 로 전체 트리를
+    훑어야 해서 NAS 에서 특히 느렸고, 쓰는 곳도 없었다
+    (/browse/children 은 같은 이유로 이미 제거된 상태였다).
+    """
     p = _validate_library_path(path, db)
     if not p.is_dir():
         raise HTTPException(status_code=404, detail="폴더를 찾을 수 없습니다")
 
     excluded = get_excluded_folders(db)
-    items = sorted(p.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower()))
-    result_dirs = []
-    result_files = []
-
-    for item in items:
-        if item.name.startswith(".") or item.name in excluded:
-            continue
-        if item.is_dir():
-            has_audio = any(
-                f.suffix.lower() in AUDIO_EXTS
-                for f in item.rglob("*") if f.is_file()
-            )
-            result_dirs.append({
+    children = []
+    try:
+        for item in sorted(p.iterdir(), key=lambda x: x.name.lower()):
+            if not item.is_dir() or item.name.startswith(".") or item.name in excluded:
+                continue
+            try:
+                has_children = any(
+                    x.is_dir() and not x.name.startswith(".") and x.name not in excluded
+                    for x in item.iterdir()
+                )
+            except PermissionError:
+                has_children = False
+            children.append({
                 "name": item.name,
                 "path": str(item),
                 "type": "folder",
-                "has_children": any(True for _ in item.iterdir() if _.is_dir() and not _.name.startswith(".") and _.name not in excluded),
-                "has_audio": has_audio,
+                "has_children": has_children,
             })
-        elif item.is_file() and item.suffix.lower() in AUDIO_EXTS:
-            result_files.append({
-                "name": item.name,
-                "path": str(item),
-                "type": "file",
-                "ext": item.suffix.lower().lstrip("."),
-            })
+    except PermissionError:
+        pass
 
-    return {
-        "path": str(p),
-        "folders": result_dirs,
-        "files": result_files,
-    }
+    return children
